@@ -723,6 +723,22 @@ config LSM6DSL_I2C_FREQUENCY
 	range 1 400000
 	depends on SENSORS_LSM6DSL
 
+config SENSORS_LSM6DSO32
+	bool "LSM6DSO32 inertial module"
+	default n
+	select I2C
+	---help---
+		Enable driver support for the Semtech LSM6DSO32 intertial module.
+
+if SENSORS_LSM6DSO32
+
+config LSM6DSO32_I2C_FREQUENCY
+	int "LSM6DSO32 I2C frequency"
+	default 400000
+	range 1 400000
+
+endif # SENSORS_LSM6DSO32
+
 config SENSORS_LSM9DS1
 	bool "STMicro LSM9DS1 support"
 	default n

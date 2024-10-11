@@ -73,6 +73,11 @@
 #include "rp2040_i2c.h"
 #endif
 
+#ifdef CONFIG_SENSORS_LSM6DSO32
+#include <nuttx/sensors/lsm6dso32.h>
+#include "rp2040_i2c.h"
+#endif
+
 #ifdef CONFIG_SENSORS_MAX6675
 #include <nuttx/sensors/max6675.h>
 #include "rp2040_max6675.h"
@@ -507,6 +512,16 @@ int rp2040_common_bringup(void)
       syslog(LOG_ERR, "ERROR: couldn't initialize SHT4x: %d\n", ret);
     }
 #endif
+
+#ifdef CONFIG_SENSORS_LSM6DSO32
+  /* Try to register LSM6DSO32 device as /dev/imu0 at I2C0. */
+
+  ret = lsm6dso32_register("/dev/imu0", rp2040_i2cbus_initialize(0), 0x6b);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "ERROR: couldn't initialize LSM6DSO32: %d\n", ret);
+    }
+#endif // CONFIG_SENSORS_LSM6DSO32
 
 #ifdef CONFIG_VIDEO_FB
   ret = fb_register(0, 0);
