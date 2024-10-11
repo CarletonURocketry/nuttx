@@ -457,7 +457,7 @@ int lsm6dso32_register(FAR const char *devpath, FAR struct i2c_master_s *i2c,
   priv = kmm_zalloc(sizeof(struct lsm6dso32_dev_s));
   if (priv == NULL)
     {
-      snerr("ERROR: Failed to allocate instance.\n");
+      snerr("ERROR: Failed to allocate instance of LSM6DSO32 driver.\n");
       return -ENOMEM;
     }
 
