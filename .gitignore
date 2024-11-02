@@ -78,3 +78,15 @@ kwarning
 SAVEMake.defs
 SAVEconfig
 .aider*
+drivers/build/.cmake/api/v1/query/client-vscode/query.json
+drivers/build/CMakeCache.txt
+drivers/sensors/Untitled-1.c
+drivers/build/CMakeFiles/3.28.3/CompilerIdCXX/CMakeCXXCompilerId.cpp
+drivers/build/CMakeFiles/3.28.3/CompilerIdCXX/a.out
+drivers/build/CMakeFiles/3.28.3/CompilerIdC/CMakeCCompilerId.c
+drivers/build/CMakeFiles/3.28.3/CompilerIdC/a.out
+drivers/build/CMakeFiles/3.28.3/CMakeSystem.cmake
+drivers/build/CMakeFiles/3.28.3/CMakeCXXCompiler.cmake
+drivers/build/CMakeFiles/3.28.3/CMakeCCompiler.cmake
+drivers/build/CMakeFiles/cmake.check_cache
+drivers/build/CMakeFiles/CMakeConfigureLog.yaml
