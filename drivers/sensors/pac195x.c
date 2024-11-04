@@ -7,15 +7,15 @@
 #include "pac195x.h"; //temp
 #include <nuttx/kmalloc.h>
 #include <nuttx/mutex.h>
+#include <nuttx/sensors/pac195x.h>
 #include <nuttx/fs/fs.h>
 #include <nuttx/i2c/i2c_master.h>
-#include <nuttx/sensors/pac195x.h>
 #include <nuttx/random.h>
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-
+#define EOK 0
 #define return_err(err) \
     if (err != EOK)     \
     return err
@@ -25,11 +25,14 @@
 #define CONFIG_PAC195x_I2C_FREQUENCY 400000
 #endif
 
+#define PAC195x_MAX_CHANNEL 4
 // add to config file
 #define CONFIG_PAC195x_CHANNEL_1 1
 #define CONFIG_PAC195x_CHANNEL_2 1
+#define CONFIG_PAC195x_CHANNEL_3 1
+#define CONFIG_PAC195x_CHANNEL_4 1
 #define CONFIG_PAC195x_SAMPLE_MODE SAMPLE_1024_SPS_AD
-/* Commands and Registers */
+/* Registers */
 
 typedef enum
 {
@@ -86,12 +89,13 @@ struct pac195x_dev_s
     FAR struct i2c_master_s *i2c; /* I2C interface.CONFIG_PAC195x_I2C_FREQUENCY */
     uint8_t addr;                 /* I2C address. */
     mutex_t devlock;
-    // TODO ID struct?
+
     int16_t crefs; /*Number of open instances*/
-    unit8_t mau_id;
+    uint8_t mau_id;
     uint8_t prod_id;
     uint8_t rev_id;
-    // TODO data struct
+    pac195x_sm_e samp_mode;
+    unsigned int channel_status;
 };
 
 /****************************************************************************
@@ -100,7 +104,7 @@ struct pac195x_dev_s
 
 /* I2C Helpers */
 
-static int pac195x_send_byte(FAR struct pac195x_dev_s *priv, uint8_t reg addr);
+static int pac195x_send_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr);
 static int pac195x_write_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr,
                               FAR uint8_t *data);
 static int pac195x_receive_byte(FAR struct pac195x_dev_s *priv,
@@ -141,14 +145,14 @@ static const struct file_operations g_pac195xfops =
         .poll = NULL,
 };
 
-static int pac195x_send_byte(FAR struct pac195x_dev_s *priv, uint8_t reg addr)
+static int pac195x_send_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr)
 {
     struct i2c_msg_s msg;
     int ret;
 
     msg.frequency = CONFIG_PAC195x_I2C_FREQUENCY;
     msg.addr = priv->addr;
-    msg.buffer = addr;
+    msg.buffer = reg_addr;
     msg.length = 1;
 
     ret = i2c_send_t(priv->i2c, msg, 1);
@@ -160,7 +164,7 @@ static int pac195x_write_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr, 
     int ret;
     uint8_t buffer[2];
 
-    buffer[0] = reg_address;
+    buffer[0] = reg_addr;
     buffer[1] = *data;
 
     msg.frequency = CONFIG_PAC195x_I2C_FREQUENCY;
@@ -174,9 +178,10 @@ static int pac195x_write_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr, 
     return ret;
 }
 
-static int pac195x_receive_byte(FAR struct pac195x_dev_s *priv, far uint8_t *data)
+static int pac195x_receive_byte(FAR struct pac195x_dev_s *priv, FAR uint8_t *data)
 {
-    struct i2c_msg_s;
+    int ret;
+    struct i2c_msg_s msg;
     msg.frequency = CONFIG_PAC195x_I2C_FREQUENCY;
     msg.addr = priv->addr;
     msg.flags = I2C_M_READ;
@@ -184,6 +189,7 @@ static int pac195x_receive_byte(FAR struct pac195x_dev_s *priv, far uint8_t *dat
     msg.length = 1;
 
     ret = i2c_send_t(priv->i2c, msg, 1);
+    return_err(ret);
 
     return ret;
 }
@@ -225,9 +231,9 @@ static int pac195x_block_read(FAR struct pac195x_dev_s *priv, uint8_t reg_addr, 
     msg[1].addr = priv->addr;
     msg[1].flags = I2C_M_READ;
     msg[1].buffer = data;
-    msg[1].length = nbytes
+    msg[1].length = nbytes;
 
-        ret = i2c_send_t(priv->i2c, msg, 2);
+    ret = i2c_send_t(priv->i2c, msg, 2);
 
     return ret;
 }
@@ -255,7 +261,7 @@ static int pac195x_block_write(FAR struct pac195x_dev_s *priv, uint8_t reg_addr,
  * Name: pac195x_open
  *
  * Description:
- *   This function is called whenever the SHT3x device is opened.
+ *   This function is called whenever the pac195x device is opened.
  *
  ****************************************************************************/
 
@@ -263,51 +269,87 @@ static int pac195x_block_write(FAR struct pac195x_dev_s *priv, uint8_t reg_addr,
 static int pac195x_open(FAR struct file *filep)
 {
     FAR struct inode *inode = filep->f_inode;
-    FAR struct sht3x_dev_s *priv = inode->i_private;
-    int ret;
+    FAR struct pac195x_dev_s *priv = inode->i_private;
+    int err;
 
-    /* Get exclusive access */
-    ret = nxmutex_lock(&priv->devlock);
-    if (ret < 0)
-    {
-        return ret;
-    }
+    err = nxmutex_lock(&priv->devlock);
+    return_err(err);
 
     /* Increment the count of open references on the driver */
-
     priv->crefs++;
     DEBUGASSERT(priv->crefs > 0);
+
     nxmutex_unlock(&priv->devlock);
-
-    // get ID values and TOD: Debug staments.. check against config file expected ID?
-    priv->rev_id = pac195x_get_rev_id(&priv, REVISION_ID);
-    priv->mau_id = pac195x_get_manu_id(&priv, MANUFACTURER_ID);
-    priv->prod_id = pac195x_get_prod_id(&priv, PRODUCT_ID);
-
-    // apply config TODO: add debug satements
-    if (CONFIG_PAC195x_CHANNEL_1)
-    {
-        int err = pac195x_toggle_channel(&priv, CHANNEL1, true);
-        if (err != 0)
-            printf("%s", "Channel 1 INIT FAILURE");
-    }
-    if (CONFIG_PAC195x_CHANNEL_2)
-    {
-        int err = pac195x_toggle_channel(&priv, CHANNEL1, true);
-        if (err != EOK)
-            printf("%s", "Channel 1 INIT FAILURE");
-    }
-
-    // set sample mode
-    int err = pac195x_set_sample_mode(&priv, CONFIG_PAC195x_SAMPLE_MODE);
-    if (err != EOK)
-        printf("%s", "Channel 2 INIT FAILURE");
-
-    // refresh and sleep 1ms:
-    err = pac195x_refresh(&priv) if (err != EOK) printf("%s", "REFRESH FAILED");
+    return 0;
 }
 #endif
 
+/****************************************************************************
+ * Name: pac195x_ioctl
+ ****************************************************************************/
+
+static int pac195x_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
+{
+    FAR struct inode *inode = filep->f_inode;
+    FAR struct pac195x_dev_s *priv = inode->i_private;
+    int err;
+
+    err = nxmutex_lock(&priv->devlock);
+    if (err < 0)
+    {
+        return err;
+    }
+
+    switch (cmd)
+    {
+    default:
+        err = -EINVAL;
+        break;
+    }
+
+    nxmutex_unlock(&priv->devlock);
+    return err;
+}
+
+/****************************************************************************
+ * Name: pac195x_read
+ *
+ * Description:
+ *   Character driver interface to sensor for debugging..
+ *
+ ****************************************************************************/
+static ssize_t pac195x_read(FAR struct file *filep, FAR char *buffer,
+                            size_t buflen)
+{
+    FAR struct inode *inode = filep->f_inode;
+    FAR struct pac195x_dev_s *priv = inode->i_private;
+    ssize_t length = 0;
+    int err;
+
+    if (filep->f_pos > 0)
+    {
+        return 0;
+    }
+
+    /* Get exclusive access */
+
+    err = nxmutex_lock(&priv->devlock);
+    return_err(err);
+
+    uint8_t whoami = pac195x_get_prod_id(priv, PRODUCT_ID);
+
+    length = snprintf(buffer, buflen, "WHOAMI: %02x\n", whoami);
+
+    if (length > buflen)
+    {
+        length = buflen;
+    }
+
+    filep->f_pos += length;
+    nxmutex_unlock(&priv->devlock);
+
+    return length;
+}
 /****************************************************************************
  * Name: pac195x_get_manu_id
  *
@@ -318,7 +360,7 @@ static int pac195x_open(FAR struct file *filep)
 
 int pac195x_get_manu_id(FAR struct pac195x_dev_s *priv, uint8_t *id)
 {
-    return pac195x_read_byte(loc, MANUFACTURER_ID, id);
+    return pac195x_read_byte(priv, MANUFACTURER_ID, id);
 }
 
 /****************************************************************************
@@ -401,9 +443,9 @@ int pac195x_set_sample_mode(FAR struct pac195x_dev_s *priv, pac195x_sm_e mode)
  *
  ****************************************************************************/
 
-int pac195x_toggle_channel(FAR struct pac195x_dev_s *priv, pac195x_channel_e channel, bool enable)
+int pac195x_toggle_channel(FAR struct pac195x_dev_s *priv,
+                           pac195x_channel_e channel, bool enable)
 {
-
     uint8_t buf[2]; // Buffer for 16 bit message
 
     // Read the current CTRL register values (2 bytes)
@@ -432,7 +474,8 @@ int pac195x_toggle_channel(FAR struct pac195x_dev_s *priv, pac195x_channel_e cha
  *
  ****************************************************************************/
 
-static int pac195x_get_16b_channel(FAR struct pac195x_dev_s *priv, uint8_t addr, uint8_t n, uint16_t *val)
+static int pac195x_get_16b_channel(FAR struct pac195x_dev_s *priv,
+                                   uint8_t addr, uint8_t n, uint16_t *val)
 {
     if (n > 4 || n < 1)
         return EINVAL; // Invalid channel number
@@ -456,7 +499,8 @@ static int pac195x_get_16b_channel(FAR struct pac195x_dev_s *priv, uint8_t addr,
  *
  ****************************************************************************/
 
-int pac195x_get_vsensen(FAR struct pac195x_dev_s *priv, uint8_t n, uint16_t *val)
+int pac195x_get_vsensen(FAR struct pac195x_dev_s *priv,
+                        uint8_t n, uint16_t *val)
 {
     return pac195x_get_16b_channel(priv, VSENSEN, n, val);
 }
@@ -469,7 +513,8 @@ int pac195x_get_vsensen(FAR struct pac195x_dev_s *priv, uint8_t n, uint16_t *val
  *
  ****************************************************************************/
 
-int pac195x_get_vbusn(FAR struct pac195x_dev_s *priv, uint8_t n, uint16_t *val)
+int pac195x_get_vbusn(FAR struct pac195x_dev_s *priv, uint8_t n,
+                      uint16_t *val)
 {
     return pac195x_get_16b_channel(priv, VBUSN, n, val);
 }
@@ -482,7 +527,8 @@ int pac195x_get_vbusn(FAR struct pac195x_dev_s *priv, uint8_t n, uint16_t *val)
  *
  ****************************************************************************/
 
-int pac195x_get_vbusnavg(FAR struct pac195x_dev_s *priv, uint8_t n, uint16_t *val)
+int pac195x_get_vbusnavg(FAR struct pac195x_dev_s *priv, uint8_t n,
+                         uint16_t *val)
 {
     return pac195x_get_16b_channel(priv, VBUSN_AVG, n, val);
 }
@@ -495,7 +541,8 @@ int pac195x_get_vbusnavg(FAR struct pac195x_dev_s *priv, uint8_t n, uint16_t *va
  *
  ****************************************************************************/
 
-int pac195x_get_vsensen(FAR struct pac195x_dev_s *priv, uint8_t n, uint16_t *val)
+int pac195x_get_vsensen(FAR struct pac195x_dev_s *priv, uint8_t n,
+                        uint16_t *val)
 {
     return pac195x_get_16b_channel(priv, VSENSEN_AVG, n, val);
 }
@@ -533,10 +580,19 @@ int pac195x_register(FAR const char *devpath, FAR struct i2c_master_s *i2c,
         snerr("ERROR: Failed to allocate instance\n");
         return -ENOMEM;
     }
-
     priv->i2c = i2c;
     priv->addr = addr;
 
+    if (CONFIG_PAC195x_CHANNEL_1)
+        priv->channel_status |= CHANNEL1;
+    if (CONFIG_PAC195x_CHANNEL_2)
+        priv->channel_status |= CHANNEL2;
+    if (CONFIG_PAC195x_CHANNEL_3)
+        priv->channel_status |= CHANNEL3;
+    if (CONFIG_PAC195x_CHANNEL_4)
+        priv->channel_status |= CHANNEL4;
+
+    priv->samp_mode = CONFIG_PAC195x_SAMPLE_MODE;
     nxmutex_init(&priv->devlock);
 
     /* Register the character driver */
