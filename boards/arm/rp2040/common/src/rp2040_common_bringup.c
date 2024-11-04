@@ -73,6 +73,11 @@
 #include "rp2040_i2c.h"
 #endif
 
+#ifdef CONFIG_SENSORS_PAC195X
+#include <nuttx/sensors/pac195x.h>
+#include "rp2040_i2c.h"
+#endif
+
 #ifdef CONFIG_SENSORS_MAX6675
 #include <nuttx/sensors/max6675.h>
 #include "rp2040_max6675.h"

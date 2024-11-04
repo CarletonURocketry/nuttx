@@ -1758,4 +1758,35 @@ config SENSOR_AMG88XX_ADDR
 
 endif # SENSORS_AMG88XX
 
+config SENSORS_PAC195X
+	bool "Microchip PAC195x series power monitors"
+	default n
+	select I2C
+	---help---
+		Enable driver support for the Microchip PAC195x series power monitors.
+
+if SENSORS_PAC195X
+
+config CONFIG_PAC195x_I2C_FREQUENCY
+	int "PAC195x I2C frequency"
+	default 400000
+	range 1 400000
+
+
+config CONFIG_PAC195x_CHANNEL_1
+	bool "PAC195x I2C channel 1 enabled"
+	default 1
+
+config CONFIG_PAC195x_CHANNEL_2
+	bool "PAC195x I2C channel 2 enabled"
+	default 1
+
+# not sure what these were supposed to look like
+#	config CONFIG_PAC195x_SAMPLE_MODE
+#		bool
+#
+#	config SAMPLE_1024_SPS_AD bool
+
+endif # SENSORS_PAC195X
+
 endif # SENSORS
