@@ -519,6 +519,87 @@ static int rn2483_unlink(FAR struct inode *inode)
 }
 #endif
 
+static int rn2483_read_response(FAR struct rn2483_dev_s *priv, char *buf, size_t buf_len)
+{
+  size_t read = 0;
+  ssize_t fread;
+  char last = '\0';
+  while (read < buf_len)
+  {
+    fread = file_read(&priv->uart, &buf[read], 1);
+    if (last == '\r' && buf[read] == '\n')
+    {
+      break;
+    }
+    last = buf[read];
+
+    if (fread < 0)
+      return fread;
+
+    read++;
+  }
+
+  return fread;
+}
+
+static int rn2483_check_response(char *read_buffer)
+{
+  if (strstr(read_buffer, "ok") != NULL)
+  {
+    syslog(LOG_INFO, "%s\n\n", SUCCESS);
+    return 0;
+  }
+  else if (strstr(read_buffer, "invalid_param") != NULL)
+  {
+    syslog(LOG_INFO, "%s\n\n", FAILURE);
+    return -EINVAL;
+  }
+  else
+  {
+    syslog(LOG_INFO, "INVALID VALUE (Not 'ok' or 'invalid_param')\n\n");
+    return -EINVAL;
+  }
+}
+
+static int rn2483_radio_set_cr(FAR struct rn2483_dev_s *priv, enum rn2483_cr_e *cr)
+{
+  syslog(LOG_INFO, "SET: cr");
+
+  char write_buffer[50];
+  ssize_t written;
+
+  // written = snprintf(write_buffer, sizeof(write_buffer), "radio set cr %s\r\n", CODING_RATES[*(enum rn2483_cr_e *)data]);
+  written = snprintf(write_buffer, sizeof(write_buffer), "radio set cr %s\r\n", CODING_RATES[*cr]);
+  syslog(LOG_INFO, "%s", write_buffer);
+
+  ssize_t write_length = file_write(&priv->uart, write_buffer, written);
+  if (write_length < 0)
+  {
+    return write_length;
+  }
+
+  // Read
+  size_t buf_len = 50;
+  char read_buffer[buf_len];
+
+  // Read data into buffer until \r\n terminating sequence reached
+  int response = rn2483_read_response(priv, read_buffer, 50);
+  if (response < 0)
+  {
+    return response;
+  }
+  syslog(LOG_INFO, "%s", read_buffer);
+
+  // Check if 'ok' in response
+  int check_response = rn2483_check_response(read_buffer);
+  if (check_response < 0)
+  {
+    return check_response;
+  }
+
+  return 0;
+}
+
 /****************************************************************************
  * Name: rn2483_radio_set_cmd
  *
@@ -539,35 +620,30 @@ static int rn2483_radio_set_cmd(FAR struct rn2483_dev_s *priv, rn2483_set_params
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set cr %s\r\n", CODING_RATES[*(enum rn2483_cr_e *)data]);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_MOD:
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set mod %s\r\n", MODULATIONS[*(enum rn2483_mod_e *)data]);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_FREQ:
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set freq %lu\r\n", *(uint32_t *)data);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_BW:
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set bw %hu\r\n", *(uint16_t *)data);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_PRLEN:
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set prlen %hu\r\n", *(uint16_t *)data);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_CRC:
@@ -575,7 +651,6 @@ static int rn2483_radio_set_cmd(FAR struct rn2483_dev_s *priv, rn2483_set_params
     char *crc = (*(bool *)data) ? "on" : "off";
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set crc %s\r\n", crc);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_IQI:
@@ -583,28 +658,24 @@ static int rn2483_radio_set_cmd(FAR struct rn2483_dev_s *priv, rn2483_set_params
     char *iqi = (*(bool *)data) ? "on" : "off";
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set iqi %s\r\n", iqi);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_PWR:
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set pwr %d\r\n", *(int8_t *)data);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_SF:
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set sf sf%d\r\n", *(uint8_t *)data);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   case RN2483_SET_SYNC:
   {
     written = snprintf(write_buffer, sizeof(write_buffer), "radio set sync %d\r\n", *(uint8_t *)data);
     syslog(LOG_INFO, "%s", write_buffer);
-    // syslog(LOG_INFO, "Write Length: %d\n", written);
     break;
   }
   default:
@@ -622,26 +693,14 @@ static int rn2483_radio_set_cmd(FAR struct rn2483_dev_s *priv, rn2483_set_params
   }
 
   // Read
-  int buf_len = 50;
+  size_t buf_len = 50;
   char read_buffer[buf_len];
-  size_t read = 0;
-  ssize_t fread;
-  char last = '\0';
 
   // Read data into buffer until \r\n terminating sequence reached
-  while (read < buf_len)
+  int response = rn2483_read_response(priv, read_buffer, buf_len);
+  if (response < 0)
   {
-    fread = file_read(&priv->uart, &read_buffer[read], 1);
-    if (last == '\r' && read_buffer[read] == '\n')
-    {
-      break;
-    }
-    last = read_buffer[read];
-
-    if (fread < 0)
-      return fread;
-
-    read++;
+    return response;
   }
 
   // syslog(LOG_INFO, "%s", read_buffer);
@@ -649,7 +708,7 @@ static int rn2483_radio_set_cmd(FAR struct rn2483_dev_s *priv, rn2483_set_params
   if (strstr(read_buffer, "ok") != NULL)
   {
     syslog(LOG_INFO, "%s\n\n", SUCCESS);
-    return F_OK;
+    return 0;
   }
   else if (strstr(read_buffer, "invalid_param") != NULL)
   {
@@ -666,7 +725,12 @@ static int rn2483_radio_set_cmd(FAR struct rn2483_dev_s *priv, rn2483_set_params
 int rn2483_set_config(FAR struct rn2483_dev_s *priv)
 {
   int err;
-
+  /*  Set mod (Modulation: FSK or LoRa)*/
+  err = rn2483_radio_set_cmd(priv, RN2483_SET_MOD, &priv->config.mod);
+  if (err < 0)
+  {
+    return err;
+  }
   /*  Set freq (Frequency in Hz)*/
   err = rn2483_radio_set_cmd(priv, RN2483_SET_FREQ, &priv->config.freq);
   if (err < 0)
@@ -730,14 +794,7 @@ int rn2483_set_config(FAR struct rn2483_dev_s *priv)
     return err;
   }
 
-  /*  Set mod (Modulation: FSK or LoRa)*/
-  err = rn2483_radio_set_cmd(priv, RN2483_SET_MOD, &priv->config.mod);
-  if (err < 0)
-  {
-    return err;
-  }
-
-  return F_OK;
+  return 0;
 }
 
 /****************************************************************************
@@ -811,10 +868,6 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
 #endif
 
   priv->config.freq = CONFIG_LPWAN_RN2483_FREQ;
-
-  // Error check of frequency value (Not sure if this is what you want Matteo)
-  assert((priv->config.freq >= 433000000 && priv->config.freq <= 434800000) || (priv->config.freq >= 863000000 && priv->config.freq <= 870000000));
-
   priv->config.bw = CONFIG_LPWAN_RN2483_BW;
   priv->config.prlen = CONFIG_LPWAN_RN2483_PRLEN;
   priv->config.iqi = CONFIG_LPWAN_RN2483_IQI;
@@ -824,25 +877,10 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
   priv->config.sync = CONFIG_LPWAN_RN2483_SYNC;
 
   // Dummy read to get rid of version string
-  int buf_len = 50;
+
+  size_t buf_len = 50;
   char read_buffer[buf_len];
-  size_t read = 0;
-  ssize_t fread;
-  char last = '\0';
-
-  while (read < buf_len)
-  {
-    fread = file_read(&priv->uart, &read_buffer[read], 1);
-    if (last == '\r' && read_buffer[read] == '\n')
-    {
-      break;
-    }
-    last = read_buffer[read];
-
-    if (fread < 0)
-      return fread;
-    read++;
-  }
+  rn2483_read_response(priv, read_buffer, buf_len);
 
   // Set configuration parameters on the radio via commands
   rn2483_set_config(priv);
