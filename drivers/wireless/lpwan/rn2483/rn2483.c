@@ -436,12 +436,12 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     /*  Set Radio modulation */
     case WLIOC_SETRADIOMOD:
     {
-      rn2483_mod_e *ptr = (rn2483_mod_e *)(arg);
+      enum rn2483_mod_e *ptr = (enum rn2483_mod_e *)(arg);
       if (*ptr != RN2483_MOD_FSK && *ptr != RN2483_MOD_LORA)
       {
         return -EINVAL;
       }
-      priv->config.mod = MODULATIONS[*ptr];
+      priv->config.mod = *ptr;
 
       err = rn2483_radio_set_mod(priv, *ptr);
       break;
@@ -450,7 +450,7 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     /*  Get Radio modulation */
     case WLIOC_GETRADIOMOD:
     {
-      *((rn2483_mod_e *)(arg)) = priv->config.mod; // Returns modulation in pointer
+      *((enum rn2483_mod_e *)(arg)) = priv->config.mod; // Returns modulation in pointer
       break;
     }
 
@@ -577,12 +577,12 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     /*  Set Radio Coding Rate */
     case WLIOC_SETRADIOCR:
     {
-      rn2483_cr_e *ptr = (rn2483_cr_e *)(arg);
+      enum rn2483_cr_e *ptr = (enum rn2483_cr_e *)(arg);
       if (*ptr <= 8 && *ptr >= 5)
       {
         return -EINVAL;
       }
-      priv->config.cr = CODING_RATES[*ptr];
+      priv->config.cr = *ptr;
       
       err = rn2483_radio_set_cr(priv, *ptr);
       break;
@@ -590,7 +590,7 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     /*  Set Radio Coding Rate */
     case WLIOC_GETRADIOCR:
     {
-      *((rn2483_cr_e *)(arg)) = priv->config.cr; // Returns Coding Rate in pointer
+      *((enum rn2483_cr_e *)(arg)) = priv->config.cr; // Returns Coding Rate in pointer
       break;
     }
 
@@ -616,7 +616,7 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     case WLIOC_SETRADIOBW:
     {
       uint16_t *ptr = (uint16_t *)(arg);
-      if (*arg != 125 && *arg != 250 && *arg != 500)
+      if (*ptr != 125 && *ptr != 250 && *ptr != 500)
       {
         return -EINVAL;
       }
