@@ -53,14 +53,49 @@
 #define WLIOC_GETRADIOFREQ  _WLCIOC(0x0002)  /* arg: Pointer to uint32_t, */
                                              /* frequency value (in MHz) */
 #define WLIOC_SETADDR       _WLCIOC(0x0003)  /* arg: Pointer to address value, format
-                                              * of the address is driver specific */
+                                            /* of the address is driver specific */
 #define WLIOC_GETADDR       _WLCIOC(0x0004)  /* arg: Pointer to address value, format
-                                              * of the address is driver specific */
+                                            /* of the address is driver specific */
 #define WLIOC_SETTXPOWER    _WLCIOC(0x0005)  /* arg: Pointer to int32_t, */
                                              /* output power (in dBm) */
 #define WLIOC_GETTXPOWER    _WLCIOC(0x0006)  /* arg: Pointer to int32_t, */
                                              /* output power (in dBm) */
-
+#define WLIOC_SETRADIOMOD   _WLCIOC(0x0007)     
+                                            
+#define WLIOC_GETRADIOMOD   _WLCIOC(0x0008) 
+                                         
+#define WLIOC_SETRADIOPWR   _WLCIOC(0x0009)    
+                                         
+#define WLIOC_GETRADIOPWR   _WLCIOC(0x00A)     
+                                         
+#define WLIOC_SETRADIOSF    _WLCIOC(0x00B)     
+                                         
+#define WLIOC_GETRADIOSF    _WLCIOC(0x00C)     
+                                         
+#define WLIOC_SETRADIOPRLEN _WLCIOC(0x00D) 
+                                       
+#define WLIOC_GETRADIOPRLEN _WLCIOC(0x00E) 
+                                       
+#define WLIOC_SETRADIOCRC   _WLCIOC(0x00F) 
+                                       
+#define WLIOC_GETRADIOCRC   _WLCIOC(0x010) 
+                                       
+#define WLIOC_SETRADIOIQI   _WLCIOC(0x011) 
+                                       
+#define WLIOC_GETRADIOIQI   _WLCIOC(0x012) 
+                                         
+#define WLIOC_SETRADIOCR    _WLCIOC(0x013) 
+                                       
+#define WLIOC_GETRADIOCR    _WLCIOC(0x014) 
+                                       
+#define WLIOC_SETRADIOSYNC  _WLCIOC(0x015) 
+                                       
+#define WLIOC_GETRADIOSYNC  _WLCIOC(0x016) 
+                                       
+#define WLIOC_SETRADIOBW    _WLCIOC(0x017) 
+                                       
+#define WLIOC_GETRADIOBW    _WLCIOC(0x018) 
+                                       
 /****************************************************************************
  * Device-specific IOCTL commands
  ****************************************************************************/
