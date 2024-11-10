@@ -47,6 +47,7 @@
 
 #include <nuttx/wireless/lpwan/rn2483.h>
 #include <nuttx/wireless/lpwan/sx127x.h>
+#include <nuttx/wireless/ioctl.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -169,13 +170,6 @@ struct rn2483_dev_s
 #endif           // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   mutex_t devlock;
 };
-
-/*Represents the ioctl commands for the RN2483 device*/
-typedef enum
-{
-  RN2483_IOCTL_SET_FREQ,
-
-} rn2483_ioctl_cmd;
 
 /****************************************************************************
  * Private Function Prototypes
@@ -393,8 +387,7 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
  *     Write interface for transmitting over the RN2483.
  ****************************************************************************/
 
-static ssize_t rn2483_write(FAR struct file *filep, FAR const char *buffer,
-                            size_t buflen)
+static ssize_t rn2483_write(FAR struct file *filep, FAR const char *buffer, size_t buflen)
 { // // TODO actually transmit
 
   FAR struct inode *inode = filep->f_inode;
@@ -439,22 +432,213 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
   /* Handle command */
   switch (cmd)
   {
-    // TODO: real commands
-
-  case RN2483_IOCTL_SET_FREQ:
-  {
-    FAR uint32_t *ptr = (FAR uint32_t *)((uintptr_t)arg);
-    err = rn2483_radio_set_freq(priv, *ptr);
-    if (err < 0)
+    
+    /*  Set Radio modulation */
+    case WLIOC_SETRADIOMOD:
     {
-      return err;
-    }
-    break;
-  }
+      rn2483_mod_e *ptr = (rn2483_mod_e *)(arg);
+      if (*ptr != RN2483_MOD_FSK && *ptr != RN2483_MOD_LORA)
+      {
+        return -EINVAL;
+      }
+      priv->config.mod = MODULATIONS[*ptr];
 
-  default:
-    err = -EINVAL;
-    break;
+      err = rn2483_radio_set_mod(priv, *ptr);
+      break;
+    }
+    
+    /*  Get Radio modulation */
+    case WLIOC_GETRADIOMOD:
+    {
+      *((rn2483_mod_e *)(arg)) = priv->config.mod; // Returns modulation in pointer
+      break;
+    }
+
+
+    /*  Set Radio frequency */
+    case WLIOC_SETRADIOFREQ:
+    {
+      uint32_t *ptr = (uint32_t *)(arg);
+      if ((*ptr < 433000000 ||(*ptr > 434800000 && *ptr < 863000000) ||*ptr > 870000000))
+      {
+        return -EINVAL;
+      }
+      priv->config.freq = *ptr;
+
+      err = rn2483_radio_set_freq(priv, *ptr);
+      break;
+    }
+
+    /*  Get Radio frequency */
+    case WLIOC_GETRADIOFREQ:
+    { 
+      *((uint32_t *)(arg)) = priv->config.freq; // Returns frequency in pointer
+      break;
+    }
+
+
+    /*  Set Radio power */
+    case WLIOC_SETRADIOPWR:
+    {
+      int8_t *ptr = (int8_t *)(arg);
+      if (*ptr <= 15 && *ptr >= -3)
+      {
+        return -EINVAL;
+      }
+      priv->config.pwr = *ptr;
+
+      err = rn2483_radio_set_pwr(priv, *ptr);
+      break;
+    }
+    /*  Get Radio power */
+    case WLIOC_GETRADIOPWR:
+    {
+      *((int8_t *)(arg)) = priv->config.pwr; // Returns power in pointer
+      break;
+    }
+
+
+    /*  Set Radio spread factor */
+    case WLIOC_SETRADIOSF:
+    {
+      uint8_t *ptr = (uint8_t *)(arg);
+      if (*ptr <= 12 && *ptr >= 7)
+      {
+        return -EINVAL;
+      }
+      priv->config.sf = *ptr;
+      err = rn2483_radio_set_sf(priv, *ptr);
+      break;
+    }
+    /*  Set Radio spread factor */
+    case WLIOC_GETRADIOSF:
+    {
+      *((uint8_t *)(arg)) = priv->config.sf; // Returns spread factor in pointer
+      break;
+    }
+
+
+    /*  Set Radio preamble length */
+    case WLIOC_SETRADIOPRLEN:
+    {
+      uint16_t *ptr = (uint16_t *)(arg);
+      if (*ptr > 0 && *ptr < 65535)
+      {
+        return -EINVAL;
+      }
+      priv->config.prlen = *ptr;
+      err = rn2483_radio_set_prlen(priv, *ptr);
+      break;
+    }
+    /*  Set Radio preamble length */
+    case WLIOC_GETRADIOPRLEN:
+    {
+      *((uint16_t *)(arg)) = priv->config.prlen; // Returns preamble length in pointer
+      break;
+    }
+
+
+    /*  Set Radio CRC Header */
+    case WLIOC_SETRADIOCRC:
+    {
+      bool *ptr = (bool *)(arg);
+
+      priv->config.crc = *ptr;
+
+      err = rn2483_radio_set_crc(priv, *ptr);
+      break;
+    }
+    /*  Set Radio CRC Header */
+    case WLIOC_GETRADIOCRC:
+    {
+      *((bool *)(arg)) = priv->config.crc; // Returns CRC Header in pointer
+      break;
+    }
+
+
+    /*  Set Radio Invert IQ */
+    case WLIOC_SETRADIOIQI:
+    {
+      bool *ptr = (bool *)(arg);
+
+      priv->config.iqi = *ptr;
+
+      err = rn2483_radio_set_iqi(priv, *ptr);
+      break;
+    }
+    /*  Set Radio Invert IQ */
+    case WLIOC_GETRADIOIQI:
+    {
+      *((bool *)(arg)) = priv->config.iqi; // Returns Invert IQ in pointer
+      break;
+    }
+
+
+    /*  Set Radio Coding Rate */
+    case WLIOC_SETRADIOCR:
+    {
+      rn2483_cr_e *ptr = (rn2483_cr_e *)(arg);
+      if (*ptr <= 8 && *ptr >= 5)
+      {
+        return -EINVAL;
+      }
+      priv->config.cr = CODING_RATES[*ptr];
+      
+      err = rn2483_radio_set_cr(priv, *ptr);
+      break;
+    }
+    /*  Set Radio Coding Rate */
+    case WLIOC_GETRADIOCR:
+    {
+      *((rn2483_cr_e *)(arg)) = priv->config.cr; // Returns Coding Rate in pointer
+      break;
+    }
+
+
+    /*  Set Radio sync word */
+    case WLIOC_SETRADIOSYNC:
+    {
+      uint8_t *ptr = (uint8_t *)(arg);
+
+      priv->config.sync = *ptr;
+
+      err = rn2483_radio_set_sync(priv, *ptr);
+      break;
+    }
+    /*  Set Radio  */
+    case WLIOC_GETRADIOSYNC:
+    {
+      *((uint8_t *)(arg)) = priv->config.sync; // Returns sync word in pointer
+      break;
+    }
+
+    /*  Set Radio bandwidth */
+    case WLIOC_SETRADIOBW:
+    {
+      uint16_t *ptr = (uint16_t *)(arg);
+      if (*arg != 125 && *arg != 250 && *arg != 500)
+      {
+        return -EINVAL;
+      }
+      priv->config.bw = *ptr;
+
+      err = rn2483_radio_set_bw(priv, *ptr);
+      break;
+    }
+    /*  Get Radio bandwidth */
+    case WLIOC_GETRADIOBW:
+    {  
+      *((uint16_t *)(arg)) = priv->config.bw; // Returns bandwidth in pointer
+      break;
+    }
+    
+    
+    default:
+    {
+      /*If we got here than an invalid command was entered*/
+      err = -EINVAL;
+      break;
+    }
   }
 
   nxmutex_unlock(&priv->devlock);
