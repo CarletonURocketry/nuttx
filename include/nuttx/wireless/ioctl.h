@@ -66,17 +66,17 @@
                                          
 #define WLIOC_SETRADIOPWR   _WLCIOC(0x0009)    
                                          
-#define WLIOC_GETRADIOPWR   _WLCIOC(0x00A)     
+#define WLIOC_GETRADIOPWR   _WLCIOC(0x00a)     
                                          
-#define WLIOC_SETRADIOSF    _WLCIOC(0x00B)     
+#define WLIOC_SETRADIOSF    _WLCIOC(0x00b)     
                                          
-#define WLIOC_GETRADIOSF    _WLCIOC(0x00C)     
+#define WLIOC_GETRADIOSF    _WLCIOC(0x00c)     
                                          
-#define WLIOC_SETRADIOPRLEN _WLCIOC(0x00D) 
+#define WLIOC_SETRADIOPRLEN _WLCIOC(0x00d) 
                                        
-#define WLIOC_GETRADIOPRLEN _WLCIOC(0x00E) 
+#define WLIOC_GETRADIOPRLEN _WLCIOC(0x00e) 
                                        
-#define WLIOC_SETRADIOCRC   _WLCIOC(0x00F) 
+#define WLIOC_SETRADIOCRC   _WLCIOC(0x00f) 
                                        
 #define WLIOC_GETRADIOCRC   _WLCIOC(0x010) 
                                        
