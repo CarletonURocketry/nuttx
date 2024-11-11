@@ -195,6 +195,7 @@ static int rn2483_radio_set_iqi(FAR struct rn2483_dev_s *priv, bool iqi);
 static int rn2483_radio_set_pwr(FAR struct rn2483_dev_s *priv, int8_t pwr);
 static int rn2483_radio_set_sf(FAR struct rn2483_dev_s *priv, uint8_t sf);
 static int rn2483_radio_set_sync(FAR struct rn2483_dev_s *priv, uint8_t sync);
+static int rn2483_set_config(FAR struct rn2483_dev_s *priv);
 
 /****************************************************************************
  * Private Data
@@ -1102,7 +1103,7 @@ static int rn2483_radio_set_sync(FAR struct rn2483_dev_s *priv, uint8_t sync)
   return 0;
 }
 
-int rn2483_set_config(FAR struct rn2483_dev_s *priv)
+static int rn2483_set_config(FAR struct rn2483_dev_s *priv)
 {
   int err;
   /*  Set mod (Modulation: FSK or LoRa)*/
