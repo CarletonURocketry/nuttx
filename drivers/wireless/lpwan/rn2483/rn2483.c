@@ -252,6 +252,7 @@ static const char *CODING_RATES[] = {
 #define PWR_WRITE_BUF_LEN 19 
 #define SF_WRITE_BUF_LEN 19 
 #define SYNC_WRITE_BUF_LEN 34 
+#define DUMMY_READ_BUFFER_LEN 35
 
 /****************************************************************************
  * Private Functions
@@ -1259,8 +1260,8 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
 
   // Dummy read to get rid of version string
 
-  char read_buffer[READ_BUF_LEN];
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  char read_buffer[DUMMY_READ_BUFFER_LEN];
+  int response = rn2483_read_response(priv, read_buffer, DUMMY_READ_BUFFER_LEN);
   if (response < 0)
   {
     return response;
