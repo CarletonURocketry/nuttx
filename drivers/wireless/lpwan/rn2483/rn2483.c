@@ -240,17 +240,17 @@ static const char *CODING_RATES[] = {
 #define FAILURE "FAILURE"
 
 /* Each buffer will be one more than needed to include null terminating character if we want*/
-#define READ_BUF_LEN 14 
-#define CR_WRITE_BUF_LEN  17
-#define MOD_WRITE_BUF_LEN 19 
-#define FREQ_WRITE_BUF_LEN 25 
-#define BW_WRITE_BUF_LEN 17 
-#define PRLEN_WRITE_BUF_LEN 22 
-#define CRC_WRITE_BUF_LEN 18 
-#define IQI_WRITE_BUF_LEN 18 
-#define PWR_WRITE_BUF_LEN 17 
-#define SF_WRITE_BUF_LEN 17 
-#define SYNC_WRITE_BUF_LEN 32 
+#define READ_BUF_LEN 16 
+#define CR_WRITE_BUF_LEN  19
+#define MOD_WRITE_BUF_LEN 21 
+#define FREQ_WRITE_BUF_LEN 27 
+#define BW_WRITE_BUF_LEN 19 
+#define PRLEN_WRITE_BUF_LEN 24 
+#define CRC_WRITE_BUF_LEN 20 
+#define IQI_WRITE_BUF_LEN 20 
+#define PWR_WRITE_BUF_LEN 19 
+#define SF_WRITE_BUF_LEN 19 
+#define SYNC_WRITE_BUF_LEN 34 
 
 /****************************************************************************
  * Private Functions
