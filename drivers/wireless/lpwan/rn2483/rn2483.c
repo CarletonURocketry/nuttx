@@ -538,7 +538,7 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       err = rn2483_radio_set_sf(priv, *ptr);
       if(!err)
       {
-        priv->config.sf = *ptr
+        priv->config.sf = *ptr;
       }
       break;
     }
@@ -564,7 +564,7 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       err = rn2483_radio_set_prlen(priv, *ptr);
       if (!err)
       {
-        priv->config.prlen = *ptr
+        priv->config.prlen = *ptr;
       }
       break;
       
