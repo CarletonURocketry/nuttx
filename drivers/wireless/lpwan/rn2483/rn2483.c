@@ -171,6 +171,8 @@ struct rn2483_dev_s
   mutex_t devlock;
 };
 
+
+
 /****************************************************************************
  * Private Function Prototypes
  ****************************************************************************/
@@ -241,8 +243,8 @@ static const char *CODING_RATES[] = {
 #define FAILURE "FAILURE"
 
 /* Each buffer will be one more than needed to include null terminating character if we want*/
-#define READ_BUF_LEN 16 
-#define CR_WRITE_BUF_LEN  19
+#define READ_BUF_LEN 17 
+#define CR_WRITE_BUF_LEN 19
 #define MOD_WRITE_BUF_LEN 21 
 #define FREQ_WRITE_BUF_LEN 27 
 #define BW_WRITE_BUF_LEN 19 
@@ -252,7 +254,7 @@ static const char *CODING_RATES[] = {
 #define PWR_WRITE_BUF_LEN 19 
 #define SF_WRITE_BUF_LEN 19 
 #define SYNC_WRITE_BUF_LEN 34 
-#define DUMMY_READ_BUFFER_LEN 35
+#define DUMMY_READ_BUFFER_LEN 36
 
 /****************************************************************************
  * Private Functions
@@ -715,7 +717,6 @@ static int rn2483_read_response(FAR struct rn2483_dev_s *priv, char *buf, size_t
 
     if (fread < 0)
       return fread;
-
     read++;
   }
 
@@ -754,11 +755,9 @@ static int rn2483_radio_set_cr(FAR struct rn2483_dev_s *priv, enum rn2483_cr_e c
   syslog(LOG_INFO, "SET: cr");
 
   char write_buffer[CR_WRITE_BUF_LEN];
-  ssize_t written;
 
-  // written = snprintf(write_buffer, sizeof(write_buffer), "radio set cr %s\r\n", CODING_RATES[*(enum rn2483_cr_e *)data]);
-  written = snprintf(write_buffer, sizeof(write_buffer), "radio set cr %s\r\n", CODING_RATES[cr]);
-  syslog(LOG_INFO, "%s", write_buffer);
+  ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set cr %s\r\n", CODING_RATES[cr]);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -767,15 +766,15 @@ static int rn2483_radio_set_cr(FAR struct rn2483_dev_s *priv, enum rn2483_cr_e c
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -793,7 +792,7 @@ static int rn2483_radio_set_mod(FAR struct rn2483_dev_s *priv, enum rn2483_mod_e
 
   char write_buffer[MOD_WRITE_BUF_LEN];
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set mod %s\r\n", MODULATIONS[mod]);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -802,15 +801,15 @@ static int rn2483_radio_set_mod(FAR struct rn2483_dev_s *priv, enum rn2483_mod_e
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -828,7 +827,7 @@ static int rn2483_radio_set_freq(FAR struct rn2483_dev_s *priv, uint32_t freq)
 
   char write_buffer[FREQ_WRITE_BUF_LEN];
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set freq %ld\r\n", freq);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -837,15 +836,15 @@ static int rn2483_radio_set_freq(FAR struct rn2483_dev_s *priv, uint32_t freq)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -863,7 +862,7 @@ static int rn2483_radio_set_bw(FAR struct rn2483_dev_s *priv, uint16_t bw)
 
   char write_buffer[BW_WRITE_BUF_LEN];
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set bw %d\r\n", bw);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -872,15 +871,15 @@ static int rn2483_radio_set_bw(FAR struct rn2483_dev_s *priv, uint16_t bw)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -898,7 +897,7 @@ static int rn2483_radio_set_prlen(FAR struct rn2483_dev_s *priv, uint16_t prlen)
 
   char write_buffer[PRLEN_WRITE_BUF_LEN];
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set prlen %d\r\n", prlen);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -907,15 +906,15 @@ static int rn2483_radio_set_prlen(FAR struct rn2483_dev_s *priv, uint16_t prlen)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -934,7 +933,7 @@ static int rn2483_radio_set_crc(FAR struct rn2483_dev_s *priv, bool crc)
   char write_buffer[CRC_WRITE_BUF_LEN];
   char *data = (crc) ? "on" : "off";
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set crc %s\r\n", data);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -943,15 +942,15 @@ static int rn2483_radio_set_crc(FAR struct rn2483_dev_s *priv, bool crc)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+ char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -970,7 +969,7 @@ static int rn2483_radio_set_iqi(FAR struct rn2483_dev_s *priv, bool iqi)
   char write_buffer[IQI_WRITE_BUF_LEN];
   char *data = (iqi) ? "on" : "off";
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set iqi %s\r\n", data);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -979,15 +978,15 @@ static int rn2483_radio_set_iqi(FAR struct rn2483_dev_s *priv, bool iqi)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+ char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -1005,7 +1004,7 @@ static int rn2483_radio_set_pwr(FAR struct rn2483_dev_s *priv, int8_t pwr)
 
   char write_buffer[PWR_WRITE_BUF_LEN];
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set pwr %d\r\n", pwr);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -1014,15 +1013,15 @@ static int rn2483_radio_set_pwr(FAR struct rn2483_dev_s *priv, int8_t pwr)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+ char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -1040,7 +1039,7 @@ static int rn2483_radio_set_sf(FAR struct rn2483_dev_s *priv, uint8_t sf)
 
   char write_buffer[SF_WRITE_BUF_LEN];
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set sf sf%d\r\n", sf);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -1049,15 +1048,15 @@ static int rn2483_radio_set_sf(FAR struct rn2483_dev_s *priv, uint8_t sf)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+ char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -1075,7 +1074,7 @@ static int rn2483_radio_set_sync(FAR struct rn2483_dev_s *priv, uint8_t sync)
 
   char write_buffer[SYNC_WRITE_BUF_LEN];
   ssize_t written = snprintf(write_buffer, sizeof(write_buffer), "radio set sync %d\r\n", sync);
-  syslog(LOG_INFO, "%s", write_buffer);
+  syslog(LOG_INFO, "Write Buffer: %s", write_buffer);
 
   ssize_t write_length = file_write(&priv->uart, write_buffer, written);
   if (write_length < 0)
@@ -1084,15 +1083,15 @@ static int rn2483_radio_set_sync(FAR struct rn2483_dev_s *priv, uint8_t sync)
   }
 
   // Read
-  char read_buffer[READ_BUF_LEN];
+ char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, READ_BUF_LEN);
+  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
   }
-  syslog(LOG_INFO, "%s", read_buffer);
+  syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
 
   // Check if 'ok' in response
   int check_response = rn2483_check_response(read_buffer);
@@ -1191,6 +1190,8 @@ static int rn2483_set_config(FAR struct rn2483_dev_s *priv)
  *
  ****************************************************************************/
 
+
+
 int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
 {
   syslog(LOG_INFO, "Enter Register\n\n");
@@ -1256,19 +1257,33 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
   priv->config.crc = CONFIG_LPWAN_RN2483_CRC;
   priv->config.pwr = CONFIG_LPWAN_RN2483_POWER;
   priv->config.sf = CONFIG_LPWAN_RN2483_SPREAD;
-  priv->config.sync = CONFIG_LPWAN_RN2483_SYNC;
+  priv->config.sync = CONFIG_LPWAN_RN2483_SYNC;  
 
-  // Dummy read to get rid of version string
-
-  char read_buffer[DUMMY_READ_BUFFER_LEN];
-  int response = rn2483_read_response(priv, read_buffer, DUMMY_READ_BUFFER_LEN);
-  if (response < 0)
+  struct pollfd *poll_array;
+  poll_array->fd = (int)&priv->uart;
+  poll_array->events = POLLIN;  
+  int polls_set = file_poll(&priv->uart, poll_array, 1);
+  if (polls_set < 0)
   {
-    return response;
+    return polls_set;
   }
 
-  // file_poll(priv->uart);
+  if (poll_array->revents & POLLIN)
+  {
+    // Dummy read to get rid of version string
+    // size_t x = strlen("RN2483 X.Y.Z MMM DD YYYY HH:MM:SS\r\n");
+    // syslog(LOG_INFO,"Length of version string = %u", x);
 
+    char read_buffer[DUMMY_READ_BUFFER_LEN] = {0};
+    int response = rn2483_read_response(priv, read_buffer, DUMMY_READ_BUFFER_LEN - 1);
+    if (response < 0)
+    {
+      return response;
+    }
+    syslog(LOG_INFO, "Read Buffer: %s", read_buffer);
+    syslog(LOG_INFO, "Dummy read complete");
+  }
+  
   // Set configuration parameters on the radio via commands
   rn2483_set_config(priv);
 
