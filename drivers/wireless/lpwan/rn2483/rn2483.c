@@ -735,7 +735,7 @@ static int rn2483_unlink(FAR struct inode *inode)
  * Name: rn2483_read_response
  ****************************************************************************/
 
-static size_t rn2483_read_response(FAR struct rn2483_dev_s *priv, char *buf, size_t buf_len)
+static ssize_t rn2483_read_response(FAR struct rn2483_dev_s *priv, char *buf, size_t buf_len)
 {
   size_t read = 0;
   ssize_t fread;
@@ -803,7 +803,7 @@ static int rn2483_radio_set_cr(FAR struct rn2483_dev_s *priv, enum rn2483_cr_e c
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -838,7 +838,7 @@ static int rn2483_radio_set_mod(FAR struct rn2483_dev_s *priv, enum rn2483_mod_e
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -873,7 +873,7 @@ static int rn2483_radio_set_freq(FAR struct rn2483_dev_s *priv, uint32_t freq)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -908,7 +908,7 @@ static int rn2483_radio_set_bw(FAR struct rn2483_dev_s *priv, uint16_t bw)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -943,7 +943,7 @@ static int rn2483_radio_set_prlen(FAR struct rn2483_dev_s *priv, uint16_t prlen)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -979,7 +979,7 @@ static int rn2483_radio_set_crc(FAR struct rn2483_dev_s *priv, bool crc)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1015,7 +1015,7 @@ static int rn2483_radio_set_iqi(FAR struct rn2483_dev_s *priv, bool iqi)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1050,7 +1050,7 @@ static int rn2483_radio_set_pwr(FAR struct rn2483_dev_s *priv, int8_t pwr)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1085,7 +1085,7 @@ static int rn2483_radio_set_sf(FAR struct rn2483_dev_s *priv, uint8_t sf)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1120,7 +1120,7 @@ static int rn2483_radio_set_sync(FAR struct rn2483_dev_s *priv, uint8_t sync)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  ssize_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1307,7 +1307,7 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
     // Dummy read to get rid of version string: "RN2483 X.Y.Z MMM DD YYYY HH:MM:SS\r\n"
 
     char read_buffer[DUMMY_READ_BUFFER_LEN] = {0};
-    size_t response = rn2483_read_response(priv, read_buffer, DUMMY_READ_BUFFER_LEN - 1);
+    ssize_t response = rn2483_read_response(priv, read_buffer, DUMMY_READ_BUFFER_LEN - 1);
     if (response < 0)
     {
       return response;
