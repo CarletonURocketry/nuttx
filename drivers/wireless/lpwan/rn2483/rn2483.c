@@ -456,11 +456,15 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       enum rn2483_mod_e *ptr = (enum rn2483_mod_e *)(arg);
       if (*ptr != RN2483_MOD_FSK && *ptr != RN2483_MOD_LORA)
       {
-        return -EINVAL;
+        err = -EINVAL;
+        break;
       }
-      priv->config.mod = *ptr;
+      
 
       err = rn2483_radio_set_mod(priv, *ptr);
+      if(!err){
+        priv->config.mod = *ptr;
+      }
       break;
     }
     /*  Get Radio modulation */
@@ -477,11 +481,15 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       uint32_t *ptr = (uint32_t *)(arg);
       if ((*ptr < 433000000 ||(*ptr > 434800000 && *ptr < 863000000) ||*ptr > 870000000))
       {
-        return -EINVAL;
+        err = -EINVAL;
+        break;
       }
-      priv->config.freq = *ptr;
+      
 
       err = rn2483_radio_set_freq(priv, *ptr);
+      if(!err){
+        priv->config.freq = *ptr;
+      }
       break;
     }
     /*  Get Radio frequency */
@@ -498,11 +506,15 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       int8_t *ptr = (int8_t *)(arg);
       if (*ptr <= 15 && *ptr >= -3)
       {
-        return -EINVAL;
+        err = -EINVAL;
+        break;
       }
-      priv->config.pwr = *ptr;
+      
 
       err = rn2483_radio_set_pwr(priv, *ptr);
+      if(!err){
+        priv->config.pwr = *ptr;
+      }
       break;
     }
     /*  Get Radio power */
@@ -519,12 +531,18 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       uint8_t *ptr = (uint8_t *)(arg);
       if (*ptr <= 12 && *ptr >= 7)
       {
-        return -EINVAL;
+        err = -EINVAL;
+        break;
       }
-      priv->config.sf = *ptr;
+
       err = rn2483_radio_set_sf(priv, *ptr);
+      if(!err)
+      {
+        priv->config.sf = *ptr
+      }
       break;
     }
+
     /*  Get Radio spread factor */
     case WLIOC_GETRADIOSF:
     {
@@ -537,14 +555,21 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     case WLIOC_SETRADIOPRLEN:
     {
       uint16_t *ptr = (uint16_t *)(arg);
-      if (*ptr > 0 && *ptr < 65535)
+      if (*ptr < 0 || *ptr > 65535)
       {
-        return -EINVAL;
+        err = -EINVAL;
+        break;
       }
-      priv->config.prlen = *ptr;
+
       err = rn2483_radio_set_prlen(priv, *ptr);
+      if (!err)
+      {
+        priv->config.prlen = *ptr
+      }
       break;
+      
     }
+
     /*  Get Radio preamble length */
     case WLIOC_GETRADIOPRLEN:
     {
@@ -558,9 +583,10 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     {
       bool *ptr = (bool *)(arg);
 
-      priv->config.crc = *ptr;
-
       err = rn2483_radio_set_crc(priv, *ptr);
+      if(!err){
+        priv->config.crc = *ptr;
+      }
       break;
     }
     /*  Get Radio CRC Header */
@@ -576,9 +602,10 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     {
       bool *ptr = (bool *)(arg);
 
-      priv->config.iqi = *ptr;
-
       err = rn2483_radio_set_iqi(priv, *ptr);
+      if(!err){
+        priv->config.iqi = *ptr;
+      }
       break;
     }
     /*  Get Radio Invert IQ */
@@ -595,11 +622,14 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       enum rn2483_cr_e *ptr = (enum rn2483_cr_e *)(arg);
       if (*ptr <= 8 && *ptr >= 5)
       {
-        return -EINVAL;
+        err = -EINVAL;
+        break;
       }
-      priv->config.cr = *ptr;
-      
+    
       err = rn2483_radio_set_cr(priv, *ptr);
+      if(!err){
+        priv->config.cr = *ptr;
+      }
       break;
     }
     /*  Get Radio Coding Rate */
@@ -615,9 +645,10 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
     {
       uint8_t *ptr = (uint8_t *)(arg);
 
-      priv->config.sync = *ptr;
-
       err = rn2483_radio_set_sync(priv, *ptr);
+      if(!err){
+        priv->config.sync = *ptr;
+      }
       break;
     }
     /*  Get Radio sync word */
@@ -633,11 +664,14 @@ static int rn2483_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       uint16_t *ptr = (uint16_t *)(arg);
       if (*ptr != 125 && *ptr != 250 && *ptr != 500)
       {
-        return -EINVAL;
+        err = -EINVAL;
+        break;
       }
-      priv->config.bw = *ptr;
-
+      
       err = rn2483_radio_set_bw(priv, *ptr);
+      if(!err){
+        priv->config.bw = *ptr;
+      }
       break;
     }
     /*  Get Radio bandwidth */
@@ -701,7 +735,7 @@ static int rn2483_unlink(FAR struct inode *inode)
  * Name: rn2483_read_response
  ****************************************************************************/
 
-static int rn2483_read_response(FAR struct rn2483_dev_s *priv, char *buf, size_t buf_len)
+static size_t rn2483_read_response(FAR struct rn2483_dev_s *priv, char *buf, size_t buf_len)
 {
   size_t read = 0;
   ssize_t fread;
@@ -769,7 +803,7 @@ static int rn2483_radio_set_cr(FAR struct rn2483_dev_s *priv, enum rn2483_cr_e c
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -804,7 +838,7 @@ static int rn2483_radio_set_mod(FAR struct rn2483_dev_s *priv, enum rn2483_mod_e
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -839,7 +873,7 @@ static int rn2483_radio_set_freq(FAR struct rn2483_dev_s *priv, uint32_t freq)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -874,7 +908,7 @@ static int rn2483_radio_set_bw(FAR struct rn2483_dev_s *priv, uint16_t bw)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -909,7 +943,7 @@ static int rn2483_radio_set_prlen(FAR struct rn2483_dev_s *priv, uint16_t prlen)
   char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -942,10 +976,10 @@ static int rn2483_radio_set_crc(FAR struct rn2483_dev_s *priv, bool crc)
   }
 
   // Read
- char read_buffer[READ_BUF_LEN] = {0};
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -978,10 +1012,10 @@ static int rn2483_radio_set_iqi(FAR struct rn2483_dev_s *priv, bool iqi)
   }
 
   // Read
- char read_buffer[READ_BUF_LEN] = {0};
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1013,10 +1047,10 @@ static int rn2483_radio_set_pwr(FAR struct rn2483_dev_s *priv, int8_t pwr)
   }
 
   // Read
- char read_buffer[READ_BUF_LEN] = {0};
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1048,10 +1082,10 @@ static int rn2483_radio_set_sf(FAR struct rn2483_dev_s *priv, uint8_t sf)
   }
 
   // Read
- char read_buffer[READ_BUF_LEN] = {0};
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1083,10 +1117,10 @@ static int rn2483_radio_set_sync(FAR struct rn2483_dev_s *priv, uint8_t sync)
   }
 
   // Read
- char read_buffer[READ_BUF_LEN] = {0};
+  char read_buffer[READ_BUF_LEN] = {0};
 
   // Read data into buffer until \r\n terminating sequence reached
-  int response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
+  size_t response = rn2483_read_response(priv, read_buffer, sizeof(read_buffer) - 1);
   if (response < 0)
   {
     return response;
@@ -1270,12 +1304,10 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
 
   if (poll_array->revents & POLLIN)
   {
-    // Dummy read to get rid of version string
-    // size_t x = strlen("RN2483 X.Y.Z MMM DD YYYY HH:MM:SS\r\n");
-    // syslog(LOG_INFO,"Length of version string = %u", x);
+    // Dummy read to get rid of version string: "RN2483 X.Y.Z MMM DD YYYY HH:MM:SS\r\n"
 
     char read_buffer[DUMMY_READ_BUFFER_LEN] = {0};
-    int response = rn2483_read_response(priv, read_buffer, DUMMY_READ_BUFFER_LEN - 1);
+    size_t response = rn2483_read_response(priv, read_buffer, DUMMY_READ_BUFFER_LEN - 1);
     if (response < 0)
     {
       return response;
