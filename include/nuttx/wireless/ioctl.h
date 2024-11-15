@@ -48,54 +48,54 @@
  * the open() interface.
  ****************************************************************************/
 
-#define WLIOC_SETRADIOFREQ  _WLCIOC(0x0001)  /* arg: Pointer to uint32_t, */
-                                             /* frequency value (in MHz) */
-#define WLIOC_GETRADIOFREQ  _WLCIOC(0x0002)  /* arg: Pointer to uint32_t, */
-                                             /* frequency value (in MHz) */
-#define WLIOC_SETADDR       _WLCIOC(0x0003)  /* arg: Pointer to address value, format
+#define WLIOC_SETRADIOFREQ  _WLCIOC(0x0001) /* arg: Pointer to uint32_t, */
+                                            /* frequency value (in MHz) */
+#define WLIOC_GETRADIOFREQ  _WLCIOC(0x0002) /* arg: Pointer to uint32_t, */
+                                            /* frequency value (in MHz) */
+#define WLIOC_SETADDR       _WLCIOC(0x0003) /* arg: Pointer to address value, format
                                             /* of the address is driver specific */
-#define WLIOC_GETADDR       _WLCIOC(0x0004)  /* arg: Pointer to address value, format
+#define WLIOC_GETADDR       _WLCIOC(0x0004) /* arg: Pointer to address value, format
                                             /* of the address is driver specific */
-#define WLIOC_SETTXPOWER    _WLCIOC(0x0005)  /* arg: Pointer to int32_t, */
-                                             /* output power (in dBm) */
-#define WLIOC_GETTXPOWER    _WLCIOC(0x0006)  /* arg: Pointer to int32_t, */
-                                             /* output power (in dBm) */
-#define WLIOC_SETRADIOMOD   _WLCIOC(0x0007)     
-                                            
-#define WLIOC_GETRADIOMOD   _WLCIOC(0x0008) 
-                                         
-#define WLIOC_SETRADIOPWR   _WLCIOC(0x0009)    
-                                         
-#define WLIOC_GETRADIOPWR   _WLCIOC(0x00a)     
-                                         
-#define WLIOC_SETRADIOSF    _WLCIOC(0x00b)     
-                                         
-#define WLIOC_GETRADIOSF    _WLCIOC(0x00c)     
-                                         
-#define WLIOC_SETRADIOPRLEN _WLCIOC(0x00d) 
-                                       
-#define WLIOC_GETRADIOPRLEN _WLCIOC(0x00e) 
-                                       
-#define WLIOC_SETRADIOCRC   _WLCIOC(0x00f) 
-                                       
-#define WLIOC_GETRADIOCRC   _WLCIOC(0x010) 
-                                       
-#define WLIOC_SETRADIOIQI   _WLCIOC(0x011) 
-                                       
-#define WLIOC_GETRADIOIQI   _WLCIOC(0x012) 
-                                         
-#define WLIOC_SETRADIOCR    _WLCIOC(0x013) 
-                                       
-#define WLIOC_GETRADIOCR    _WLCIOC(0x014) 
-                                       
-#define WLIOC_SETRADIOSYNC  _WLCIOC(0x015) 
-                                       
-#define WLIOC_GETRADIOSYNC  _WLCIOC(0x016) 
-                                       
-#define WLIOC_SETRADIOBW    _WLCIOC(0x017) 
-                                       
-#define WLIOC_GETRADIOBW    _WLCIOC(0x018) 
-                                       
+#define WLIOC_SETTXPOWER    _WLCIOC(0x0005) /* arg: Pointer to int32_t, */
+                                            /* output power (in dBm) */
+#define WLIOC_GETTXPOWER    _WLCIOC(0x0006) /* arg: Pointer to int32_t, */
+                                            /* output power (in dBm) */
+#define WLIOC_SETRADIOMOD   _WLCIOC(0x0007) /* arg: Pointer to rn2483_mod_e, */
+                                            /* modulation mode string ('lora' or 'fsk') */
+#define WLIOC_GETRADIOMOD   _WLCIOC(0x0008) /* arg: Pointer to rn2483_mod_e, */
+                                            /* modulation mode string ('lora' or 'fsk') */
+#define WLIOC_SETRADIOPWR   _WLCIOC(0x0009) /* arg: Pointer to int8_t, */
+                                            /* transceiver power out */
+#define WLIOC_GETRADIOPWR   _WLCIOC(0x00a)  /* arg: Pointer to int8_t, */
+                                            /* transceiver power out */
+#define WLIOC_SETRADIOSF    _WLCIOC(0x00b)  /* arg: Pointer to uint8_t, */
+                                            /* spread factor string */
+#define WLIOC_GETRADIOSF    _WLCIOC(0x00c)  /* arg: Pointer to uint8_t, */
+                                            /* spread factor string */
+#define WLIOC_SETRADIOPRLEN _WLCIOC(0x00d)  /* arg: Pointer to uint16_t, */
+                                            /* preamble length */
+#define WLIOC_GETRADIOPRLEN _WLCIOC(0x00e)  /* arg: Pointer to uint16_t, */
+                                            /* preamble length  */
+#define WLIOC_SETRADIOCRC   _WLCIOC(0x00f)  /* arg: Pointer to bool, */
+                                            /* CRC header string ('on' or 'off') */
+#define WLIOC_GETRADIOCRC   _WLCIOC(0x010)  /* arg: Pointer to bool, */
+                                            /* CRC header string ('on' or 'off') */
+#define WLIOC_SETRADIOIQI   _WLCIOC(0x011)  /* arg: Pointer to bool, */
+                                            /* IQ invert state ('on' or 'off') */
+#define WLIOC_GETRADIOIQI   _WLCIOC(0x012)  /* arg: Pointer to bool, */
+                                            /* IQ invert state ('on' or 'off') */
+#define WLIOC_SETRADIOCR    _WLCIOC(0x013)  /* arg: Pointer to rn2483_cr_e, */
+                                            /* coding rate string */
+#define WLIOC_GETRADIOCR    _WLCIOC(0x014)  /* arg: Pointer to rn2483_cr_e, */
+                                            /* coding rate */
+#define WLIOC_SETRADIOSYNC  _WLCIOC(0x015)  /* arg: Pointer to uint8_t, */
+                                            /* sync word in hex */
+#define WLIOC_GETRADIOSYNC  _WLCIOC(0x016)  /* arg: Pointer to uint8_t, */
+                                            /* sync word in hex */
+#define WLIOC_SETRADIOBW    _WLCIOC(0x017)  /* arg: Pointer to uint16_t, */
+                                            /* bandwidth value (in kHz) */
+#define WLIOC_GETRADIOBW    _WLCIOC(0x018)  /* arg: Pointer to uint16_t, */
+                                            /* bandwidth value in (kHz) */
 /****************************************************************************
  * Device-specific IOCTL commands
  ****************************************************************************/
