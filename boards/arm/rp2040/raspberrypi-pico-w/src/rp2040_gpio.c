@@ -24,12 +24,12 @@
 
 #include <nuttx/config.h>
 
-#include <sys/types.h>
-#include <syslog.h>
-#include <nuttx/irq.h>
 #include <arch/irq.h>
 #include <assert.h>
 #include <debug.h>
+#include <nuttx/irq.h>
+#include <sys/types.h>
+#include <syslog.h>
 
 #include <nuttx/ioexpander/gpio.h>
 
@@ -44,30 +44,28 @@
 /* Output pins. GPIO25 is onboard LED any other outputs could be used.
  */
 
-#define GPIO_OUT1     25
+#define GPIO_OUT1 25
 
 /* Input pins.
  */
 
-#define GPIO_IN1      6
+#define GPIO_IN1 6
 
 /* Interrupt pins.
  */
 
-#define GPIO_IRQPIN1  14
+#define GPIO_IRQPIN1 14
 
 /****************************************************************************
  * Private Types
  ****************************************************************************/
 
-struct rp2040gpio_dev_s
-{
+struct rp2040gpio_dev_s {
   struct gpio_dev_s gpio;
   uint8_t id;
 };
 
-struct rp2040gpint_dev_s
-{
+struct rp2040gpint_dev_s {
   struct rp2040gpio_dev_s rp2040gpio;
   pin_interrupt_t callback;
 };
@@ -87,8 +85,7 @@ static int gpin_read(struct gpio_dev_s *dev, bool *value);
 
 #if BOARD_NGPIOINT > 0
 static int gpint_read(struct gpio_dev_s *dev, bool *value);
-static int gpint_attach(struct gpio_dev_s *dev,
-                        pin_interrupt_t callback);
+static int gpint_attach(struct gpio_dev_s *dev, pin_interrupt_t callback);
 static int gpint_enable(struct gpio_dev_s *dev, bool enable);
 #endif
 
@@ -97,57 +94,49 @@ static int gpint_enable(struct gpio_dev_s *dev, bool enable);
  ****************************************************************************/
 
 #if BOARD_NGPIOOUT > 0
-static const struct gpio_operations_s gpout_ops =
-{
-  .go_read   = gpout_read,
-  .go_write  = gpout_write,
-  .go_attach = NULL,
-  .go_enable = NULL,
+static const struct gpio_operations_s gpout_ops = {
+    .go_read = gpout_read,
+    .go_write = gpout_write,
+    .go_attach = NULL,
+    .go_enable = NULL,
 };
 
 /* This array maps the GPIO pins used as OUTPUT */
 
-static const uint32_t g_gpiooutputs[BOARD_NGPIOOUT] =
-{
-  GPIO_OUT1
-};
+static const uint32_t g_gpiooutputs[BOARD_NGPIOOUT] = {
+    GPIO_OUT1, 2,  3,  7,  8,  9,  10, 11, 12, 13, 15, 16,
+    17,        18, 19, 20, 21, 22, 23, 24, 26, 27, 28};
 
 static struct rp2040gpio_dev_s g_gpout[BOARD_NGPIOOUT];
 #endif
 
 #if BOARD_NGPIOIN > 0
-static const struct gpio_operations_s gpin_ops =
-{
-  .go_read   = gpin_read,
-  .go_write  = NULL,
-  .go_attach = NULL,
-  .go_enable = NULL,
+static const struct gpio_operations_s gpin_ops = {
+    .go_read = gpin_read,
+    .go_write = NULL,
+    .go_attach = NULL,
+    .go_enable = NULL,
 };
 
 /* This array maps the GPIO pins used as INTERRUPT INPUTS */
 
-static const uint32_t g_gpioinputs[BOARD_NGPIOIN] =
-{
-  GPIO_IN1
-};
+static const uint32_t g_gpioinputs[BOARD_NGPIOIN] = {GPIO_IN1};
 
 static struct rp2040gpio_dev_s g_gpin[BOARD_NGPIOIN];
 #endif
 
 #if BOARD_NGPIOINT > 0
-static const struct gpio_operations_s gpint_ops =
-{
-  .go_read   = gpint_read,
-  .go_write  = NULL,
-  .go_attach = gpint_attach,
-  .go_enable = gpint_enable,
+static const struct gpio_operations_s gpint_ops = {
+    .go_read = gpint_read,
+    .go_write = NULL,
+    .go_attach = gpint_attach,
+    .go_enable = gpint_enable,
 };
 
 /* This array maps the GPIO pins used as INTERRUPT INPUTS */
 
-static const uint32_t g_gpiointinputs[BOARD_NGPIOINT] =
-{
-  GPIO_IRQPIN1,
+static const uint32_t g_gpiointinputs[BOARD_NGPIOINT] = {
+    GPIO_IRQPIN1,
 };
 
 static struct rp2040gpint_dev_s g_gpint[BOARD_NGPIOINT];
@@ -162,10 +151,8 @@ static struct rp2040gpint_dev_s g_gpint[BOARD_NGPIOINT];
  ****************************************************************************/
 
 #if BOARD_NGPIOOUT > 0
-static int gpout_read(struct gpio_dev_s *dev, bool *value)
-{
-  struct rp2040gpio_dev_s *rp2040gpio =
-    (struct rp2040gpio_dev_s *)dev;
+static int gpout_read(struct gpio_dev_s *dev, bool *value) {
+  struct rp2040gpio_dev_s *rp2040gpio = (struct rp2040gpio_dev_s *)dev;
 
   DEBUGASSERT(rp2040gpio != NULL && value != NULL);
   DEBUGASSERT(rp2040gpio->id < BOARD_NGPIOOUT);
@@ -179,10 +166,8 @@ static int gpout_read(struct gpio_dev_s *dev, bool *value)
  * Name: gpout_write
  ****************************************************************************/
 
-static int gpout_write(struct gpio_dev_s *dev, bool value)
-{
-  struct rp2040gpio_dev_s *rp2040gpio =
-    (struct rp2040gpio_dev_s *)dev;
+static int gpout_write(struct gpio_dev_s *dev, bool value) {
+  struct rp2040gpio_dev_s *rp2040gpio = (struct rp2040gpio_dev_s *)dev;
 
   DEBUGASSERT(rp2040gpio != NULL);
   DEBUGASSERT(rp2040gpio->id < BOARD_NGPIOOUT);
@@ -198,10 +183,8 @@ static int gpout_write(struct gpio_dev_s *dev, bool value)
  ****************************************************************************/
 
 #if BOARD_NGPIOIN > 0
-static int gpin_read(struct gpio_dev_s *dev, bool *value)
-{
-  struct rp2040gpio_dev_s *rp2040gpio =
-    (struct rp2040gpio_dev_s *)dev;
+static int gpin_read(struct gpio_dev_s *dev, bool *value) {
+  struct rp2040gpio_dev_s *rp2040gpio = (struct rp2040gpio_dev_s *)dev;
 
   DEBUGASSERT(rp2040gpio != NULL && value != NULL);
   DEBUGASSERT(rp2040gpio->id < BOARD_NGPIOIN);
@@ -217,16 +200,14 @@ static int gpin_read(struct gpio_dev_s *dev, bool *value)
  ****************************************************************************/
 
 #if BOARD_NGPIOINT > 0
-static int rp2040gpio_interrupt(int irq, void *context, void *arg)
-{
-  struct rp2040gpint_dev_s *rp2040gpint =
-    (struct rp2040gpint_dev_s *)arg;
+static int rp2040gpio_interrupt(int irq, void *context, void *arg) {
+  struct rp2040gpint_dev_s *rp2040gpint = (struct rp2040gpint_dev_s *)arg;
 
   DEBUGASSERT(rp2040gpint != NULL && rp2040gpint->callback != NULL);
   gpioinfo("Interrupt! callback=%p\n", rp2040gpint->callback);
 
   rp2040gpint->callback(&rp2040gpint->rp2040gpio.gpio,
-                       rp2040gpint->rp2040gpio.id);
+                        rp2040gpint->rp2040gpio.id);
   return OK;
 }
 
@@ -234,10 +215,8 @@ static int rp2040gpio_interrupt(int irq, void *context, void *arg)
  * Name: gpint_read
  ****************************************************************************/
 
-static int gpint_read(struct gpio_dev_s *dev, bool *value)
-{
-  struct rp2040gpint_dev_s *rp2040gpint =
-    (struct rp2040gpint_dev_s *)dev;
+static int gpint_read(struct gpio_dev_s *dev, bool *value) {
+  struct rp2040gpint_dev_s *rp2040gpint = (struct rp2040gpint_dev_s *)dev;
 
   DEBUGASSERT(rp2040gpint != NULL && value != NULL);
   DEBUGASSERT(rp2040gpint->rp2040gpio.id < BOARD_NGPIOINT);
@@ -251,11 +230,8 @@ static int gpint_read(struct gpio_dev_s *dev, bool *value)
  * Name: gpint_attach
  ****************************************************************************/
 
-static int gpint_attach(struct gpio_dev_s *dev,
-                        pin_interrupt_t callback)
-{
-  struct rp2040gpint_dev_s *rp2040gpint =
-    (struct rp2040gpint_dev_s *)dev;
+static int gpint_attach(struct gpio_dev_s *dev, pin_interrupt_t callback) {
+  struct rp2040gpint_dev_s *rp2040gpint = (struct rp2040gpint_dev_s *)dev;
   int irq = g_gpiointinputs[rp2040gpint->rp2040gpio.id];
   int ret;
 
@@ -264,15 +240,13 @@ static int gpint_attach(struct gpio_dev_s *dev,
   /* Make sure the interrupt is disabled */
 
   rp2040_gpio_disable_irq(irq);
-  ret = rp2040_gpio_irq_attach(irq,
-                               RP2040_GPIO_INTR_EDGE_LOW,
+  ret = rp2040_gpio_irq_attach(irq, RP2040_GPIO_INTR_EDGE_LOW,
                                rp2040gpio_interrupt,
                                &g_gpint[rp2040gpint->rp2040gpio.id]);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: gpint_attach() failed: %d\n", ret);
-      return ret;
-    }
+  if (ret < 0) {
+    syslog(LOG_ERR, "ERROR: gpint_attach() failed: %d\n", ret);
+    return ret;
+  }
 
   gpioinfo("Attach %p\n", callback);
   rp2040gpint->callback = callback;
@@ -283,28 +257,22 @@ static int gpint_attach(struct gpio_dev_s *dev,
  * Name: gpint_enable
  ****************************************************************************/
 
-static int gpint_enable(struct gpio_dev_s *dev, bool enable)
-{
-  struct rp2040gpint_dev_s *rp2040gpint =
-    (struct rp2040gpint_dev_s *)dev;
+static int gpint_enable(struct gpio_dev_s *dev, bool enable) {
+  struct rp2040gpint_dev_s *rp2040gpint = (struct rp2040gpint_dev_s *)dev;
   int irq = g_gpiointinputs[rp2040gpint->rp2040gpio.id];
 
-  if (enable)
-    {
-      if (rp2040gpint->callback != NULL)
-        {
-          gpioinfo("Enabling the interrupt\n");
+  if (enable) {
+    if (rp2040gpint->callback != NULL) {
+      gpioinfo("Enabling the interrupt\n");
 
-          /* Configure the interrupt for rising edge */
+      /* Configure the interrupt for rising edge */
 
-          rp2040_gpio_enable_irq(irq);
-        }
+      rp2040_gpio_enable_irq(irq);
     }
-  else
-    {
-      gpioinfo("Disable the interrupt\n");
-      rp2040_gpio_disable_irq(irq);
-    }
+  } else {
+    gpioinfo("Disable the interrupt\n");
+    rp2040_gpio_disable_irq(irq);
+  }
 
   return OK;
 }
@@ -318,73 +286,69 @@ static int gpint_enable(struct gpio_dev_s *dev, bool enable)
  * Name: rp2040_dev_gpio_init
  ****************************************************************************/
 
-int rp2040_dev_gpio_init(void)
-{
+int rp2040_dev_gpio_init(void) {
   int i;
   int pincount = 0;
 
 #if BOARD_NGPIOOUT > 0
-  for (i = 0; i < BOARD_NGPIOOUT; i++)
-    {
-      /* Setup and register the GPIO pin */
+  for (i = 0; i < BOARD_NGPIOOUT; i++) {
+    /* Setup and register the GPIO pin */
 
-      g_gpout[i].gpio.gp_pintype = GPIO_OUTPUT_PIN;
-      g_gpout[i].gpio.gp_ops     = &gpout_ops;
-      g_gpout[i].id              = i;
-      gpio_pin_register(&g_gpout[i].gpio, g_gpiooutputs[i]);
+    g_gpout[i].gpio.gp_pintype = GPIO_OUTPUT_PIN;
+    g_gpout[i].gpio.gp_ops = &gpout_ops;
+    g_gpout[i].id = i;
+    gpio_pin_register(&g_gpout[i].gpio, g_gpiooutputs[i]);
 
-      /* Configure the pins that will be used as output */
+    /* Configure the pins that will be used as output */
 
-      rp2040_gpio_init(g_gpiooutputs[i]);
-      rp2040_gpio_setdir(g_gpiooutputs[i], true);
-      rp2040_gpio_put(g_gpiooutputs[i], false);
+    rp2040_gpio_init(g_gpiooutputs[i]);
+    rp2040_gpio_setdir(g_gpiooutputs[i], true);
+    rp2040_gpio_put(g_gpiooutputs[i], false);
 
-      pincount++;
-    }
+    pincount++;
+  }
 #endif
 
   pincount = 0;
 
 #if BOARD_NGPIOIN > 0
-  for (i = 0; i < BOARD_NGPIOIN; i++)
-    {
-      /* Setup and register the GPIO pin */
+  for (i = 0; i < BOARD_NGPIOIN; i++) {
+    /* Setup and register the GPIO pin */
 
-      g_gpin[i].gpio.gp_pintype = GPIO_INPUT_PIN;
-      g_gpin[i].gpio.gp_ops     = &gpin_ops;
-      g_gpin[i].id              = i;
-      gpio_pin_register(&g_gpin[i].gpio, g_gpioinputs[i]);
+    g_gpin[i].gpio.gp_pintype = GPIO_INPUT_PIN;
+    g_gpin[i].gpio.gp_ops = &gpin_ops;
+    g_gpin[i].id = i;
+    gpio_pin_register(&g_gpin[i].gpio, g_gpioinputs[i]);
 
-      /* Configure the pins that will be used as INPUT */
+    /* Configure the pins that will be used as INPUT */
 
-      rp2040_gpio_init(g_gpioinputs[i]);
+    rp2040_gpio_init(g_gpioinputs[i]);
 
-      pincount++;
-    }
+    pincount++;
+  }
 #endif
 
   pincount = 0;
 
 #if BOARD_NGPIOINT > 0
-  for (i = 0; i < BOARD_NGPIOINT; i++)
-    {
-      /* Setup and register the GPIO pin */
+  for (i = 0; i < BOARD_NGPIOINT; i++) {
+    /* Setup and register the GPIO pin */
 
-      g_gpint[i].rp2040gpio.gpio.gp_pintype = GPIO_INTERRUPT_PIN;
-      g_gpint[i].rp2040gpio.gpio.gp_ops     = &gpint_ops;
-      g_gpint[i].rp2040gpio.id              = i;
-      gpio_pin_register(&g_gpint[i].rp2040gpio.gpio, g_gpiointinputs[i]);
+    g_gpint[i].rp2040gpio.gpio.gp_pintype = GPIO_INTERRUPT_PIN;
+    g_gpint[i].rp2040gpio.gpio.gp_ops = &gpint_ops;
+    g_gpint[i].rp2040gpio.id = i;
+    gpio_pin_register(&g_gpint[i].rp2040gpio.gpio, g_gpiointinputs[i]);
 
-      /* Configure the pins that will be used as interrupt input */
+    /* Configure the pins that will be used as interrupt input */
 
-      rp2040_gpio_init(g_gpiointinputs[i]);
+    rp2040_gpio_init(g_gpiointinputs[i]);
 
-      /* pull-up = false : pull-down = true */
+    /* pull-up = false : pull-down = true */
 
-      rp2040_gpio_set_pulls(g_gpiointinputs[i], false, true);
+    rp2040_gpio_set_pulls(g_gpiointinputs[i], false, true);
 
-      pincount++;
-    }
+    pincount++;
+  }
 #endif
 
   return OK;

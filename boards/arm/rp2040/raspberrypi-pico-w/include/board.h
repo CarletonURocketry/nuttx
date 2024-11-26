@@ -28,13 +28,13 @@
 #include <nuttx/config.h>
 
 #include "rp2040_i2cdev.h"
-#include "rp2040_spidev.h"
 #include "rp2040_i2sdev.h"
+#include "rp2040_spidev.h"
 
 #include "rp2040_spisd.h"
 
 #ifndef __ASSEMBLY__
-#  include <stdint.h>
+#include <stdint.h>
 #endif
 
 /****************************************************************************
@@ -43,29 +43,29 @@
 
 /* Clocking *****************************************************************/
 
-#define MHZ                     1000000
+#define MHZ 1000000
 
-#define BOARD_XOSC_FREQ         (12 * MHZ)
-#define BOARD_PLL_SYS_FREQ      (125 * MHZ)
-#define BOARD_PLL_USB_FREQ      (48 * MHZ)
+#define BOARD_XOSC_FREQ (12 * MHZ)
+#define BOARD_PLL_SYS_FREQ (125 * MHZ)
+#define BOARD_PLL_USB_FREQ (48 * MHZ)
 
-#define BOARD_REF_FREQ          (12 * MHZ)
-#define BOARD_SYS_FREQ          (125 * MHZ)
-#define BOARD_PERI_FREQ         (125 * MHZ)
-#define BOARD_USB_FREQ          (48 * MHZ)
-#define BOARD_ADC_FREQ          (48 * MHZ)
-#define BOARD_RTC_FREQ          46875
+#define BOARD_REF_FREQ (12 * MHZ)
+#define BOARD_SYS_FREQ (125 * MHZ)
+#define BOARD_PERI_FREQ (125 * MHZ)
+#define BOARD_USB_FREQ (48 * MHZ)
+#define BOARD_ADC_FREQ (48 * MHZ)
+#define BOARD_RTC_FREQ 46875
 
-#define BOARD_UART_BASEFREQ     BOARD_PERI_FREQ
+#define BOARD_UART_BASEFREQ BOARD_PERI_FREQ
 
-#define BOARD_TICK_CLOCK        (1 * MHZ)
+#define BOARD_TICK_CLOCK (1 * MHZ)
 
 /* GPIO definitions *********************************************************/
 
 #undef BOARD_GPIO_LED_PIN
-#define BOARD_NGPIOOUT          1
-#define BOARD_NGPIOIN           1
-#define BOARD_NGPIOINT          1
+#define BOARD_NGPIOOUT 23
+#define BOARD_NGPIOIN 1
+#define BOARD_NGPIOINT 1
 
 /****************************************************************************
  * Public Types
@@ -80,8 +80,7 @@
 #undef EXTERN
 #if defined(__cplusplus)
 #define EXTERN extern "C"
-extern "C"
-{
+extern "C" {
 #else
 #define EXTERN extern
 #endif
