@@ -1325,7 +1325,9 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
 {
 
   FAR struct rn2483_dev_s *priv = NULL;
+  FAR struct pollfd pollfd = {0};
   int err = 0;
+  char dummy_read[50];
 
   DEBUGASSERT(uartpath != NULL);
 
@@ -1334,7 +1336,7 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
   priv = kmm_zalloc(sizeof(struct rn2483_dev_s));
   if (priv == NULL)
     {
-      snerr("ERROR: Failed to allocate instance.\n");
+      wlerr("ERROR: Failed to allocate instance of RN2483 driver.\n");
       return -ENOMEM;
     }
 
@@ -1343,8 +1345,7 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
   err = nxmutex_init(&priv->devlock);
   if (err < 0)
     {
-      // TODO: what logging macro needs to be used
-      // snerr("ERROR: Failed to register SHT4X driver: %d\n", err);
+      wlerr("ERROR: Failed to init RN2483 driver mutex: %d\n", err);
       kmm_free(priv);
       return err;
     }
@@ -1354,7 +1355,7 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
   err = file_open(&priv->uart, uartpath, O_RDWR | O_CLOEXEC);
   if (err < 0)
     {
-      // TODO log error
+      wlerr("ERROR: Failed to open UART interface for RN2483 driver: %d\n", err);
       nxmutex_destroy(&priv->devlock);
       kmm_free(priv);
       return err;
@@ -1389,24 +1390,39 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
   priv->config.sf = CONFIG_LPWAN_RN2483_SPREAD;
   priv->config.sync = CONFIG_LPWAN_RN2483_SYNC;
 
-  /* struct pollfd *poll_array; */
-  /* poll_array->fd = (int)&priv->uart; */
-  /* poll_array->events = POLLIN;   */
-  /* int polls_set = file_poll(&priv->uart, poll_array, 1); */
-  /* if (polls_set < 0) */
-  /* { */
-  /*   return polls_set; */
-  /* } */
+  /* Poll the UART interface to see if it has to be cleared */
+
+  pollfd.events = POLLIN;
+  err = file_poll(&priv->uart, &pollfd, true);
+
+  if (err < 0)
+    {
+      return err;
+    }
 
   /* Dummy read to get rid of version string that sometimes is caught on boot
-   * TODO
    */
+
+  if (pollfd.revents & POLLIN)
+    {
+      err = file_read(&priv->uart, dummy_read, sizeof(dummy_read));
+    }
+
+  if (err < 0)
+    {
+      wlerr("ERROR: Failed to poll UART interface for RN2483 driver: %d\n", err);
+      file_close(&priv->uart);
+      nxmutex_destroy(&priv->devlock);
+      kmm_free(priv);
+      return err;
+    }
 
   /* Set configuration parameters on the radio via commands */
 
   err = rn2483_set_config(priv);
   if (err < 0)
     {
+      wlerr("ERROR: Failed to configure RN2483 device: %d\n", err);
       file_close(&priv->uart);
       nxmutex_destroy(&priv->devlock);
       kmm_free(priv);
