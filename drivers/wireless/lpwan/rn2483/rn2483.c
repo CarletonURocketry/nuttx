@@ -375,7 +375,6 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
 
   if (filep->f_pos > 0)
     {
-
       /* If file position is non-zero but we're marked as no longer receiving,
        * then the whole transmission has been consumed. Set a filepos of 0 to
        * signal EOF.
