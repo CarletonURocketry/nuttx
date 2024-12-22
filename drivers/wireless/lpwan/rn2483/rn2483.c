@@ -136,6 +136,10 @@
 #define CONFIG_LPWAN_RN2483_CRC 1
 #endif /* CONFIG_LPWAN_RN2483_CRC */
 
+/* The MAC pause duration */
+
+#define MAC_PAUSE_DUR "4294967245"
+
 /****************************************************************************
  * Private
  ****************************************************************************/
@@ -361,29 +365,41 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
   int err;
   char response[30] = {0}; // TODO: shortest length?
 
-  /* If file position is non-zero but we're marked as no longer receiving,
-   * then the whole transmission has been consumed. Set a filepos of 0 to
-   * signal EOF.
-   */
-
-  if (priv->receiving == false && filep->f_pos > 0)
-    {
-      filep->f_pos = 0;
-      return 0;
-    }
-
-  /* We're setting a new receive call, mark as receiving */
-
-  priv->receiving = true;
-
   /* Get exclusive access */
 
   err = nxmutex_lock(&priv->devlock);
   if (err < 0)
     {
-      priv->receiving = false;
       return err;
     }
+
+  if (filep->f_pos > 0)
+    {
+
+      /* If file position is non-zero but we're marked as no longer receiving,
+       * then the whole transmission has been consumed. Set a filepos of 0 to
+       * signal EOF.
+       */
+
+      if (!priv->receiving)
+        {
+          filep->f_pos = 0;
+          return nxmutex_unlock(&priv->devlock);
+        }
+
+      /* If file position is non-zero and we're marked as still receiving, we
+       * can skip entering continuous receive mode
+       */
+
+      else
+        {
+          goto continue_receiving;
+        }
+    }
+
+  /* We're setting a new receive call, mark as receiving */
+
+  priv->receiving = true;
 
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   if (priv->unlinked)
@@ -419,7 +435,7 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
 
   /* We should be pausing for the max duration */
 
-  if (!strstr(response, "4294967245"))
+  if (!strstr(response, MAC_PAUSE_DUR))
     {
       priv->receiving = false;
       nxmutex_unlock(&priv->devlock);
@@ -468,11 +484,13 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
       return -EIO;
     }
 
-  /* If we are, we're successfully in RX mode. This means another UART read
-   * will block until we actually receive something or there was a receive
-   * error.
+  /* If we are here, we're successfully in RX mode. This means another UART
+   * read will block until we actually receive something or there was a
+   * receive error.
+   *
    * We'll receive our data in ASCII hexadecimal characters, which we need to
    * convert to binary to return to the user.
+   *
    * We'll read enough characters to see if the message starts with
    * radio_rx or radio_err. If there was an error we'll return and inform the
    * caller. If there was something received, we'll read in groups of two
@@ -516,7 +534,9 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
       return -EIO;
     }
 
-  /* If we're here, we were able to detect `radio_tx `
+continue_receiving:
+
+  /* If we're here, we were able to detect `radio_rx `
    * Now we convert each byte from ASCII to binary in the user's buffer.
    */
 
@@ -530,15 +550,12 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
        * receive half-bytes, and the terminating sequence is \r\n.
        */
 
-      for (uint8_t i = 0; i < 2; i++)
+      length = file_read(&priv->uart, ascii_byte, 2);
+      if (length < 0)
         {
-          length = file_read(&priv->uart, &ascii_byte[i], 1);
-          if (length < 0)
-            {
-              priv->receiving = false;
-              nxmutex_unlock(&priv->devlock);
-              return length;
-            }
+          priv->receiving = false;
+          nxmutex_unlock(&priv->devlock);
+          return length;
         }
 
       /* Check if we got terminating characters that terminate receive */
@@ -549,7 +566,7 @@ static ssize_t rn2483_read(FAR struct file *filep, FAR char *buffer,
           break;
         }
 
-      /* Convert to binary */
+      /* Convert to binary from hex */
 
       buffer[received] = (uint8_t)strtoul(ascii_byte, NULL, 16);
       received++;
@@ -1355,7 +1372,8 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
   err = file_open(&priv->uart, uartpath, O_RDWR | O_CLOEXEC);
   if (err < 0)
     {
-      wlerr("ERROR: Failed to open UART interface for RN2483 driver: %d\n", err);
+      wlerr("ERROR: Failed to open UART interface for RN2483 driver: %d\n",
+            err);
       nxmutex_destroy(&priv->devlock);
       kmm_free(priv);
       return err;
@@ -1410,7 +1428,22 @@ int rn2483_register(FAR const char *devpath, FAR const char *uartpath)
 
   if (err < 0)
     {
-      wlerr("ERROR: Failed to poll UART interface for RN2483 driver: %d\n", err);
+      wlerr("ERROR: Failed to poll UART interface for RN2483 driver: %d\n",
+            err);
+      file_close(&priv->uart);
+      nxmutex_destroy(&priv->devlock);
+      kmm_free(priv);
+      return err;
+    }
+
+  /* Cancel poll */
+
+  err = file_poll(&priv->uart, &pollfd, false);
+
+  if (err < 0)
+    {
+      wlerr("ERROR: Failed to poll UART interface for RN2483 driver: %d\n",
+            err);
       file_close(&priv->uart);
       nxmutex_destroy(&priv->devlock);
       kmm_free(priv);
