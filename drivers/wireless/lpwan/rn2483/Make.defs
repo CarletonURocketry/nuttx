@@ -1,5 +1,5 @@
 ############################################################################
-# drivers/wireless/lpwan/Make.defs
+# drivers/wireless/lpwan/rn2483/Make.defs
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -18,11 +18,16 @@
 #
 ############################################################################
 
-# Include nothing if LPWAN is disabled
+# Include RN2483 drivers into the build
 
-ifeq ($(CONFIG_DRIVERS_LPWAN),y)
+ifeq ($(CONFIG_LPWAN_RN2483),y)
 
-include wireless/lpwan/sx127x/Make.defs
-include wireless/lpwan/rn2483/Make.defs
+CSRCS += rn2483.c
 
-endif # CONFIG_DRIVERS_LPWAN
+# Include RN2483 build support
+
+DEPPATH += --dep-path wireless$(DELIM)lpwan$(DELIM)rn2483
+VPATH += :wireless$(DELIM)lpwan$(DELIM)rn2483
+CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)drivers$(DELIM)wireless$(DELIM)lpwan$(DELIM)rn2483
+
+endif # CONFIG_LPWAN_RN2483
