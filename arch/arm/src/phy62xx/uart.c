@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/arm/src/phy62xx/uart.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -1127,10 +1129,9 @@ void arm_serialinit(void)
  *
  ****************************************************************************/
 
-int up_putc(int ch)
+void up_putc(int ch)
 {
   hal_uart_send_byte(UART0, (char)ch);
-  return ch;
 }
 
 struct h4uart_param_s

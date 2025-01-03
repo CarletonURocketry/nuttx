@@ -129,7 +129,7 @@ dq_queue_t g_assignedtasks[CONFIG_SMP_NCPUS];
 FAR struct tcb_s *g_delivertasks[CONFIG_SMP_NCPUS];
 #endif
 
-/* g_running_tasks[] holds a references to the running task for each cpu.
+/* g_running_tasks[] holds a references to the running task for each CPU.
  * It is valid only when up_interrupt_context() returns true.
  */
 
@@ -429,6 +429,11 @@ static void idle_task_initialize(void)
       /* Mark the idle task as the running task */
 
       g_running_tasks[i] = tcb;
+
+      if (i == 0)
+        {
+          up_update_task(&g_idletcb[0]); /* Init idle task to percpu reg */
+        }
     }
 }
 

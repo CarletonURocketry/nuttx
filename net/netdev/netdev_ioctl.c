@@ -1217,7 +1217,7 @@ static int netdev_ifr_ioctl(FAR struct socket *psock, int cmd,
       case SIOCSCANSTATE:  /* Set the LIN/CAN controller state */
         if (dev->d_ioctl)
           {
-            FAR enum can_ioctl_state_e *can_state =
+            FAR struct can_ioctl_state_s *can_state =
               &req->ifr_ifru.ifru_can_state;
             ret = dev->d_ioctl(dev, cmd,
                           (unsigned long)(uintptr_t)can_state);
@@ -1361,7 +1361,7 @@ static bool ioctl_arpreq_parse(FAR struct arpreq *req,
     {
       *addr = (FAR struct sockaddr_in *)&req->arp_pa;
       *dev  = req->arp_dev[0] != '\0' ?
-              netdev_findbyname((FAR const char *)req->arp_dev) :
+              netdev_findbyname(req->arp_dev) :
               netdev_findby_ripv4addr(INADDR_ANY, (*addr)->sin_addr.s_addr);
       return true;
     }

@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/xtensa/src/common/xtensa.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -105,11 +107,7 @@
 
 /* Context switching via system calls ***************************************/
 
-#define xtensa_context_restore(regs)\
-  sys_call1(SYS_restore_context, (uintptr_t)regs)
-
-#define xtensa_switchcontext(saveregs, restoreregs)\
-  sys_call2(SYS_switch_context, (uintptr_t)saveregs, (uintptr_t)restoreregs)
+#define xtensa_context_restore() sys_call0(SYS_restore_context)
 
 /* Interrupt codes from other CPUs: */
 
@@ -146,6 +144,18 @@
 #define INTSTACK_COLOR 0xdeadbeef
 #define HEAP_COLOR     'h'
 
+#define _START_TEXT  _stext
+#define _END_TEXT    _etext
+#define _START_BSS   _sbss
+#define _END_BSS     _ebss
+#define _DATA_INIT   _eronly
+#define _START_DATA  _sdata
+#define _END_DATA    _edata
+#define _START_TDATA _stdata
+#define _END_TDATA   _etdata
+#define _START_TBSS  _stbss
+#define _END_TBSS    _etbss
+
 /****************************************************************************
  * Public Types
  ****************************************************************************/
@@ -179,6 +189,10 @@ extern uint8_t _sbss[];              /* Start of .bss */
 extern uint8_t _ebss[];              /* End+1 of .bss */
 extern uint8_t _sheap[];             /* Start of heap */
 extern uint8_t _eheap[];             /* End+1 of heap */
+extern uint8_t _stdata[];            /* Start of .tdata */
+extern uint8_t _etdata[];            /* End+1 of .tdata */
+extern uint8_t _stbss[];             /* Start of .tbss */
+extern uint8_t _etbss[];             /* End+1 of .tbss */
 extern uint8_t _sbss_extmem[];       /* start of external memory bss */
 extern uint8_t _ebss_extmem[];       /* End+1 of external memory bss */
 

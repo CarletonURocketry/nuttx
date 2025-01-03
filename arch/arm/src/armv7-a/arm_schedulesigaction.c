@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/arm/src/armv7-a/arm_schedulesigaction.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -34,6 +36,7 @@
 
 #include "arm.h"
 #include "sched/sched.h"
+#include "signal/signal.h"
 #include "arm_internal.h"
 #include "irq/irq.h"
 
@@ -92,8 +95,8 @@ void up_schedule_sigaction(struct tcb_s *tcb)
        * REVISIT:  Signal handler will run in a critical section!
        */
 
-      (tcb->sigdeliver)(tcb);
-      tcb->sigdeliver = NULL;
+      nxsig_deliver(tcb);
+      tcb->flags &= ~TCB_FLAG_SIGDELIVER;
     }
   else
     {

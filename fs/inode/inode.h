@@ -1,6 +1,8 @@
 /****************************************************************************
  * fs/inode/inode.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -39,6 +41,8 @@
 #include <nuttx/fs/fs.h>
 #include <nuttx/lib/lib.h>
 
+#include "fs_heap.h"
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -61,7 +65,7 @@
     { \
       if ((d)->buffer != NULL) \
         { \
-          lib_free((d)->buffer); \
+          fs_heap_free((d)->buffer); \
           (d)->buffer  = NULL; \
         } \
     } \

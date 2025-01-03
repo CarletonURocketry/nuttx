@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/renesas/src/m16c/m16c_sigdeliver.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -34,6 +36,7 @@
 #include <nuttx/board.h>
 
 #include "sched/sched.h"
+#include "signal/signal.h"
 #include "renesas_internal.h"
 
 /****************************************************************************
@@ -57,9 +60,9 @@ void renesas_sigdeliver(void)
 
   board_autoled_on(LED_SIGNAL);
 
-  sinfo("rtcb=%p sigdeliver=%p sigpendactionq.head=%p\n",
-        rtcb, rtcb->sigdeliver, rtcb->sigpendactionq.head);
-  DEBUGASSERT(rtcb->sigdeliver != NULL);
+  sinfo("rtcb=%p sigpendactionq.head=%p\n",
+        rtcb, rtcb->sigpendactionq.head);
+  DEBUGASSERT((rtcb->flags & TCB_FLAG_SIGDELIVER) != 0);
 
   /* Save the return state on the stack. */
 
@@ -75,7 +78,7 @@ void renesas_sigdeliver(void)
 
   /* Deliver the signal */
 
-  (sig_rtcb->sigdeliver)(rtcb);
+  nxsig_deliver(rtcb);
 
   /* Output any debug messages BEFORE restoring errno (because they may
    * alter errno), then disable interrupts again and restore the original
@@ -98,7 +101,10 @@ void renesas_sigdeliver(void)
   regs[REG_PC]     = rtcb->xcp.saved_pc[0];
   regs[REG_PC + 1] = rtcb->xcp.saved_pc[1];
   regs[REG_FLG]    = rtcb->xcp.saved_flg;
-  rtcb->sigdeliver = NULL;  /* Allows next handler to be scheduled */
+
+  /* Allows next handler to be scheduled */
+
+  rtcb->flags &= ~TCB_FLAG_SIGDELIVER;
 
   /* Then restore the correct state for this thread of
    * execution.

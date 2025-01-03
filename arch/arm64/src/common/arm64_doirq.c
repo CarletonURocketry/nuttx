@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_doirq.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -61,13 +63,12 @@ uint64_t *arm64_doirq(int irq, uint64_t * regs)
 
   /* Nested interrupts are not supported */
 
-  DEBUGASSERT(up_current_regs() == NULL);
+  DEBUGASSERT(!up_interrupt_context());
 
-  /* Current regs non-zero indicates that we are processing an interrupt;
-   * current_regs is also used to manage interrupt level context switches.
-   */
+  /* Set irq flag */
 
-  up_set_current_regs(regs);
+  write_sysreg((uintptr_t)tcb | 1, tpidr_el1);
+
   tcb->xcp.regs = regs;
 
   /* Deliver the IRQ */
@@ -93,7 +94,7 @@ uint64_t *arm64_doirq(int irq, uint64_t * regs)
        * thread at the head of the ready-to-run list.
        */
 
-      addrenv_switch(NULL);
+      addrenv_switch(tcb);
 #endif
 
       /* Update scheduler parameters */
@@ -110,11 +111,9 @@ uint64_t *arm64_doirq(int irq, uint64_t * regs)
       regs = tcb->xcp.regs;
     }
 
-  /* Set current_regs to NULL to indicate that we are no longer in an
-   * interrupt handler.
-   */
+  /* Clear irq flag */
 
-  up_set_current_regs(NULL);
+  write_sysreg((uintptr_t)tcb & ~1ul, tpidr_el1);
 
   return regs;
 }

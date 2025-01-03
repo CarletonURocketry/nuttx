@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/risc-v/include/irq.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -671,17 +673,9 @@ extern "C"
 #define EXTERN extern
 #endif
 
-/* g_current_regs[] holds a references to the current interrupt level
- * register storage structure.  If is non-NULL only during interrupt
- * processing.  Access to g_current_regs[] must be through the
- * [get/set]_current_regs for portability.
- */
+/* g_interrupt_context store irq status */
 
-/* For the case of architectures with multiple CPUs, then there must be one
- * such value for each processor that can receive an interrupt.
- */
-
-EXTERN volatile uintreg_t *g_current_regs[CONFIG_SMP_NCPUS];
+EXTERN volatile bool g_interrupt_context[CONFIG_SMP_NCPUS];
 
 /****************************************************************************
  * Public Function Prototypes
@@ -703,33 +697,43 @@ irqstate_t up_irq_enable(void);
  * Description:
  *   Return the real core number regardless CONFIG_SMP setting
  *
+ *   When CONFIG_RISCV_PERCPU_SCRATCH is enabled, this uses the percpu
+ *   scratch area to store the hart ID. This is needed when the CSR_MHARTID
+ *   register may not contain the actual hart ID.
+ *
+ *   When CONFIG_RISCV_PERCPU_SCRATCH is not enabled, this directly reads
+ *   the CSR_MHARTID register. Use this version when you can guarantee
+ *   CSR_MHARTID contains the actual hart ID. This is the default behavior
+ *   that can be achieved by single instruction to provide better
+ *   performance.
+ *
  ****************************************************************************/
 
 #ifdef CONFIG_ARCH_HAVE_MULTICPU
+#ifdef CONFIG_RISCV_PERCPU_SCRATCH
 int up_cpu_index(void) noinstrument_function;
+#else
+noinstrument_function static inline int up_cpu_index(void)
+{
+  return READ_CSR(CSR_MHARTID);
+}
+#endif
 #endif /* CONFIG_ARCH_HAVE_MULTICPU */
+
+/****************************************************************************
+ * Name: up_this_cpu
+ *
+ * Description:
+ *   Return the logical core number. Default implementation is 1:1 mapping,
+ *   i.e. physical=logical.
+ *
+ ****************************************************************************/
+
+int up_this_cpu(void);
 
 /****************************************************************************
  * Inline Functions
  ****************************************************************************/
-
-static inline_function uintreg_t *up_current_regs(void)
-{
-#ifdef CONFIG_SMP
-  return (uintreg_t *)g_current_regs[up_cpu_index()];
-#else
-  return (uintreg_t *)g_current_regs[0];
-#endif
-}
-
-static inline_function void up_set_current_regs(uintreg_t *regs)
-{
-#ifdef CONFIG_SMP
-  g_current_regs[up_cpu_index()] = regs;
-#else
-  g_current_regs[0] = regs;
-#endif
-}
 
 /****************************************************************************
  * Name: up_irq_save
@@ -780,6 +784,24 @@ noinstrument_function static inline void up_irq_restore(irqstate_t flags)
 }
 
 /****************************************************************************
+ * Name: up_set_interrupt_context
+ *
+ * Description:
+ *   Set the interrupt handler context.
+ *
+ ****************************************************************************/
+
+noinstrument_function
+static inline_function void up_set_interrupt_context(bool flag)
+{
+#ifdef CONFIG_SMP
+  g_interrupt_context[up_this_cpu()] = flag;
+#else
+  g_interrupt_context[0] = flag;
+#endif
+}
+
+/****************************************************************************
  * Name: up_interrupt_context
  *
  * Description:
@@ -788,19 +810,16 @@ noinstrument_function static inline void up_irq_restore(irqstate_t flags)
  *
  ****************************************************************************/
 
-noinstrument_function static inline bool up_interrupt_context(void)
+noinstrument_function static inline_function bool up_interrupt_context(void)
 {
 #ifdef CONFIG_SMP
   irqstate_t flags = up_irq_save();
-#endif
-
-  bool ret = up_current_regs() != NULL;
-
-#ifdef CONFIG_SMP
+  bool ret = g_interrupt_context[up_this_cpu()];
   up_irq_restore(flags);
-#endif
-
   return ret;
+#else
+  return g_interrupt_context[0];
+#endif
 }
 
 /****************************************************************************
@@ -808,7 +827,7 @@ noinstrument_function static inline bool up_interrupt_context(void)
  ****************************************************************************/
 
 #define up_getusrpc(regs) \
-    (((uintptr_t *)((regs) ? (regs) : up_current_regs()))[REG_EPC])
+    (((uintptr_t *)((regs) ? (regs) : running_regs()))[REG_EPC])
 
 #undef EXTERN
 #if defined(__cplusplus)

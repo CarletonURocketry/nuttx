@@ -1,12 +1,10 @@
 /****************************************************************************
  * arch/arm/src/armv6-m/arm_vectors.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Cloned from the ARMv7-M version:
- *
- *   Copyright (C) 2012 Michael Smith. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2013 Gregory Nutt. All rights reserved.
+ * SPDX-FileCopyrightText: 2012 Michael Smith. All rights reserved.
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -98,7 +96,8 @@ extern void exception_direct(void);
  * Note that the [ ... ] designated initializer is a GCC extension.
  */
 
-const void * const _vectors[] locate_data(".vectors") =
+const void * const _vectors[] locate_data(".vectors")
+                              aligned_data(VECTAB_ALIGN) =
 {
   /* Initial stack */
 

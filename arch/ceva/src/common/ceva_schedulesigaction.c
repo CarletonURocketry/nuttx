@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/ceva/src/common/ceva_schedulesigaction.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -31,6 +33,7 @@
 #include <nuttx/arch.h>
 
 #include "sched/sched.h"
+#include "signal/signal.h"
 #include "ceva_internal.h"
 
 #ifndef CONFIG_DISABLE_SIGNALS
@@ -98,8 +101,8 @@ void up_schedule_sigaction(struct tcb_s *tcb)
         {
           /* In this case just deliver the signal now. */
 
-          (tcb->sigdeliver)(tcb);
-          tcb->sigdeliver = NULL;
+          nxsig_deliver(tcb);
+          tcb->flags &= ~TCB_FLAG_SIGDELIVER;
         }
 
       /* CASE 2:  The task that needs to receive the signal is running.

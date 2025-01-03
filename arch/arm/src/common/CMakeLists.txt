@@ -1,6 +1,8 @@
 # ##############################################################################
 # arch/arm/src/common/CMakeLists.txt
 #
+# SPDX-License-Identifier: Apache-2.0
+#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -31,9 +33,7 @@ set(SRCS
     arm_getintstack.c
     arm_initialize.c
     arm_lowputs.c
-    arm_modifyreg8.c
-    arm_modifyreg16.c
-    arm_modifyreg32.c
+    arm_modifyreg.c
     arm_nputs.c
     arm_releasestack.c
     arm_registerdump.c

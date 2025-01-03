@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/x86_64/src/common/x86_64_internal.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -32,6 +34,7 @@
 #  include <nuttx/sched.h>
 #  include <stdint.h>
 #  include <arch/io.h>
+#  include <arch/irq.h>
 #  include <arch/multiboot2.h>
 #endif
 
@@ -119,13 +122,6 @@
 #define getreg32(p)         inl(p)
 #define putreg32(v,p)       outl(v,p)
 
-/* Macros to handle saving and restore interrupt state.  In the current
- * model, the state is copied from the stack to the TCB, but only a
- * referenced is passed to get the state from the TCB.
- */
-
-#define x86_64_restorestate(regs) (up_set_current_regs(regs))
-
 /* ISR/IRQ stack size */
 
 #if CONFIG_ARCH_INTERRUPTSTACK == 0
@@ -191,15 +187,34 @@ extern uint8_t _stbss[];           /* Start of .tbss */
 extern uint8_t _etbss[];           /* End+1 of .tbss */
 #endif
 
+#ifndef __ASSEMBLY__
+
 /****************************************************************************
  * Inline Functions
  ****************************************************************************/
+
+#ifdef CONFIG_ARCH_KERNEL_STACK
+static inline_function uint64_t *x86_64_get_ktopstk(void)
+{
+  uint64_t *ktopstk;
+  __asm__ volatile("movq %%gs:(%c1), %0"
+                   : "=rm" (ktopstk)
+                   : "i" (offsetof(struct intel64_cpu_s, ktopstk)));
+  return ktopstk;
+}
+
+static inline_function void x86_64_set_ktopstk(uint64_t *ktopstk)
+{
+  __asm__ volatile("movq %0, %%gs:(%c1)"
+                   :: "r" (ktopstk), "i" (offsetof(struct intel64_cpu_s,
+                                                   ktopstk)));
+}
+#endif
 
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
 
-#ifndef __ASSEMBLY__
 /* Atomic modification of registers */
 
 void modifyreg8(unsigned int addr, uint8_t clearbits, uint8_t setbits);
@@ -220,7 +235,6 @@ void x86_64_boardinitialize(void);
 /* Defined in files with the same name as the function */
 
 void x86_64_copystate(uint64_t *dest, uint64_t *src);
-void x86_64_savestate(uint64_t *regs);
 void x86_64_decodeirq(uint64_t *regs);
 #ifdef CONFIG_ARCH_DMA
 void weak_function x86_64_dmainitialize(void);
@@ -233,7 +247,7 @@ void x86_64_lowputs(const char *str);
 void x86_64_restore_auxstate(struct tcb_s *rtcb);
 void x86_64_checktasks(void);
 
-void x86_64_syscall(uint64_t *regs);
+uint64_t *x86_64_syscall(uint64_t *regs);
 
 #ifdef CONFIG_ARCH_MULTIBOOT2
 void x86_64_mb2_fbinitialize(struct multiboot_tag_framebuffer *tag);
@@ -286,6 +300,11 @@ void x86_64_pci_init(void);
 size_t x86_64_stack_check(void *stackbase, size_t nbytes);
 void x86_64_stack_color(void *stackbase, size_t nbytes);
 #endif
+
+/* TLB shootdown */
+
+int x86_64_tlb_handler(int irq, void *c, void *arg);
+void x86_64_tlb_shootdown(void);
 
 #endif /* __ASSEMBLY__ */
 

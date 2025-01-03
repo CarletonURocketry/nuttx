@@ -1,6 +1,8 @@
 /****************************************************************************
  * fs/vfs/fs_rename.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -124,7 +126,7 @@ next_subdir:
 
           if (subdir != NULL)
             {
-              lib_free(subdir);
+              fs_heap_free(subdir);
               subdir = NULL;
             }
 
@@ -134,7 +136,7 @@ next_subdir:
            */
 
           subdirname = basename((FAR char *)oldpath);
-          ret = asprintf(&subdir, "%s/%s", newpath, subdirname);
+          ret = fs_heap_asprintf(&subdir, "%s/%s", newpath, subdirname);
           if (ret < 0)
             {
               subdir = NULL;
@@ -256,7 +258,7 @@ errout:
   RELEASE_SEARCH(&newdesc);
   if (subdir != NULL)
     {
-      lib_free(subdir);
+      fs_heap_free(subdir);
     }
 
   return ret;
@@ -388,7 +390,7 @@ next_subdir:
 
                   FAR void *tmp = subdir;
 
-                  ret = asprintf(&subdir, "%s/%s", newrelpath,
+                  ret = fs_heap_asprintf(&subdir, "%s/%s", newrelpath,
                                  subdirname);
                   if (tmp != NULL)
                     {
@@ -479,7 +481,7 @@ errout_with_newsearch:
   RELEASE_SEARCH(&newdesc);
   if (subdir != NULL)
     {
-      lib_free(subdir);
+      fs_heap_free(subdir);
     }
 
   return ret;

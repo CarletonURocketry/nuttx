@@ -1,6 +1,8 @@
 /****************************************************************************
  * drivers/segger/note_sysview.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -110,7 +112,7 @@ static const struct note_driver_ops_s g_note_sysview_ops =
 #  endif
 #endif
 #ifdef CONFIG_SCHED_INSTRUMENTATION_PREEMPTION
-  NULL,                       /* premption */
+  NULL,                       /* preemption */
 #endif
 #ifdef CONFIG_SCHED_INSTRUMENTATION_CSECTION
   NULL,                       /* csection */
@@ -452,19 +454,6 @@ static void note_sysview_vprintf(FAR struct note_driver_s *drv, uintptr_t ip,
 unsigned int note_sysview_get_interrupt_id(void)
 {
   return g_note_sysview_driver.irq[this_cpu()];
-}
-
-/****************************************************************************
- * Name: note_sysview_get_timestamp
- *
- * Description:
- *   Retrieve a system timestamp for SYSVIEW events.
- *
- ****************************************************************************/
-
-unsigned long note_sysview_get_timestamp(void)
-{
-  return perf_gettime();
 }
 
 /****************************************************************************

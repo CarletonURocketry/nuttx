@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/sim/src/sim/sim_schedulesigaction.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -30,6 +32,7 @@
 #include <nuttx/arch.h>
 
 #include "sched/sched.h"
+#include "signal/signal.h"
 
 /****************************************************************************
  * Public Functions
@@ -79,7 +82,7 @@ void up_schedule_sigaction(struct tcb_s *tcb)
 
   if (tcb == this_task())
     {
-      (tcb->sigdeliver)(tcb);
-      tcb->sigdeliver = NULL;
+      nxsig_deliver(tcb);
+      tcb->flags &= ~TCB_FLAG_SIGDELIVER;
     }
 }

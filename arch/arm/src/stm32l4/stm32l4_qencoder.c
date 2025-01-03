@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/arm/src/stm32l4/stm32l4_qencoder.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -207,6 +209,7 @@ struct stm32l4_lowerhalf_s
 #ifdef HAVE_16BIT_TIMERS
   volatile int32_t position; /* The current position offset */
 #endif
+  spinlock_t       lock;     /* Spinlock */
 };
 
 /****************************************************************************
@@ -287,6 +290,7 @@ static struct stm32l4_lowerhalf_s g_tim1lower =
   .ops      = &g_qecallbacks,
   .config   = &g_tim1config,
   .inuse    = false,
+  .lock     = SP_UNLOCKED,
 };
 
 #endif
@@ -310,6 +314,7 @@ static struct stm32l4_lowerhalf_s g_tim2lower =
   .ops      = &g_qecallbacks,
   .config   = &g_tim2config,
   .inuse    = false,
+  .lock     = SP_UNLOCKED,
 };
 
 #endif
@@ -333,6 +338,7 @@ static struct stm32l4_lowerhalf_s g_tim3lower =
   .ops      = &g_qecallbacks,
   .config   = &g_tim3config,
   .inuse    = false,
+  .lock     = SP_UNLOCKED,
 };
 
 #endif
@@ -356,6 +362,7 @@ static struct stm32l4_lowerhalf_s g_tim4lower =
   .ops      = &g_qecallbacks,
   .config   = &g_tim4config,
   .inuse    = false,
+  .lock     = SP_UNLOCKED,
 };
 
 #endif
@@ -379,6 +386,7 @@ static struct stm32l4_lowerhalf_s g_tim5lower =
   .ops      = &g_qecallbacks,
   .config   = &g_tim5config,
   .inuse    = false,
+  .lock     = SP_UNLOCKED,
 };
 
 #endif
@@ -402,6 +410,7 @@ static struct stm32l4_lowerhalf_s g_tim8lower =
   .ops      = &g_qecallbacks,
   .config   = &g_tim8config,
   .inuse    = false,
+  .lock     = SP_UNLOCKED,
 };
 
 #endif
@@ -1034,7 +1043,7 @@ static int stm32l4_position(struct qe_lowerhalf_s *lower,
 
   /* Loop until we are certain that no interrupt occurred between samples */
 
-  spin_lock_irqsave(NULL);
+  spin_lock_irqsave(&priv->lock);
   do
     {
       position = priv->position;
@@ -1042,7 +1051,7 @@ static int stm32l4_position(struct qe_lowerhalf_s *lower,
       verify   = priv->position;
     }
   while (position != verify);
-  spin_unlock_irqrestore(NULL, flags);
+  spin_unlock_irqrestore(&priv->lock, flags);
 
   /* Return the position measurement */
 

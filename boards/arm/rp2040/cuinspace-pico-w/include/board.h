@@ -63,7 +63,7 @@
 /* GPIO definitions *********************************************************/
 
 #undef BOARD_GPIO_LED_PIN
-#define BOARD_NGPIOOUT 23
+#define BOARD_NGPIOOUT 1
 #define BOARD_NGPIOIN 1
 #define BOARD_NGPIOINT 1
 
@@ -80,32 +80,33 @@
 #undef EXTERN
 #if defined(__cplusplus)
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
+  /****************************************************************************
+   * Public Function Prototypes
+   ****************************************************************************/
 
-/****************************************************************************
- * Name: rp2040_boardearlyinitialize
- *
- * Description:
- *
- ****************************************************************************/
+  /****************************************************************************
+   * Name: rp2040_boardearlyinitialize
+   *
+   * Description:
+   *
+   ****************************************************************************/
 
-void rp2040_boardearlyinitialize(void);
+  void rp2040_boardearlyinitialize(void);
 
-/****************************************************************************
- * Name: rp2040_boardinitialize
- *
- * Description:
- *
- ****************************************************************************/
+  /****************************************************************************
+   * Name: rp2040_boardinitialize
+   *
+   * Description:
+   *
+   ****************************************************************************/
 
-void rp2040_boardinitialize(void);
+  void rp2040_boardinitialize(void);
 
 #undef EXTERN
 #if defined(__cplusplus)

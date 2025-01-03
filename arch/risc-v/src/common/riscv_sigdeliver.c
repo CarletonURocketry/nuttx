@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/risc-v/src/common/riscv_sigdeliver.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -37,6 +39,7 @@
 #include <arch/board/board.h>
 
 #include "sched/sched.h"
+#include "signal/signal.h"
 #include "riscv_internal.h"
 /****************************************************************************
  * Public Functions
@@ -68,9 +71,9 @@ void riscv_sigdeliver(void)
 
   board_autoled_on(LED_SIGNAL);
 
-  sinfo("rtcb=%p sigdeliver=%p sigpendactionq.head=%p\n",
-        rtcb, rtcb->sigdeliver, rtcb->sigpendactionq.head);
-  DEBUGASSERT(rtcb->sigdeliver != NULL);
+  sinfo("rtcb=%p sigpendactionq.head=%p\n",
+        rtcb, rtcb->sigpendactionq.head);
+  DEBUGASSERT((rtcb->flags & TCB_FLAG_SIGDELIVER) != 0);
 
 retry:
 #ifdef CONFIG_SMP
@@ -102,7 +105,7 @@ retry:
 
   /* Deliver the signals */
 
-  (rtcb->sigdeliver)(rtcb);
+  nxsig_deliver(rtcb);
 
   /* Output any debug messages BEFORE restoring errno (because they may
    * alter errno), then disable interrupts again and restore the original
@@ -147,7 +150,7 @@ retry:
    * could be modified by a hostile program.
    */
 
-  rtcb->sigdeliver = NULL;  /* Allows next handler to be scheduled */
+  rtcb->flags &= ~TCB_FLAG_SIGDELIVER;
 
   /* Then restore the correct state for this thread of
    * execution.
@@ -162,10 +165,6 @@ retry:
   rtcb->irqcount--;
 #endif
 
-  /* g_running_tasks is not valid now */
-
-  g_running_tasks[this_cpu()] = NULL;
-
   rtcb->xcp.regs = regs;
-  riscv_fullcontextrestore(rtcb);
+  riscv_fullcontextrestore();
 }

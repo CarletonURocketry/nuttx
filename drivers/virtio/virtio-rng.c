@@ -1,6 +1,8 @@
 /****************************************************************************
  * drivers/virtio/virtio-rng.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -51,6 +53,9 @@ struct virtio_rng_priv_s
 {
   FAR struct virtio_device *vdev;
   char                      name[NAME_MAX];
+#ifdef CONFIG_DEV_URANDOM
+  char                      uname[NAME_MAX];
+#endif
   spinlock_t                lock;
 };
 
@@ -91,6 +96,8 @@ static const struct file_operations g_virtio_rng_ops =
   NULL,            /* mmap */
   NULL,            /* truncate */
   NULL,            /* poll */
+  NULL,            /* readv */
+  NULL,            /* writev */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   NULL,            /* unlink */
 #endif
@@ -207,7 +214,7 @@ static int virtio_rng_probe(FAR struct virtio_device *vdev)
   priv->vdev = vdev;
   vdev->priv = priv;
 
-  /* Call openamp api to intialize the virtio deivce */
+  /* Call openamp api to initialize the virtio device */
 
   virtio_set_status(vdev, VIRTIO_CONFIG_STATUS_DRIVER);
   virtio_set_features(vdev, 0);
@@ -230,10 +237,16 @@ static int virtio_rng_probe(FAR struct virtio_device *vdev)
   if (g_virtio_rng_idx == 0)
     {
       strlcpy(priv->name, "/dev/random", NAME_MAX);
+#ifdef CONFIG_DEV_URANDOM
+      strlcpy(priv->uname, "/dev/urandom", NAME_MAX);
+#endif
     }
   else
     {
       snprintf(priv->name, NAME_MAX, "/dev/random%d", g_virtio_rng_idx);
+#ifdef CONFIG_DEV_URANDOM
+      snprintf(priv->uname, NAME_MAX, "/dev/urandom%d", g_virtio_rng_idx);
+#endif
     }
 
   ret = register_driver(priv->name, &g_virtio_rng_ops, 0444, priv);
@@ -242,6 +255,15 @@ static int virtio_rng_probe(FAR struct virtio_device *vdev)
       vrterr("Register NuttX driver failed, ret=%d\n", ret);
       goto err_with_virtqueue;
     }
+
+#ifdef CONFIG_DEV_URANDOM
+  ret = register_driver(priv->uname, &g_virtio_rng_ops, 0444, priv);
+  if (ret < 0)
+    {
+      vrterr("Register NuttX driver failed, ret=%d\n", ret);
+      goto err_with_virtqueue;
+    }
+#endif
 
   g_virtio_rng_idx++;
   return ret;
@@ -285,6 +307,23 @@ void weak_function devrandom_register(void)
 {
   /* Nothing, implement it here just avoid the compile error, the driver
    * /dev/random will be registered in the virtio rng driver.
+   */
+}
+#endif
+
+/****************************************************************************
+ * Name: devurandom_register
+ *
+ * Description:
+ *   Initialize the RNG hardware and register the /dev/urandom driver.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_DEV_URANDOM
+void weak_function devurandom_register(void)
+{
+  /* Nothing, implement it here just avoid the compile error, the driver
+   * /dev/urandom will be registered in the virtio rng driver.
    */
 }
 #endif

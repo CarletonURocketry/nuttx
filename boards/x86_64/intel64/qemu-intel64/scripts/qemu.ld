@@ -1,6 +1,8 @@
 /****************************************************************************
  * boards/x86_64/intel64/qemu-intel64/scripts/qemu.ld
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -46,6 +48,7 @@ SECTIONS
 
     .loader.rodata : {
         *(.loader.rodata)
+        *(.note.nuttx)
     }
 
     .loader.tdata_tbss : {
@@ -77,6 +80,14 @@ SECTIONS
         _etext = ABSOLUTE(.);
     }
 
+    .init_section ALIGN(0x1000) :
+    {
+        _sinit = ABSOLUTE(.);
+        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
+        KEEP(*(.init_array EXCLUDE_FILE(*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o) .ctors))
+        . = ALIGN(4096);
+        _einit = ABSOLUTE(.);
+    }
 
     .rodata ALIGN(0x1000) :
     {

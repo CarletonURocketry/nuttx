@@ -28,6 +28,8 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+
+#include <stdbool.h>
 #include <sys/types.h>
 
 /****************************************************************************
@@ -60,40 +62,40 @@
 #define _LCDIOCBASE (0x1100)   /* LCD character driver ioctl commands */
 #define _SLCDIOCBASE (0x1200)  /* Segment LCD ioctl commands */
 #define _CAPIOCBASE (0x1300)   /* Capture ioctl commands */
-#define _WLCIOCBASE                                                            \
+#define _WLCIOCBASE \
   (0x1400) /* Wireless modules ioctl character driver commands */
-#define _CFGDIOCBASE                                                           \
-  (0x1500)                  /* Config Data device (app config) ioctl commands */
-#define _TCIOCBASE (0x1600) /* Timer ioctl commands */
-#define _JOYBASE (0x1700)   /* Joystick ioctl commands */
-#define _PIPEBASE (0x1800)  /* FIFO/pipe ioctl commands */
-#define _RTCBASE (0x1900)   /* RTC ioctl commands */
-#define _RELAYBASE (0x1a00) /* Relay devices ioctl commands */
-#define _CANBASE (0x1b00)   /* CAN ioctl commands */
-#define _BTNBASE (0x1c00)   /* Button ioctl commands */
-#define _ULEDBASE (0x1d00)  /* User LED ioctl commands */
-#define _ZCBASE (0x1e00)    /* Zero Cross ioctl commands */
-#define _LOOPBASE (0x1f00)  /* Loop device commands */
-#define _MODEMBASE (0x2000) /* Modem ioctl commands */
-#define _I2CBASE (0x2100)   /* I2C driver commands */
-#define _SPIBASE (0x2200)   /* SPI driver commands */
-#define _GPIOBASE (0x2300)  /* GPIO driver commands */
-#define _CLIOCBASE (0x2400) /* Contactless modules ioctl commands */
-#define _USBCBASE (0x2500)  /* USB-C controller ioctl commands */
+#define _CFGDIOCBASE \
+  (0x1500)                      /* Config Data device (app config) ioctl commands */
+#define _TCIOCBASE (0x1600)     /* Timer ioctl commands */
+#define _JOYBASE (0x1700)       /* Joystick ioctl commands */
+#define _PIPEBASE (0x1800)      /* FIFO/pipe ioctl commands */
+#define _RTCBASE (0x1900)       /* RTC ioctl commands */
+#define _RELAYBASE (0x1a00)     /* Relay devices ioctl commands */
+#define _CANBASE (0x1b00)       /* CAN ioctl commands */
+#define _BTNBASE (0x1c00)       /* Button ioctl commands */
+#define _ULEDBASE (0x1d00)      /* User LED ioctl commands */
+#define _ZCBASE (0x1e00)        /* Zero Cross ioctl commands */
+#define _LOOPBASE (0x1f00)      /* Loop device commands */
+#define _MODEMBASE (0x2000)     /* Modem ioctl commands */
+#define _I2CBASE (0x2100)       /* I2C driver commands */
+#define _SPIBASE (0x2200)       /* SPI driver commands */
+#define _GPIOBASE (0x2300)      /* GPIO driver commands */
+#define _CLIOCBASE (0x2400)     /* Contactless modules ioctl commands */
+#define _USBCBASE (0x2500)      /* USB-C controller ioctl commands */
 #define _MAC802154BASE (0x2600) /* 802.15.4 MAC ioctl commands */
 #define _PWRBASE (0x2700)       /* Power-related ioctl commands */
-#define _FBIOCBASE (0x2800)   /* Frame buffer character driver ioctl commands */
-#define _NXTERMBASE (0x2900)  /* NxTerm character driver ioctl commands */
-#define _RFIOCBASE (0x2a00)   /* RF devices ioctl commands */
-#define _RPMSGBASE (0x2b00)   /* Remote processor message ioctl commands */
-#define _NOTECTLBASE (0x2c00) /* Note filter control ioctl commands*/
-#define _NOTERAMBASE (0x2d00) /* Noteram device ioctl commands*/
-#define _RCIOCBASE (0x2e00)   /* Remote Control device ioctl commands */
-#define _HIMEMBASE (0x2f00)   /* Himem device ioctl commands */
-#define _EFUSEBASE (0x3000)   /* Efuse device ioctl commands */
-#define _MTRIOBASE (0x3100)   /* Motor device ioctl commands */
-#define _MATHIOBASE (0x3200)  /* MATH device ioctl commands */
-#define _MMCSDIOBASE (0x3300) /* MMCSD device ioctl commands */
+#define _FBIOCBASE (0x2800)     /* Frame buffer character driver ioctl commands */
+#define _NXTERMBASE (0x2900)    /* NxTerm character driver ioctl commands */
+#define _RFIOCBASE (0x2a00)     /* RF devices ioctl commands */
+#define _RPMSGBASE (0x2b00)     /* Remote processor message ioctl commands */
+#define _NOTECTLBASE (0x2c00)   /* Note filter control ioctl commands*/
+#define _NOTERAMBASE (0x2d00)   /* Noteram device ioctl commands*/
+#define _RCIOCBASE (0x2e00)     /* Remote Control device ioctl commands */
+#define _HIMEMBASE (0x2f00)     /* Himem device ioctl commands */
+#define _EFUSEBASE (0x3000)     /* Efuse device ioctl commands */
+#define _MTRIOBASE (0x3100)     /* Motor device ioctl commands */
+#define _MATHIOBASE (0x3200)    /* MATH device ioctl commands */
+#define _MMCSDIOBASE (0x3300)   /* MMCSD device ioctl commands */
 #define _BLUETOOTHBASE (0x3400) /* Bluetooth ioctl commands */
 #define _PKTRADIOBASE (0x3500)  /* Packet radio ioctl commands */
 #define _LTEBASE (0x3600)       /* LTE device ioctl commands */
@@ -148,111 +150,111 @@
 #define _FIOCVALID(c) (_IOC_TYPE(c) == _FIOCBASE)
 #define _FIOC(nr) _IOC(_FIOCBASE, nr)
 
-#define FIOC_REFORMAT                                                          \
-  _FIOC(0x0001) /* IN:  None                                                   \
-                 * OUT: None                                                   \
+#define FIOC_REFORMAT        \
+  _FIOC(0x0001) /* IN:  None \
+                 * OUT: None \
                  */
-#define FIOC_OPTIMIZE                                                          \
-  _FIOC(0x0002) /* IN:  The number of bytes to recover                         \
-                 *      (ignored on most file systems)                         \
-                 * OUT: None                                                   \
+#define FIOC_OPTIMIZE                                  \
+  _FIOC(0x0002) /* IN:  The number of bytes to recover \
+                 *      (ignored on most file systems) \
+                 * OUT: None                           \
                  */
-#define FIOC_FILEPATH                                                          \
-  _FIOC(0x0003) /* IN:  FAR char *(length >= PATH_MAX)                         \
-                 * OUT: The full file path                                     \
+#define FIOC_FILEPATH                                  \
+  _FIOC(0x0003) /* IN:  FAR char *(length >= PATH_MAX) \
+                 * OUT: The full file path             \
                  */
-#define FIOC_INTEGRITY                                                         \
-  _FIOC(0x0004) /* Run a consistency check on the                              \
-                 *      file system media.                                     \
-                 * IN:  None                                                   \
-                 * OUT: None                                                   \
+#define FIOC_INTEGRITY                            \
+  _FIOC(0x0004) /* Run a consistency check on the \
+                 *      file system media.        \
+                 * IN:  None                      \
+                 * OUT: None                      \
                  */
-#define FIOC_DUMP                                                              \
-  _FIOC(0x0005) /* Dump logical content of media.                              \
-                 * IN:  None                                                   \
-                 * OUT: None                                                   \
+#define FIOC_DUMP                                 \
+  _FIOC(0x0005) /* Dump logical content of media. \
+                 * IN:  None                      \
+                 * OUT: None                      \
                  */
-#define FIONREAD                                                               \
-  _FIOC(0x0006) /* IN:  Location to return value (int *)                       \
-                 * OUT: Bytes readable from this fd                            \
+#define FIONREAD                                         \
+  _FIOC(0x0006) /* IN:  Location to return value (int *) \
+                 * OUT: Bytes readable from this fd      \
                  */
-#define FIONWRITE                                                              \
-  _FIOC(0x0007) /* IN:  Location to return value (int *)                       \
-                 * OUT: Number bytes in send queue                             \
+#define FIONWRITE                                        \
+  _FIOC(0x0007) /* IN:  Location to return value (int *) \
+                 * OUT: Number bytes in send queue       \
                  */
-#define FIONSPACE                                                              \
-  _FIOC(0x0008) /* IN:  Location to return value (int *)                       \
-                 * OUT: Free space in send queue.                              \
+#define FIONSPACE                                        \
+  _FIOC(0x0008) /* IN:  Location to return value (int *) \
+                 * OUT: Free space in send queue.        \
                  */
-#define FIONUSERFS                                                             \
-  _FIOC(0x0009) /* IN:  Pointer to struct usefs_config_s                       \
-                 *      holding userfs configuration.                          \
-                 * OUT: Instance number is returned on                         \
-                 *      success.                                               \
+#define FIONUSERFS                                       \
+  _FIOC(0x0009) /* IN:  Pointer to struct usefs_config_s \
+                 *      holding userfs configuration.    \
+                 * OUT: Instance number is returned on   \
+                 *      success.                         \
                  */
-#define FIONBIO                                                                \
-  _FIOC(0x000a) /* IN:  Boolean option takes an                                \
-                 *      int value.                                             \
-                 * OUT: Origin option.                                         \
+#define FIONBIO                                 \
+  _FIOC(0x000a) /* IN:  Boolean option takes an \
+                 *      int value.              \
+                 * OUT: Origin option.          \
                  */
-#define FIOCLEX                                                                \
-  _FIOC(0x000b) /* IN:  None                                                   \
-                 * OUT: None                                                   \
+#define FIOCLEX              \
+  _FIOC(0x000b) /* IN:  None \
+                 * OUT: None \
                  */
-#define FIONCLEX                                                               \
-  _FIOC(0x000c) /* IN:  None                                                   \
-                 * OUT: None                                                   \
+#define FIONCLEX             \
+  _FIOC(0x000c) /* IN:  None \
+                 * OUT: None \
                  */
-#define FIOC_NOTIFY                                                            \
-  _FIOC(0x000d) /* IN:  Pointer to struct automount_notify_s                   \
-                 *      holding automount notification                         \
-                 *      configuration                                          \
-                 * OUT: None                                                   \
+#define FIOC_NOTIFY                                          \
+  _FIOC(0x000d) /* IN:  Pointer to struct automount_notify_s \
+                 *      holding automount notification       \
+                 *      configuration                        \
+                 * OUT: None                                 \
                  */
 
 #ifdef CONFIG_FDSAN
-#define FIOC_SETTAG_FDSAN                                                      \
-  _FIOC(0x000e) /* IN:  FAR uint64_t *                                         \
-                 * Pointer to file tag                                         \
-                 * OUT: None                                                   \
+#define FIOC_SETTAG_FDSAN              \
+  _FIOC(0x000e) /* IN:  FAR uint64_t * \
+                 * Pointer to file tag \
+                 * OUT: None           \
                  */
 
-#define FIOC_GETTAG_FDSAN                                                      \
-  _FIOC(0x000f) /* IN:  FAR uint64_t *                                         \
-                 * Pointer to file tag                                         \
-                 * OUT: None                                                   \
+#define FIOC_GETTAG_FDSAN              \
+  _FIOC(0x000f) /* IN:  FAR uint64_t * \
+                 * Pointer to file tag \
+                 * OUT: None           \
                  */
 #endif
 
 #ifdef CONFIG_FDCHECK
-#define FIOC_SETTAG_FDCHECK                                                    \
-  _FIOC(0x0010) /* IN:  FAR uint8_t *                                          \
-                 * Pointer to file fdcheck tag                                 \
-                 * OUT: None                                                   \
+#define FIOC_SETTAG_FDCHECK                    \
+  _FIOC(0x0010) /* IN:  FAR uint8_t *          \
+                 * Pointer to file fdcheck tag \
+                 * OUT: None                   \
                  */
 
-#define FIOC_GETTAG_FDCHECK                                                    \
-  _FIOC(0x0011) /* IN:  FAR uint8_t *                                          \
-                 * Pointer to file fdcheck tag                                 \
-                 * OUT: None                                                   \
+#define FIOC_GETTAG_FDCHECK                    \
+  _FIOC(0x0011) /* IN:  FAR uint8_t *          \
+                 * Pointer to file fdcheck tag \
+                 * OUT: None                   \
                  */
 #endif
 
-#define FIOC_SETLK                                                             \
-  _FIOC(0x0012) /* IN:  Pointer to flock                                       \
-                 * OUT: None                                                   \
+#define FIOC_SETLK                       \
+  _FIOC(0x0012) /* IN:  Pointer to flock \
+                 * OUT: None             \
                  */
-#define FIOC_GETLK                                                             \
-  _FIOC(0x0013) /* IN:  Pointer to flock                                       \
-                 * OUT: None                                                   \
+#define FIOC_GETLK                       \
+  _FIOC(0x0013) /* IN:  Pointer to flock \
+                 * OUT: None             \
                  */
-#define FIOC_SETLKW                                                            \
-  _FIOC(0x0014) /* IN:  Pointer to flock                                       \
-                 * OUT: None                                                   \
+#define FIOC_SETLKW                      \
+  _FIOC(0x0014) /* IN:  Pointer to flock \
+                 * OUT: None             \
                  */
-#define FIOC_XIPBASE                                                           \
-  _FIOC(0x0015) /* IN:  uinptr_t *                                             \
-                 * OUT: Current file xip base address                          \
+#define FIOC_XIPBASE                                  \
+  _FIOC(0x0015) /* IN:  uinptr_t *                    \
+                 * OUT: Current file xip base address \
                  */
 
 /* NuttX file system ioctl definitions **************************************/
@@ -260,21 +262,21 @@
 #define _DIOCVALID(c) (_IOC_TYPE(c) == _DIOCBASE)
 #define _DIOC(nr) _IOC(_DIOCBASE, nr)
 
-#define DIOC_GETPRIV                                                           \
-  _DIOC(0x0001) /* IN:  Location to return handle (void **)                    \
-                 * OUT: Reference to internal data                             \
-                 *      structure.  May have a reference                       \
-                 *      incremented.                                           \
+#define DIOC_GETPRIV                                        \
+  _DIOC(0x0001) /* IN:  Location to return handle (void **) \
+                 * OUT: Reference to internal data          \
+                 *      structure.  May have a reference    \
+                 *      incremented.                        \
                  */
-#define DIOC_RELPRIV                                                           \
-  _DIOC(0x0003) /* IN:  None                                                   \
-                 * OUT: None, reference obtained by                            \
-                 *      FIOC_GETPRIV released.                                 \
+#define DIOC_RELPRIV                                \
+  _DIOC(0x0003) /* IN:  None                        \
+                 * OUT: None, reference obtained by \
+                 *      FIOC_GETPRIV released.      \
                  */
 
-#define DIOC_SETKEY                                                            \
-  _DIOC(0X0004) /* IN:  Encryption key                                         \
-                 * OUT: None                                                   \
+#define DIOC_SETKEY                    \
+  _DIOC(0X0004) /* IN:  Encryption key \
+                 * OUT: None           \
                  */
 
 /* NuttX block driver ioctl definitions *************************************/
@@ -282,110 +284,110 @@
 #define _BIOCVALID(c) (_IOC_TYPE(c) == _BIOCBASE)
 #define _BIOC(nr) _IOC(_BIOCBASE, nr)
 
-#define BIOC_XIPBASE                                                           \
-  _BIOC(0x0001) /* Perform mapping to random access memory.                    \
-                 * IN:  Pointer to pointer to void in                          \
-                 *      which to received the XIP base.                        \
-                 * OUT: If media is directly accessible,                       \
-                 *      return (void *) base address                           \
+#define BIOC_XIPBASE                                        \
+  _BIOC(0x0001) /* Perform mapping to random access memory. \
+                 * IN:  Pointer to pointer to void in       \
+                 *      which to received the XIP base.     \
+                 * OUT: If media is directly accessible,    \
+                 *      return (void *) base address        \
                  *      of device memory */
-#define BIOC_PROBE                                                             \
-  _BIOC(0x0002) /* Re-probe and interface; check for media                     \
-                 * in the slot                                                 \
-                 * IN:  None                                                   \
-                 * OUT: None (ioctl return value provides                      \
+#define BIOC_PROBE                                         \
+  _BIOC(0x0002) /* Re-probe and interface; check for media \
+                 * in the slot                             \
+                 * IN:  None                               \
+                 * OUT: None (ioctl return value provides  \
                  *      success/failure indication). */
-#define BIOC_EJECT                                                             \
-  _BIOC(0x0003) /* Eject/disable media in the slot                             \
-                 * IN:  None                                                   \
-                 * OUT: None (ioctl return value provides                      \
+#define BIOC_EJECT                                        \
+  _BIOC(0x0003) /* Eject/disable media in the slot        \
+                 * IN:  None                              \
+                 * OUT: None (ioctl return value provides \
                  *      success/failure indication). */
-#define BIOC_LLFORMAT                                                          \
-  _BIOC(0x0004) /* Low-Level Format on SMART flash devices                     \
-                 * IN:  None                                                   \
-                 * OUT: None (ioctl return value provides                      \
+#define BIOC_LLFORMAT                                      \
+  _BIOC(0x0004) /* Low-Level Format on SMART flash devices \
+                 * IN:  None                               \
+                 * OUT: None (ioctl return value provides  \
                  *      success/failure indication). */
-#define BIOC_GETFORMAT                                                         \
-  _BIOC(0x0005) /* Returns SMART flash format information                      \
-                 * such as format status, logical sector                       \
-                 * size, total sectors, free sectors, etc.                     \
-                 * IN:  None                                                   \
+#define BIOC_GETFORMAT                                     \
+  _BIOC(0x0005) /* Returns SMART flash format information  \
+                 * such as format status, logical sector   \
+                 * size, total sectors, free sectors, etc. \
+                 * IN:  None                               \
                  * OUT: Pointer to the format information. */
-#define BIOC_ALLOCSECT                                                         \
-  _BIOC(0x0006) /* Allocate a logical sector from the block                    \
-                 * device.                                                     \
-                 * IN:  None                                                   \
+#define BIOC_ALLOCSECT                                      \
+  _BIOC(0x0006) /* Allocate a logical sector from the block \
+                 * device.                                  \
+                 * IN:  None                                \
                  * OUT: Logical sector number allocated. */
-#define BIOC_FREESECT                                                          \
-  _BIOC(0x0007) /* Allocate a logical sector from the block                    \
-                 * device.                                                     \
-                 * IN:  None                                                   \
+#define BIOC_FREESECT                                       \
+  _BIOC(0x0007) /* Allocate a logical sector from the block \
+                 * device.                                  \
+                 * IN:  None                                \
                  * OUT: Logical sector number allocated. */
-#define BIOC_READSECT                                                          \
-  _BIOC(0x0008) /* Read a logical sector from the block                        \
-                 * device.                                                     \
-                 * IN:  Pointer to sector read data (the                       \
-                 *      logical sector number, count and                       \
-                 *      read buffer address                                    \
+#define BIOC_READSECT                                    \
+  _BIOC(0x0008) /* Read a logical sector from the block  \
+                 * device.                               \
+                 * IN:  Pointer to sector read data (the \
+                 *      logical sector number, count and \
+                 *      read buffer address              \
                  * OUT: Number of bytes read or error */
-#define BIOC_WRITESECT                                                         \
-  _BIOC(0x0009) /* Write to data to a logical sector                           \
-                 * IN:  Pointer to sector write data (the                      \
-                 *      logical sector number and write                        \
-                 *      buffer address                                         \
-                 * OUT: None (ioctl return value provides                      \
+#define BIOC_WRITESECT                                    \
+  _BIOC(0x0009) /* Write to data to a logical sector      \
+                 * IN:  Pointer to sector write data (the \
+                 *      logical sector number and write   \
+                 *      buffer address                    \
+                 * OUT: None (ioctl return value provides \
                  *      success/failure indication). */
-#define BIOC_GETPROCFSD                                                        \
-  _BIOC(0x000a) /* Get ProcFS data specific to the                             \
-                 * block device.                                               \
-                 * IN:  Pointer to a struct defined for                        \
-                 *      the block to load with it's                            \
-                 *      ProcFS data.                                           \
-                 * OUT: None (ioctl return value provides                      \
+#define BIOC_GETPROCFSD                                   \
+  _BIOC(0x000a) /* Get ProcFS data specific to the        \
+                 * block device.                          \
+                 * IN:  Pointer to a struct defined for   \
+                 *      the block to load with it's       \
+                 *      ProcFS data.                      \
+                 * OUT: None (ioctl return value provides \
                  *      success/failure indication). */
-#define BIOC_DEBUGCMD                                                          \
-  _BIOC(0x000b) /* Send driver specific debug command /                        \
-                 * data to the block device.                                   \
-                 * IN:  Pointer to a struct defined for                        \
-                 *      the block with specific debug                          \
-                 *      command and data.                                      \
+#define BIOC_DEBUGCMD                                   \
+  _BIOC(0x000b) /* Send driver specific debug command / \
+                 * data to the block device.            \
+                 * IN:  Pointer to a struct defined for \
+                 *      the block with specific debug   \
+                 *      command and data.               \
                  * OUT: None.  */
-#define BIOC_GEOMETRY                                                          \
-  _BIOC(0x000c) /* Used only by BCH to return the                              \
-                 * geometry of the contained block                             \
-                 * driver.                                                     \
-                 * IN:  Pointer to writable instance                           \
-                 *      of struct geometry in which                            \
-                 *      to return geometry.                                    \
-                 * OUT: Data return in user-provided                           \
+#define BIOC_GEOMETRY                                \
+  _BIOC(0x000c) /* Used only by BCH to return the    \
+                 * geometry of the contained block   \
+                 * driver.                           \
+                 * IN:  Pointer to writable instance \
+                 *      of struct geometry in which  \
+                 *      to return geometry.          \
+                 * OUT: Data return in user-provided \
                  *      buffer. */
-#define BIOC_FLUSH                                                             \
-  _BIOC(0x000d) /* Flush the block device write buffer                         \
-                 * IN:  None                                                   \
-                 * OUT: None (ioctl return value provides                      \
+#define BIOC_FLUSH                                        \
+  _BIOC(0x000d) /* Flush the block device write buffer    \
+                 * IN:  None                              \
+                 * OUT: None (ioctl return value provides \
                  *      success/failure indication). */
-#define BIOC_PARTINFO                                                          \
-  _BIOC(0x000e) /* Retrieve partition information from the                     \
-                 * block device.                                               \
-                 * IN:  Pointer to writable struct                             \
-                 *      partition_info_s in which to                           \
-                 *      receive partition information data                     \
-                 * OUT: Partition information structure                        \
-                 *      populated with data from the block                     \
+#define BIOC_PARTINFO                                      \
+  _BIOC(0x000e) /* Retrieve partition information from the \
+                 * block device.                           \
+                 * IN:  Pointer to writable struct         \
+                 *      partition_info_s in which to       \
+                 *      receive partition information data \
+                 * OUT: Partition information structure    \
+                 *      populated with data from the block \
                  *      device partition */
-#define BIOC_BLKSSZGET                                                         \
-  _BIOC(0x000f) /* Get block device sector size.                               \
-                 * IN:  Pointer to writable instance                           \
-                 *      of sector size in which                                \
-                 *      to return sector size.                                 \
-                 * OUT: Data return in user-provided                           \
+#define BIOC_BLKSSZGET                               \
+  _BIOC(0x000f) /* Get block device sector size.     \
+                 * IN:  Pointer to writable instance \
+                 *      of sector size in which      \
+                 *      to return sector size.       \
+                 * OUT: Data return in user-provided \
                  *      buffer. */
-#define BIOC_BLKGETSIZE                                                        \
-  _BIOC(0x0010) /* Get block device sector numbers.                            \
-                 * IN:  Pointer to writable instance                           \
-                 *      of sector numbers in which                             \
-                 *      to return sector numbers.                              \
-                 * OUT: Data return in user-provided                           \
+#define BIOC_BLKGETSIZE                              \
+  _BIOC(0x0010) /* Get block device sector numbers.  \
+                 * IN:  Pointer to writable instance \
+                 *      of sector numbers in which   \
+                 *      to return sector numbers.    \
+                 * OUT: Data return in user-provided \
                  *      buffer. */
 
 /* NuttX MTD driver ioctl definitions ***************************************/
@@ -505,47 +507,47 @@
 #define _PIPEIOCVALID(c) (_IOC_TYPE(c) == _PIPEBASE)
 #define _PIPEIOC(nr) _IOC(_PIPEBASE, nr)
 
-#define PIPEIOC_POLICY                                                         \
-  _PIPEIOC(0x0001) /* Set buffer policy                                        \
-                    * IN: unsigned long integer                                \
-                    *     0=free on last close                                 \
-                    *       (default)                                          \
-                    *     1=fre when empty                                     \
+#define PIPEIOC_POLICY                          \
+  _PIPEIOC(0x0001) /* Set buffer policy         \
+                    * IN: unsigned long integer \
+                    *     0=free on last close  \
+                    *       (default)           \
+                    *     1=fre when empty      \
                     * OUT: None */
 
-#define PIPEIOC_POLLINTHRD                                                     \
-  _PIPEIOC(0x0002) /* Set pipe POLLIN                                          \
-                    * notifty buffer threshold.                                \
-                    * IN: unsigned long integer.                               \
-                    *     POLLIN only occurs when                              \
-                    *     buffer contains more                                 \
-                    *     bytes than the                                       \
-                    *     threshold.                                           \
+#define PIPEIOC_POLLINTHRD                        \
+  _PIPEIOC(0x0002) /* Set pipe POLLIN             \
+                    * notifty buffer threshold.   \
+                    * IN: unsigned long integer.  \
+                    *     POLLIN only occurs when \
+                    *     buffer contains more    \
+                    *     bytes than the          \
+                    *     threshold.              \
                     * OUT: None */
 
-#define PIPEIOC_POLLOUTTHRD                                                    \
-  _PIPEIOC(0x0003) /* Set pipe POLLOUT                                         \
-                    * notifty buffer threshold.                                \
-                    * IN: unsigned long integer.                               \
-                    *     POLLOUT only occurs                                  \
-                    *     when buffer can accept                               \
-                    *     more bytes than                                      \
-                    *     threshold.                                           \
+#define PIPEIOC_POLLOUTTHRD                      \
+  _PIPEIOC(0x0003) /* Set pipe POLLOUT           \
+                    * notifty buffer threshold.  \
+                    * IN: unsigned long integer. \
+                    *     POLLOUT only occurs    \
+                    *     when buffer can accept \
+                    *     more bytes than        \
+                    *     threshold.             \
                     * OUT: None */
 
-#define PIPEIOC_PEEK                                                           \
-  _PIPEIOC(0x0004) /* Pipe peek interface                                      \
-                    * IN: pipe_peek_s                                          \
+#define PIPEIOC_PEEK                      \
+  _PIPEIOC(0x0004) /* Pipe peek interface \
+                    * IN: pipe_peek_s     \
                     * OUT: Length of data */
 
-#define PIPEIOC_SETSIZE                                                        \
-  _PIPEIOC(0x0005) /* Pipe get size interface                                  \
-                    * IN: size_t                                               \
+#define PIPEIOC_SETSIZE                       \
+  _PIPEIOC(0x0005) /* Pipe get size interface \
+                    * IN: size_t              \
                     * OUT: None */
 
-#define PIPEIOC_GETSIZE                                                        \
-  _PIPEIOC(0x0006) /* Pipe get size interface                                  \
-                    * IN: None                                                 \
+#define PIPEIOC_GETSIZE                       \
+  _PIPEIOC(0x0006) /* Pipe get size interface \
+                    * IN: None                \
                     * OUT: int */
 
 /* RTC driver ioctl definitions *********************************************/
@@ -805,7 +807,35 @@
  * Public Type Definitions
  ****************************************************************************/
 
-struct pipe_peek_s {
+struct geometry
+{
+  bool geo_available;       /* true: The device is available */
+  bool geo_mediachanged;    /* true: The media has changed since last query */
+  bool geo_writeenabled;    /* true: It is okay to write to this device */
+  blkcnt_t geo_nsectors;    /* Number of sectors on the device */
+  blksize_t geo_sectorsize; /* Size of one sector */
+
+  /* NULL-terminated string representing the device model */
+
+  char geo_model[NAME_MAX + 1];
+};
+
+struct partition_info_s
+{
+  size_t numsectors; /* Number of sectors in the partition */
+  size_t sectorsize; /* Size in bytes of a single sector */
+  off_t startsector; /* Offset to the first section/block of the
+                      * managed sub-region */
+
+  /* NULL-terminated string representing the name of the parent node of the
+   * partition.
+   */
+
+  char parent[NAME_MAX + 1];
+};
+
+struct pipe_peek_s
+{
   FAR void *buf;
   size_t offset;
   size_t size;
@@ -817,14 +847,15 @@ struct pipe_peek_s {
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
+  /****************************************************************************
+   * Public Function Prototypes
+   ****************************************************************************/
 
 #undef EXTERN
 #ifdef __cplusplus

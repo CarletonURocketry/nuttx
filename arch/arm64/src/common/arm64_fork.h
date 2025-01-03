@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_fork.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -80,7 +82,7 @@ struct fork_s
   uint64_t lr;
   uint64_t sp;
 #ifdef CONFIG_ARCH_FPU
-  struct fpu_reg fpu;
+  uint64_t fpu[FPU_CONTEXT_REGS];
 #endif
 };
 

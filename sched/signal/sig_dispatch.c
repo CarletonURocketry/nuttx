@@ -54,7 +54,6 @@ struct sig_arg_s
 {
   pid_t pid;
   cpu_set_t saved_affinity;
-  uint16_t saved_flags;
   bool need_restore;
 };
 
@@ -84,10 +83,10 @@ static int sig_handler(FAR void *cookie)
   if (arg->need_restore)
     {
       tcb->affinity = arg->saved_affinity;
-      tcb->flags = arg->saved_flags;
+      tcb->flags &= ~TCB_FLAG_CPU_LOCKED;
     }
 
-  if (tcb->sigdeliver)
+  if ((tcb->flags & TCB_FLAG_SIGDELIVER) != 0)
     {
       up_schedule_sigaction(tcb);
     }
@@ -161,13 +160,13 @@ static int nxsig_queue_action(FAR struct tcb_s *stcb, siginfo_t *info)
            * up_schedule_sigaction()
            */
 
-          if (!stcb->sigdeliver)
+          if ((stcb->flags & TCB_FLAG_SIGDELIVER) == 0)
             {
 #ifdef CONFIG_SMP
               int cpu = stcb->cpu;
               int me  = this_cpu();
 
-              stcb->sigdeliver = nxsig_deliver;
+              stcb->flags |= TCB_FLAG_SIGDELIVER;
               if (cpu != me && stcb->task_state == TSTATE_TASK_RUNNING)
                 {
                   struct sig_arg_s arg;
@@ -178,7 +177,6 @@ static int nxsig_queue_action(FAR struct tcb_s *stcb, siginfo_t *info)
                     }
                   else
                     {
-                      arg.saved_flags    = stcb->flags;
                       arg.saved_affinity = stcb->affinity;
                       arg.need_restore   = true;
 
@@ -187,13 +185,12 @@ static int nxsig_queue_action(FAR struct tcb_s *stcb, siginfo_t *info)
                     }
 
                   arg.pid = stcb->pid;
-                  nxsched_smp_call_single(stcb->cpu, sig_handler, &arg,
-                                          true);
+                  nxsched_smp_call_single(stcb->cpu, sig_handler, &arg);
                 }
               else
 #endif
                 {
-                  stcb->sigdeliver = nxsig_deliver;
+                  stcb->flags |= TCB_FLAG_SIGDELIVER;
                   up_schedule_sigaction(stcb);
                 }
             }

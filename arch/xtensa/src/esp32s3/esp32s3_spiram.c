@@ -117,6 +117,12 @@ static uint32_t page0_mapped;
 static uint32_t page0_page = INVALID_PHY_PAGE;
 #endif
 
+#ifdef CONFIG_SMP
+static int pause_cpu_handler(void *cookie);
+static struct smp_call_data_s g_call_data =
+SMP_CALL_INITIALIZER(pause_cpu_handler, NULL);
+#endif
+
 /****************************************************************************
  * ROM Function Prototypes
  ****************************************************************************/
@@ -149,13 +155,26 @@ extern int cache_invalidate_addr(uint32_t addr, uint32_t size);
 
 static inline uint32_t mmu_valid_space(uint32_t *start_address)
 {
-  for (int i = 0; i < FLASH_MMU_TABLE_SIZE; i++)
+  /* Look for an invalid entry for the MMU table from the end of the it
+   * towards the beginning. This is done to make sure we have a room for
+   * mapping the the SPIRAM
+   */
+
+  for (int i = (FLASH_MMU_TABLE_SIZE - 1); i >= 0; i--)
     {
       if (FLASH_MMU_TABLE[i] & MMU_INVALID)
         {
-          *start_address = DRAM0_CACHE_ADDRESS_LOW + i * MMU_PAGE_SIZE;
-          return (FLASH_MMU_TABLE_SIZE - i) * MMU_PAGE_SIZE;
+          continue;
         }
+
+      /* Add 1 to i to identify the first MMU table entry not set found
+       * backwards.
+       */
+
+      i++;
+
+      *start_address = DRAM0_CACHE_ADDRESS_LOW + (i) * MMU_PAGE_SIZE;
+      return (FLASH_MMU_TABLE_SIZE - i) * MMU_PAGE_SIZE;
     }
 
   return 0;
@@ -270,7 +289,7 @@ static int IRAM_ATTR esp_mmu_map_region(uint32_t vaddr, uint32_t paddr,
 #ifdef CONFIG_SMP
 static volatile bool g_cpu_wait = true;
 static volatile bool g_cpu_pause = false;
-static int pause_cpu_handler(FAR void *cookie)
+static int pause_cpu_handler(void *cookie)
 {
   g_cpu_pause = true;
   while (g_cpu_wait);
@@ -327,7 +346,7 @@ int IRAM_ATTR cache_dbus_mmu_map(int vaddr, int paddr, int num)
     {
       g_cpu_wait  = true;
       g_cpu_pause = false;
-      nxsched_smp_call_single(other_cpu, pause_cpu_handler, NULL, false);
+      nxsched_smp_call_single_async(other_cpu, &g_call_data);
       while (!g_cpu_pause);
     }
 
@@ -368,7 +387,7 @@ int IRAM_ATTR cache_dbus_mmu_map(int vaddr, int paddr, int num)
  * map the virtual address range.
  */
 
-void IRAM_ATTR esp_spiram_init_cache(void)
+int IRAM_ATTR esp_spiram_init_cache(void)
 {
   uint32_t regval;
   uint32_t psram_size;
@@ -398,6 +417,7 @@ void IRAM_ATTR esp_spiram_init_cache(void)
           mwarn("Invalid target vaddr = 0x%x, change vaddr to: 0x%x\n",
                 target_mapped_vaddr_start, g_mapped_vaddr_start);
           target_mapped_vaddr_start = g_mapped_vaddr_start;
+          ret = ERROR;
         }
 
       if (target_mapped_vaddr_end >
@@ -407,6 +427,7 @@ void IRAM_ATTR esp_spiram_init_cache(void)
                 SPIRAM_VADDR_MAP_SIZE,
                 g_mapped_vaddr_start + mapped_vaddr_size);
           target_mapped_vaddr_end = g_mapped_vaddr_start + mapped_vaddr_size;
+          ret = ERROR;
         }
 
       ASSERT(target_mapped_vaddr_end > target_mapped_vaddr_start);
@@ -423,6 +444,7 @@ void IRAM_ATTR esp_spiram_init_cache(void)
       g_mapped_size = mapped_vaddr_size;
       mwarn("Virtual address not enough for PSRAM, only %d size is mapped!",
             g_mapped_size);
+      ret = ERROR;
     }
   else
     {
@@ -456,6 +478,8 @@ void IRAM_ATTR esp_spiram_init_cache(void)
 
   g_allocable_vaddr_start = g_mapped_vaddr_start;
   g_allocable_vaddr_end = g_mapped_vaddr_start + g_mapped_size;
+
+  return ret;
 }
 
 /* Simple RAM test. Writes a word every 32 bytes. Takes about a second
@@ -465,7 +489,7 @@ void IRAM_ATTR esp_spiram_init_cache(void)
  * of the memory.
  */
 
-bool esp_spiram_test(void)
+int esp_spiram_test(void)
 {
   volatile int *spiram = (volatile int *)g_mapped_vaddr_start;
 
@@ -501,12 +525,12 @@ bool esp_spiram_test(void)
     {
       merr("SPI SRAM memory test fail. %d/%d writes failed, first @ %X\n",
            errct, s / 32, initial_err + SOC_EXTRAM_DATA_LOW);
-      return false;
+      return ERROR;
     }
   else
     {
       minfo("SPI SRAM memory test OK!");
-      return true;
+      return OK;
     }
 }
 

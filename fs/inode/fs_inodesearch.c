@@ -1,6 +1,8 @@
 /****************************************************************************
  * fs/inode/fs_inodesearch.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -34,6 +36,7 @@
 #include <nuttx/fs/fs.h>
 
 #include "inode/inode.h"
+#include "fs_heap.h"
 
 /****************************************************************************
  * Private Function Prototypes
@@ -348,12 +351,12 @@ static int _inode_search(FAR struct inode_search_s *desc)
                                 {
                                   FAR char *buffer = NULL;
 
-                                  ret = asprintf(&buffer,
-                                                 "%s/%s", desc->relpath,
-                                                 name);
+                                  ret = fs_heap_asprintf(&buffer, "%s/%s",
+                                                         desc->relpath,
+                                                         name);
                                   if (ret > 0)
                                     {
-                                      lib_free(desc->buffer);
+                                      fs_heap_free(desc->buffer);
                                       desc->buffer = buffer;
                                       relpath = buffer;
                                       ret = OK;
@@ -478,7 +481,8 @@ int inode_search(FAR struct inode_search_s *desc)
 
   if (*desc->path != '/')
     {
-      ret = asprintf(&desc->buffer, "%s/%s", _inode_getcwd(), desc->path);
+      ret = fs_heap_asprintf(&desc->buffer, "%s/%s",
+                             _inode_getcwd(), desc->path);
       if (ret < 0)
         {
           return -ENOMEM;

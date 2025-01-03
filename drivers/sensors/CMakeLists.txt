@@ -1,6 +1,8 @@
 # ##############################################################################
 # drivers/sensors/CMakeLists.txt
 #
+# SPDX-License-Identifier: Apache-2.0
+#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -296,6 +298,10 @@ if(CONFIG_SENSORS)
 
     if(CONFIG_SENSORS_LTR308)
       list(APPEND SRCS ltr308_uorb.c)
+    endif()
+
+    if(CONFIG_SENSORS_FS3000)
+      list(APPEND SRCS fs3000_uorb.c)
     endif()
 
     if(CONFIG_SENSORS_BMM150)

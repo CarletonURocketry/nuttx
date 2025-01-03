@@ -1,6 +1,8 @@
 /****************************************************************************
  * arch/arm64/include/irq.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -35,6 +37,7 @@
 #ifndef __ASSEMBLY__
 #  include <stdint.h>
 #  include <arch/syscall.h>
+#  include <nuttx/macro.h>
 #endif
 
 /* Include NuttX-specific IRQ definitions */
@@ -48,6 +51,10 @@
 /****************************************************************************
  * Pre-processor Prototypes
  ****************************************************************************/
+
+#ifdef __ghs__
+#  define __ARM_ARCH 8
+#endif
 
 #define up_getsp()          (uintptr_t)__builtin_frame_address(0)
 
@@ -265,7 +272,12 @@ struct xcptcontext
 
   /* task context, for signal process */
 
-  uint64_t *saved_reg;
+  uint64_t *saved_regs;
+
+#ifdef CONFIG_ARCH_FPU
+  uint64_t *fpu_regs;
+  uint64_t *saved_fpu_regs;
+#endif
 
   /* Extra fault address register saved for common paging logic.  In the
    * case of the pre-fetch abort, this value is the same as regs[REG_ELR];
@@ -378,64 +390,77 @@ static inline void up_irq_restore(irqstate_t flags)
  ****************************************************************************/
 
 #ifdef CONFIG_ARCH_HAVE_MULTICPU
+#  ifndef MPID_TO_CORE
+#    define MPID_TO_CORE(mpid) \
+            (((mpid) >> MPIDR_AFF0_SHIFT) & MPIDR_AFFLVL_MASK)
+#  endif
 #  define up_cpu_index() ((int)MPID_TO_CORE(GET_MPIDR()))
 #endif /* CONFIG_ARCH_HAVE_MULTICPU */
 
 /****************************************************************************
  * Name:
- *   up_current_regs/up_set_current_regs
+ *   read_/write_/zero_/modify_ sysreg
  *
  * Description:
- *   We use the following code to manipulate the tpidr_el1 register,
- *   which exists uniquely for each CPU and is primarily designed to store
- *   current thread information. Currently, we leverage it to store interrupt
- *   information, with plans to further optimize its use for storing both
- *   thread and interrupt information in the future.
+ *
+ *   ARMv8 Architecture Registers access method
+ *   All the macros need a memory clobber
  *
  ****************************************************************************/
 
-noinstrument_function
-static inline_function uint64_t *up_current_regs(void)
-{
-  uint64_t *regs;
-  __asm__ volatile ("mrs %0, " "tpidr_el1" : "=r" (regs));
-  return regs;
-}
+#define read_sysreg(reg)                            \
+  ({                                                \
+    uint64_t __val;                                 \
+    __asm__ volatile ("mrs %0, " STRINGIFY(reg)     \
+                    : "=r" (__val) :: "memory");    \
+    __val;                                          \
+  })
 
-noinstrument_function
-static inline_function void up_set_current_regs(uint64_t *regs)
-{
-  __asm__ volatile ("msr " "tpidr_el1" ", %0" : : "r" (regs));
-}
+#define write_sysreg(__val, reg)                    \
+  ({                                                \
+    __asm__ volatile ("msr " STRINGIFY(reg) ", %0"  \
+                      : : "r" (__val) : "memory");  \
+  })
 
-#define up_switch_context(tcb, rtcb)                              \
-  do {                                                            \
-    if (!up_interrupt_context())                                  \
-      {                                                           \
-        sys_call2(SYS_switch_context, (uintptr_t)&rtcb->xcp.regs, \
-                  (uintptr_t)tcb->xcp.regs);                      \
-      }                                                           \
-  } while (0)
+#define zero_sysreg(reg)                            \
+  ({                                                \
+    __asm__ volatile ("msr " STRINGIFY(reg) ", xzr" \
+                      ::: "memory");                \
+  })
+
+#define modify_sysreg(v,m,a)                        \
+  write_sysreg((read_sysreg(a) & ~(m)) |            \
+               ((uintptr_t)(v) & (m)), a)
 
 /****************************************************************************
- * Name: up_interrupt_context
+ * Schedule acceleration macros
  *
- * Description: Return true is we are currently executing in
- * the interrupt handler context.
- *
+ * The lsbit of tpidr_el1 stores information about whether the current
+ * execution is in an interrupt context, where 1 indicates being in an
+ * interrupt context and 0 indicates being in a thread context.
  ****************************************************************************/
 
-static inline bool up_interrupt_context(void)
-{
-  return up_current_regs() != NULL;
-}
+#define up_this_task()         ((struct tcb_s *)(read_sysreg(tpidr_el1) & ~1ul))
+#define up_update_task(t)      modify_sysreg(t, ~1ul, tpidr_el1)
+#define up_interrupt_context() (read_sysreg(tpidr_el1) & 1)
+
+#define up_switch_context(tcb, rtcb)                                      \
+  do                                                                      \
+    {                                                                     \
+      if (!up_interrupt_context())                                        \
+        {                                                                 \
+          sys_call0(SYS_switch_context);                                  \
+        }                                                                 \
+      UNUSED(rtcb);                                                       \
+    }                                                                     \
+  while (0)
 
 /****************************************************************************
  * Name: up_getusrpc
  ****************************************************************************/
 
 #define up_getusrpc(regs) \
-    (((uintptr_t *)((regs) ? (regs) : up_current_regs()))[REG_ELR])
+    (((uintptr_t *)((regs) ? (regs) : running_regs()))[REG_ELR])
 
 #undef EXTERN
 #ifdef __cplusplus
