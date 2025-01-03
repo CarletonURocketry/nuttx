@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/rp2040/rp2040_usbdev.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -267,7 +265,6 @@ struct rp2040_usbdev_s
 
   uint16_t next_offset;       /* Unused DPSRAM buffer offset */
   uint8_t  dev_addr;          /* USB device address */
-  spinlock_t lock;            /* USB device address */
   enum rp2040_zlp_e zlp_stat; /* Pending EP0 ZLP status */
   uint16_t used;              /* used epphy */
   bool stalled;
@@ -497,7 +494,6 @@ static void rp2040_update_buffer_control(struct rp2040_ep_s *privep,
 static int rp2040_epwrite(struct rp2040_ep_s *privep, uint8_t *buf,
                           uint16_t nbytes)
 {
-  struct rp2040_usbdev_s *priv = privep->dev;
   uint32_t val;
   irqstate_t flags;
 
@@ -515,9 +511,9 @@ static int rp2040_epwrite(struct rp2040_ep_s *privep, uint8_t *buf,
 
   /* Start the transfer */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   rp2040_update_buffer_control(privep, 0, val);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return nbytes;
 }
@@ -532,7 +528,6 @@ static int rp2040_epwrite(struct rp2040_ep_s *privep, uint8_t *buf,
 
 static int rp2040_epread(struct rp2040_ep_s *privep, uint16_t nbytes)
 {
-  struct rp2040_usbdev_s *priv = privep->dev;
   uint32_t val;
   irqstate_t flags;
 
@@ -545,9 +540,9 @@ static int rp2040_epread(struct rp2040_ep_s *privep, uint16_t nbytes)
 
   /* Start the transfer */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   rp2040_update_buffer_control(privep, 0, val);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return OK;
 }
@@ -1711,11 +1706,14 @@ static int rp2040_epcancel(struct usbdev_ep_s *ep,
  *
  ****************************************************************************/
 
-static int rp2040_epstall_exec_nolock(struct usbdev_ep_s *ep)
+static int rp2040_epstall_exec(struct usbdev_ep_s *ep)
 {
   struct rp2040_ep_s *privep = (struct rp2040_ep_s *)ep;
+  irqstate_t flags;
 
   usbtrace(TRACE_EPSTALL, privep->epphy);
+
+  flags = spin_lock_irqsave(NULL);
 
   if (privep->epphy == 0)
     {
@@ -1731,20 +1729,8 @@ static int rp2040_epstall_exec_nolock(struct usbdev_ep_s *ep)
 
   privep->pending_stall = false;
 
+  spin_unlock_irqrestore(NULL, flags);
   return OK;
-}
-
-static int rp2040_epstall_exec(struct usbdev_ep_s *ep)
-{
-  struct rp2040_ep_s *privep = (struct rp2040_ep_s *)ep;
-  struct rp2040_usbdev_s *priv = privep->dev;
-  irqstate_t flags;
-  int ret;
-
-  flags = spin_lock_irqsave(&priv->lock);
-  ret = rp2040_epstall_exec_nolock(ep);
-  spin_unlock_irqrestore(&priv->lock, flags);
-  return ret;
 }
 
 /****************************************************************************
@@ -1761,7 +1747,7 @@ static int rp2040_epstall(struct usbdev_ep_s *ep, bool resume)
   struct rp2040_usbdev_s *priv = privep->dev;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
 
   if (resume)
     {
@@ -1796,13 +1782,13 @@ static int rp2040_epstall(struct usbdev_ep_s *ep, bool resume)
         {
           /* Stall immediately */
 
-          rp2040_epstall_exec_nolock(ep);
+          rp2040_epstall_exec(ep);
         }
 
       priv->zlp_stat = RP2040_ZLP_NONE;
     }
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return OK;
 }
@@ -2039,7 +2025,6 @@ void arm_usbinitialize(void)
       g_usbdev.eplist[i].ep.eplog = 0;
     }
 
-  spin_lock_init(&g_usbdev.lock);
   if (irq_attach(RP2040_USBCTRL_IRQ, rp2040_usbinterrupt, &g_usbdev) != 0)
     {
       usbtrace(TRACE_DEVERROR(RP2040_TRACEERR_IRQREGISTRATION),
@@ -2152,7 +2137,7 @@ int usbdev_unregister(struct usbdevclass_driver_s *driver)
 
   usbtrace(TRACE_DEVUNREGISTER, 0);
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
 
   /* Unbind the class driver */
 
@@ -2170,7 +2155,7 @@ int usbdev_unregister(struct usbdevclass_driver_s *driver)
 
   priv->driver = NULL;
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return OK;
 }

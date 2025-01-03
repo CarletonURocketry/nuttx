@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv7-r/arm_smpcall.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -70,7 +68,9 @@
 
 int arm_smp_sched_handler(int irq, void *context, void *arg)
 {
-  nxsched_process_delivered(this_cpu());
+  int cpu = this_cpu();
+
+  nxsched_process_delivered(cpu);
   return OK;
 }
 

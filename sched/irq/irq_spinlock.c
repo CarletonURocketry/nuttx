@@ -43,9 +43,16 @@
 
 volatile spinlock_t g_irq_spin = SP_UNLOCKED;
 
-/* Handles nested calls to spin_lock_irqsave and spin_unlock_irqrestore */
+#ifdef CONFIG_RW_SPINLOCK
+/* Used for access control */
 
-volatile uint8_t g_irq_spin_count[CONFIG_SMP_NCPUS];
+static volatile rwlock_t g_irq_rwspin = RW_SP_UNLOCKED;
+
+/* Handles nested calls to write_lock_irqsave and write_unlock_irqrestore */
+
+static volatile uint8_t g_irq_rwspin_count[CONFIG_SMP_NCPUS];
+
+#endif
 
 /****************************************************************************
  * Public Functions
@@ -58,7 +65,11 @@ volatile uint8_t g_irq_spin_count[CONFIG_SMP_NCPUS];
  *
  * Description:
  *   If SMP is enabled:
- *     The argument lock should be specified,
+ *     If the 'lock' argument is not specified (i.e. NULL), disable local
+ *     interrupts and take the global read write spinlock (g_irq_rwspin)
+ *     and increase g_irq_rwspin.
+ *
+ *     If the 'lock' argument is specified,
  *     disable local interrupts and take the lock spinlock and return
  *     the interrupt state.
  *
@@ -70,7 +81,9 @@ volatile uint8_t g_irq_spin_count[CONFIG_SMP_NCPUS];
  *     This function is equivalent to up_irq_save().
  *
  * Input Parameters:
- *   lock - Caller specific spinlock, not NULL.
+ *   lock - Caller specific spinlock. If specified NULL, g_irq_spin is used
+ *          and can be nested. Otherwise, nested call for the same lock
+ *          would cause a deadlock
  *
  * Returned Value:
  *   An opaque, architecture-specific value that represents the state of
@@ -83,7 +96,14 @@ irqstate_t read_lock_irqsave(FAR rwlock_t *lock)
   irqstate_t ret;
   ret = up_irq_save();
 
-  read_lock(lock);
+  if (NULL == lock)
+    {
+      read_lock(&g_irq_rwspin);
+    }
+  else
+    {
+      read_lock(lock);
+    }
 
   return ret;
 }
@@ -93,7 +113,11 @@ irqstate_t read_lock_irqsave(FAR rwlock_t *lock)
  *
  * Description:
  *   If SMP is enabled:
- *     The argument lock should be specified, release the lock and
+ *     If the argument lock is not specified (i.e. NULL),
+ *     decrement the call counter (g_irq_rwspin) and restore the interrupt
+ *     state as it was prior to the previous call to read_lock_irqsave(NULL).
+ *
+ *     If the argument lock is specified, release the lock and
  *     restore the interrupt state as it was prior to the previous call to
  *     read_lock_irqsave(lock).
  *
@@ -101,7 +125,7 @@ irqstate_t read_lock_irqsave(FAR rwlock_t *lock)
  *     This function is equivalent to up_irq_restore().
  *
  * Input Parameters:
- *   lock - Caller specific spinlock, not NULL.
+ *   lock - Caller specific spinlock. If specified NULL, g_irq_spin is used.
  *
  *   flags - The architecture-specific value that represents the state of
  *           the interrupts prior to the call to read_lock_irqsave(lock);
@@ -113,7 +137,15 @@ irqstate_t read_lock_irqsave(FAR rwlock_t *lock)
 
 void read_unlock_irqrestore(rwlock_t *lock, irqstate_t flags)
 {
-  read_unlock(lock);
+  if (NULL == lock)
+    {
+      read_unlock(&g_irq_rwspin);
+    }
+  else
+    {
+      read_unlock(lock);
+    }
+
   up_irq_restore(flags);
 }
 
@@ -122,7 +154,13 @@ void read_unlock_irqrestore(rwlock_t *lock, irqstate_t flags)
  *
  * Description:
  *   If SMP is enabled:
- *     The argument lock should be specified,
+ *     If the argument lock is not specified (i.e. NULL),
+ *     disable local interrupts and take the global spinlock (g_irq_rwspin)
+ *     if the call counter (g_irq_rwspin_count[cpu]) equals to 0. Then
+ *     the counter on the CPU is incremented to allow nested calls and return
+ *     the interrupt state.
+ *
+ *     If the argument lock is specified,
  *     disable local interrupts and take the lock spinlock and return
  *     the interrupt state.
  *
@@ -134,7 +172,9 @@ void read_unlock_irqrestore(rwlock_t *lock, irqstate_t flags)
  *     This function is equivalent to up_irq_save().
  *
  * Input Parameters:
- *   lock - Caller specific spinlock, not NULL.
+ *   lock - Caller specific spinlock. If specified NULL, g_irq_spin is used
+ *          and can be nested. Otherwise, nested call for the same lock
+ *          would cause a deadlock
  *
  * Returned Value:
  *   An opaque, architecture-specific value that represents the state of
@@ -147,7 +187,21 @@ irqstate_t write_lock_irqsave(rwlock_t *lock)
   irqstate_t ret;
   ret = up_irq_save();
 
-  write_lock(lock);
+  if (NULL == lock)
+    {
+      int me = this_cpu();
+      if (0 == g_irq_rwspin_count[me])
+        {
+          write_lock(&g_irq_rwspin);
+        }
+
+      g_irq_rwspin_count[me]++;
+      DEBUGASSERT(0 != g_irq_rwspin_count[me]);
+    }
+  else
+    {
+      write_lock(lock);
+    }
 
   return ret;
 }
@@ -157,7 +211,13 @@ irqstate_t write_lock_irqsave(rwlock_t *lock)
  *
  * Description:
  *   If SMP is enabled:
- *     The argument lock should be specified, release the lock and
+ *     If the argument lock is not specified (i.e. NULL),
+ *     decrement the call counter (g_irq_rwspin_count[cpu]) and if it
+ *     decrements to zero then release the spinlock (g_irq_rwspin) and
+ *     restore the interrupt state as it was prior to the previous call to
+ *     write_lock_irqsave(NULL).
+ *
+ *     If the argument lock is specified, release the lock and
  *     restore the interrupt state as it was prior to the previous call to
  *     write_lock_irqsave(lock).
  *
@@ -165,7 +225,7 @@ irqstate_t write_lock_irqsave(rwlock_t *lock)
  *     This function is equivalent to up_irq_restore().
  *
  * Input Parameters:
- *   lock - Caller specific spinlock, not NULL.
+ *   lock - Caller specific spinlock. If specified NULL, g_irq_spin is used.
  *
  *   flags - The architecture-specific value that represents the state of
  *           the interrupts prior to the call to write_lock_irqsave(lock);
@@ -177,7 +237,21 @@ irqstate_t write_lock_irqsave(rwlock_t *lock)
 
 void write_unlock_irqrestore(rwlock_t *lock, irqstate_t flags)
 {
-  write_unlock(lock);
+  if (NULL == lock)
+    {
+      int me = this_cpu();
+      DEBUGASSERT(0 < g_irq_rwspin_count[me]);
+      g_irq_rwspin_count[me]--;
+
+      if (0 == g_irq_rwspin_count[me])
+        {
+          write_unlock(&g_irq_rwspin);
+        }
+    }
+  else
+    {
+      write_unlock(lock);
+    }
 
   up_irq_restore(flags);
 }

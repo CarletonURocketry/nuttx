@@ -1,9 +1,9 @@
 /****************************************************************************
  * crypto/ecb3_enc.c
- *
- * SPDX-License-Identifier: SSLeay-standalone
- * SPDX-FileCopyrightText: Copyright (C) 1995 Eric Young (eay@mincom.oz.au)
- * SPDX-FileCopyrightText: Eric Young (eay@mincom.oz.au).
+ * $OpenBSD: ecb3_enc.c,v 1.3 2013/11/18 18:49:53 brad Exp $
+ * lib/des/ecb3_enc.c
+ * Copyright (C) 1995 Eric Young (eay@mincom.oz.au)
+ * All rights reserved.
  *
  * This file is part of an SSL implementation written
  * by Eric Young (eay@mincom.oz.au).

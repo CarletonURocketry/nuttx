@@ -1,8 +1,7 @@
 /****************************************************************************
  * boards/arm/imxrt/imxrt1050-evk/src/imxrt_sdram_ini_dcd.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: Copyright (C) 2017, NXP Semiconductors, Inc.
+ *   Copyright (C) 2017, NXP Semiconductors, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

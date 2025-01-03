@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/i2c/i2c_slave_driver.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -136,9 +134,7 @@ static const struct file_operations g_i2cslavefops =
   NULL,               /* ioctl */
   NULL,               /* mmap */
   NULL,               /* truncate */
-  i2c_slave_poll,     /* poll */
-  NULL,               /* readv */
-  NULL                /* writev */
+  i2c_slave_poll      /* poll */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   , i2c_slave_unlink  /* unlink */
 #endif

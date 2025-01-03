@@ -1,10 +1,16 @@
 /****************************************************************************
  * arch/xtensa/include/xtensa/xtensa_corebits.h
+ * Xtensa Special Register field positions, masks, values.
+ * NOTE: This file may be processor configuration dependent.
  *
- * SPDX-License-Identifier: MIT
- * SPDX-FileCopyrightText: 2016 Gregory Nutt. All rights reserved.
- * SPDX-FileCopyrightText: 2005-2011 Tensilica Inc.
- * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
+ * Adapted from use in NuttX by:
+ *
+ *   Copyright (C) 2016 Gregory Nutt. All rights reserved.
+ *   Author: Gregory Nutt <gnutt@nuttx.org>
+ *
+ * Derives from logic originally provided by Tensilica Inc.
+ *
+ *   Copyright (c) 2005-2011 Tensilica Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the

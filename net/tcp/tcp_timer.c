@@ -599,8 +599,7 @@ void tcp_timer(FAR struct net_driver_s *dev, FAR struct tcp_conn_s *conn)
 
               /* Exponential backoff. */
 
-              conn->rto = TCP_RTO << (conn->nrtx > 4 ? 4: conn->nrtx);
-              tcp_update_retrantimer(conn, conn->rto);
+              conn->timer = TCP_RTO << (conn->nrtx > 4 ? 4: conn->nrtx);
               conn->nrtx++;
 
               /* Ok, so we need to retransmit. We do this differently

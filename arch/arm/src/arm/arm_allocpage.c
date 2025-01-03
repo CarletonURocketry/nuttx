@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/arm/arm_allocpage.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -38,8 +36,8 @@
 
 #include <nuttx/page.h>
 
-#include "arm_internal.h"
 #include "pg_macros.h"
+#include "arm_internal.h"
 
 /****************************************************************************
  * Pre-processor Definitions

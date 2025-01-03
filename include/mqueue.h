@@ -27,10 +27,8 @@
  * Included Files
  ****************************************************************************/
 
-#include <fcntl.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <time.h>
 
 /****************************************************************************
  * Pre-processor Definitions

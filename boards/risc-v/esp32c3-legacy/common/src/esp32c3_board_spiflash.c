@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/risc-v/esp32c3-legacy/common/src/esp32c3_board_spiflash.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -396,7 +394,7 @@ static int init_storage_partition(void)
 
 #if defined (CONFIG_ESP32C3_SPIFLASH_SMARTFS)
 
-  ret = setup_smartfs(0, mtd, CONFIG_ESP32C3_SPIFLASH_FS_MOUNT_PT);
+  ret = setup_smartfs(0, mtd, "/data");
   if (ret < 0)
     {
       ferr("ERROR: Failed to setup smartfs\n");
@@ -405,7 +403,7 @@ static int init_storage_partition(void)
 
 #elif defined (CONFIG_ESP32C3_SPIFLASH_NXFFS)
 
-  ret = setup_nxffs(mtd, CONFIG_ESP32C3_SPIFLASH_FS_MOUNT_PT);
+  ret = setup_nxffs(mtd, "/data");
   if (ret < 0)
     {
       ferr("ERROR: Failed to setup nxffs\n");
@@ -415,7 +413,7 @@ static int init_storage_partition(void)
 #elif defined (CONFIG_ESP32C3_SPIFLASH_LITTLEFS)
 
   const char *path = "/dev/esp32c3flash";
-  ret = setup_littlefs(path, mtd, CONFIG_ESP32C3_SPIFLASH_FS_MOUNT_PT, 0755);
+  ret = setup_littlefs(path, mtd, "/data", 0755);
   if (ret < 0)
     {
       ferr("ERROR: Failed to setup littlefs\n");
@@ -425,7 +423,7 @@ static int init_storage_partition(void)
 #elif defined (CONFIG_ESP32C3_SPIFLASH_SPIFFS)
 
   const char *path = "/dev/esp32c3flash";
-  ret = setup_spiffs(path, mtd, CONFIG_ESP32C3_SPIFLASH_FS_MOUNT_PT, 0755);
+  ret = setup_spiffs(path, mtd, "/data", 0755);
   if (ret < 0)
     {
       ferr("ERROR: Failed to setup spiffs\n");

@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/power/supply/act8945a.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -298,7 +296,6 @@ struct regulator_act8945a_priv
   int                               i2c_freq;
   FAR const struct regulator_desc_s *regulators;
   FAR struct       regulator_dev_s  *rdev;
-  spinlock_t                        lock;
 };
 
 struct act8945a_dev_s
@@ -458,9 +455,9 @@ static int act8945a_getreg(FAR struct regulator_act8945a_priv *priv,
 
   /* Write the register address */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   ret = i2c_write(priv->i2c, &config, &regaddr, sizeof(regaddr));
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   if (ret < 0)
     {
       act8945a_err("ERROR: i2c_write failed: %d\n", ret);
@@ -469,9 +466,9 @@ static int act8945a_getreg(FAR struct regulator_act8945a_priv *priv,
 
   /* Restart and read 8 bits from the register */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   ret = i2c_read(priv->i2c, &config, regval, sizeof(*regval));
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   if (ret < 0)
     {
       act8945a_err("ERROR: i2c_read failed: %d\n", ret);
@@ -526,9 +523,9 @@ static int act8945a_putreg(FAR struct regulator_act8945a_priv *priv,
 
   /* Write the register address followed by the data (no RESTART) */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   ret = i2c_write(priv->i2c, &config, buffer, sizeof(buffer));
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   if (ret < 0)
     {
@@ -1031,8 +1028,6 @@ int act8945a_initialize(FAR struct i2c_master_s *i2c, unsigned int vsel)
   priv->i2c      = i2c;
   priv->i2c_addr = ACT8945A_SLAVE_ADDRESS;
   priv->i2c_freq = ACT8945A_BUS_SPEED;
-
-  spin_lock_init(&priv->lock);
 
   /* Early test to see if we can read the ACT8945A.
    *

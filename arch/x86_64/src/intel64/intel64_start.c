@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/x86_64/src/intel64/intel64_start.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -47,10 +45,6 @@
 uint32_t g_mb_magic __attribute__((section(".loader.bss")));
 uint32_t g_mb_info_struct __attribute__((section(".loader.bss")));
 uintptr_t g_acpi_rsdp = 0;
-
-#ifdef CONFIG_MULTBOOT2_FB
-struct multiboot_tag_framebuffer *g_mb_fb_tag = NULL;
-#endif
 
 /****************************************************************************
  * Private Functions
@@ -104,15 +98,11 @@ static void x86_64_mb2_config(void)
               break;
             }
 
-#ifdef CONFIG_MULTBOOT2_FB
+#ifdef CONFIG_MULTBOOT2_FB_TERM
           case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
             {
-              /* We have to postpone frame buffer initialization because
-               * at this boot stage we can't map >4GB memory yet and it's
-               * possible that frame bufer address is above 4GB.
-               */
-
-              g_mb_fb_tag = (struct multiboot_tag_framebuffer *)tag;
+              x86_64_mb2_fbinitialize(
+                (struct multiboot_tag_framebuffer *)tag);
               break;
             }
 #endif
@@ -174,14 +164,6 @@ void __nxstart(void)
   acpi_init(g_acpi_rsdp);
 #endif
 
-#ifndef CONFIG_SMP
-  /* Revoke the lower memory if not SMP, otherwise this is done in
-   * x86_64_ap_boot() after the initialization of the last AP is finished.
-   */
-
-  __revoke_low_memory();
-#endif
-
   /* Initialize CPU data (BSP and APs) */
 
   x86_64_cpu_init();
@@ -199,6 +181,10 @@ void __nxstart(void)
   /* Configure timer */
 
   x86_64_timer_calibrate_freq();
+
+#ifdef CONFIG_LIB_SYSCALL
+  enable_syscall();
+#endif
 
   /* Store CPU IDs */
 

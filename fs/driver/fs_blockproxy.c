@@ -1,8 +1,6 @@
 /****************************************************************************
  * fs/driver/fs_blockproxy.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -44,7 +42,6 @@
 #include <nuttx/mutex.h>
 
 #include "driver.h"
-#include "fs_heap.h"
 
 #if !defined(CONFIG_DISABLE_MOUNTPOINT) && \
     !defined(CONFIG_DISABLE_PSEUDOFS_OPERATIONS)
@@ -115,7 +112,7 @@ static FAR char *unique_chardev(void)
       if (ret < 0)
         {
           DEBUGASSERT(ret == -ENOENT);
-          return fs_heap_strdup(devbuf);
+          return strdup(devbuf);
         }
 
       /* It is in use, try again */
@@ -201,14 +198,14 @@ int block_proxy(FAR struct file *filep, FAR const char *blkdev, int oflags)
 
   /* Free the allocated character driver name. */
 
-  fs_heap_free(chardev);
+  lib_free(chardev);
   return OK;
 
 errout_with_bchdev:
   nx_unlink(chardev);
 
 errout_with_chardev:
-  fs_heap_free(chardev);
+  lib_free(chardev);
   return ret;
 }
 

@@ -242,8 +242,6 @@
 #define SOL_SCO         17 /* See options in include/netpacket/bluetooth.h */
 #define SOL_RFCOMM      18 /* See options in include/netpacket/bluetooth.h */
 
-#define SOL_PACKET      19
-
 /* Protocol-level socket options may begin with this value */
 
 #define __SO_PROTOCOL  16
@@ -329,7 +327,7 @@ struct sockaddr_storage
 
   /* Following fields are implementation-defined */
 
-  begin_packed_struct struct
+  struct
   {
     char ss_pad1[SS_PAD1SIZE]; /* 6-byte pad; this is to make implementation-defined
                                 * pad up to alignment field that follows explicit in
@@ -339,7 +337,7 @@ struct sockaddr_storage
                                 * value minus size of ss_family ss_pad1, ss_align
                                 * fields is 112. */
   }
-  end_packed_struct ss_data[1];
+  ss_data[1];
 };
 
 /* The sockaddr structure is used to define a socket address which is used
@@ -391,7 +389,7 @@ struct ucred
  ****************************************************************************/
 
 static inline FAR struct cmsghdr *__cmsg_nxthdr(FAR void *__ctl,
-                                                unsigned long __size,
+                                                unsigned int __size,
                                                 FAR struct cmsghdr *__cmsg)
 {
   size_t len = CMSG_ALIGN(__cmsg->cmsg_len);

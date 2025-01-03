@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/csk6/csk6_irq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -87,6 +85,7 @@ static int csk6_reserved(int irq, void *context, void *arg)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_ARMV8M_USEBASEPRI
 static inline void csk6_prioritize_syscall(int priority)
 {
   uint32_t regval;
@@ -98,6 +97,7 @@ static inline void csk6_prioritize_syscall(int priority)
   regval |= (priority << NVIC_SYSH_PRIORITY_PR11_SHIFT);
   putreg32(regval, NVIC_SYSH8_11_PRIORITY);
 }
+#endif
 
 /****************************************************************************
  * Public Functions
@@ -178,7 +178,9 @@ void up_irqinitialize(void)
   /* up_prioritize_irq(CSK6_IRQ_PENDSV, NVIC_SYSH_PRIORITY_MIN); */
 
 #endif
+#ifdef CONFIG_ARMV8M_USEBASEPRI
   csk6_prioritize_syscall(NVIC_SYSH_SVCALL_PRIORITY);
+#endif
 
   /* If the MPU is enabled, then attach and enable the Memory Management
    * Fault handler.

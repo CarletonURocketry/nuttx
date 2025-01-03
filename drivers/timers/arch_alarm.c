@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/timers/arch_alarm.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -51,6 +49,22 @@ static clock_t g_current_tick;
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+static void ndelay_accurate(unsigned long nanoseconds)
+{
+  struct timespec now;
+  struct timespec end;
+  struct timespec delta;
+
+  ONESHOT_CURRENT(g_oneshot_lower, &now);
+  clock_nsec2time(&delta, nanoseconds);
+  clock_timespec_add(&now, &delta, &end);
+
+  while (clock_timespec_compare(&now, &end) < 0)
+    {
+      ONESHOT_CURRENT(g_oneshot_lower, &now);
+    }
+}
 
 static void udelay_coarse(useconds_t microseconds)
 {
@@ -102,9 +116,9 @@ static void udelay_coarse(useconds_t microseconds)
 static void oneshot_callback(FAR struct oneshot_lowerhalf_s *lower,
                              FAR void *arg)
 {
-  clock_t now = 0;
-
+  clock_t now;
   ONESHOT_TICK_CURRENT(g_oneshot_lower, &now);
+
 #ifdef CONFIG_SCHED_TICKLESS
   nxsched_alarm_tick_expiration(now);
 #else
@@ -140,7 +154,7 @@ static void oneshot_callback(FAR struct oneshot_lowerhalf_s *lower,
 void up_alarm_set_lowerhalf(FAR struct oneshot_lowerhalf_s *lower)
 {
 #ifdef CONFIG_SCHED_TICKLESS
-  clock_t ticks = 0;
+  clock_t ticks;
 #endif
 
   g_oneshot_lower = lower;
@@ -187,13 +201,14 @@ void up_alarm_set_lowerhalf(FAR struct oneshot_lowerhalf_s *lower)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_CLOCK_TIMEKEEPING
 void weak_function up_timer_getmask(FAR clock_t *mask)
 {
   *mask = 0;
 
   if (g_oneshot_lower != NULL)
     {
-      clock_t maxticks = 0;
+      clock_t maxticks;
 
       ONESHOT_TICK_MAX_DELAY(g_oneshot_lower, &maxticks);
 
@@ -209,7 +224,9 @@ void weak_function up_timer_getmask(FAR clock_t *mask)
         }
     }
 }
+#endif
 
+#if defined(CONFIG_SCHED_TICKLESS) || defined(CONFIG_CLOCK_TIMEKEEPING)
 int weak_function up_timer_gettick(FAR clock_t *ticks)
 {
   int ret = -EAGAIN;
@@ -233,6 +250,7 @@ int weak_function up_timer_gettime(struct timespec *ts)
 
   return ret;
 }
+#endif
 
 /****************************************************************************
  * Name: up_alarm_cancel
@@ -314,7 +332,7 @@ int weak_function up_alarm_tick_start(clock_t ticks)
 
   if (g_oneshot_lower != NULL)
     {
-      clock_t now = 0;
+      clock_t now;
       clock_t delta;
 
       ONESHOT_TICK_CURRENT(g_oneshot_lower, &now);
@@ -424,5 +442,12 @@ void weak_function up_udelay(useconds_t microseconds)
 
 void weak_function up_ndelay(unsigned long nanoseconds)
 {
-  udelay_coarse((nanoseconds + NSEC_PER_USEC - 1) / NSEC_PER_USEC);
+  if (g_oneshot_lower != NULL)
+    {
+      ndelay_accurate(nanoseconds);
+    }
+  else /* Oneshot timer hasn't been initialized yet */
+    {
+      udelay_coarse((nanoseconds + NSEC_PER_USEC - 1) / NSEC_PER_USEC);
+    }
 }

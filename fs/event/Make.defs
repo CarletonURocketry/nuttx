@@ -1,7 +1,5 @@
 ############################################################################
-# fs/event/Make.defs
-#
-# SPDX-License-Identifier: Apache-2.0
+# fs/events/Make.defs
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with

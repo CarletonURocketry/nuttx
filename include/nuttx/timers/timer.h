@@ -32,7 +32,6 @@
 #include <nuttx/compiler.h>
 #include <nuttx/irq.h>
 #include <nuttx/fs/ioctl.h>
-#include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -96,10 +95,10 @@
 /* Method access helper macros **********************************************/
 
 #define TIMER_START(l) \
-  ((l)->ops->start ? (l)->ops->start(l) : -ENOTSUP)
+  ((l)->ops->start ? (l)->ops->start(l) : -ENOSYS)
 
 #define TIMER_STOP(l) \
-  ((l)->ops->stop ? (l)->ops->stop(l) : -ENOTSUP)
+  ((l)->ops->stop ? (l)->ops->stop(l) : -ENOSYS)
 
 #define TIMER_GETSTATUS(l,s) \
   ((l)->ops->getstatus ? (l)->ops->getstatus(l,s) : timer_getstatus(l,s))
@@ -257,10 +256,7 @@ int timer_getstatus(FAR struct timer_lowerhalf_s *lower,
 {
   int ret;
 
-  if (lower->ops->tick_getstatus == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->tick_getstatus);
 
   ret = lower->ops->tick_getstatus(lower, status);
   if (ret >= 0)
@@ -276,11 +272,7 @@ static inline
 int timer_settimeout(FAR struct timer_lowerhalf_s *lower,
                      uint32_t timeout)
 {
-  if (lower->ops->tick_setttimeout == NULL)
-    {
-      return -ENOTSUP;
-    }
-
+  DEBUGASSERT(lower->ops->tick_setttimeout);
   return lower->ops->tick_setttimeout(lower, USEC2TICK(timeout));
 }
 
@@ -290,10 +282,7 @@ int timer_maxtimeout(FAR struct timer_lowerhalf_s *lower,
 {
   int ret;
 
-  if (lower->ops->tick_maxtimeout == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->tick_maxtimeout);
 
   ret = lower->ops->tick_maxtimeout(lower, maxtimeout);
   if (ret >= 0)
@@ -310,10 +299,7 @@ int timer_tick_getstatus(FAR struct timer_lowerhalf_s *lower,
 {
   int ret;
 
-  if (lower->ops->getstatus == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->getstatus);
 
   ret = lower->ops->getstatus(lower, status);
   if (ret >= 0)
@@ -329,11 +315,7 @@ static inline
 int timer_tick_settimeout(FAR struct timer_lowerhalf_s *lower,
                           uint32_t timeout)
 {
-  if (lower->ops->settimeout == NULL)
-    {
-      return -ENOTSUP;
-    }
-
+  DEBUGASSERT(lower->ops->settimeout);
   return lower->ops->settimeout(lower, TICK2USEC(timeout));
 }
 
@@ -343,10 +325,7 @@ int timer_tick_maxtimeout(FAR struct timer_lowerhalf_s *lower,
 {
   int ret;
 
-  if (lower->ops->maxtimeout == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->maxtimeout);
 
   ret = lower->ops->maxtimeout(lower, maxtimeout);
   if (ret >= 0)
@@ -429,8 +408,8 @@ void timer_unregister(FAR void *handle);
  *   arg      - Argument provided when the callback is called.
  *
  * Returned Value:
- *   Zero (OK), if the callback was successfully set, or -ENOTSUP if the
- *   lower half driver does not support the operation.
+ *   Zero (OK), if the callback was successfully set, or -ENOSYS if the lower
+ *   half driver does not support the operation.
  *
  ****************************************************************************/
 

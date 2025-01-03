@@ -158,16 +158,11 @@ struct mpu9250_config_s
  * Public Function Prototypes
  ****************************************************************************/
 
-/****************************************************************************
- * Name: mpu60x0_register
- *
- * Description:
- *   Declares the existence of an mpu9250 chip, wired according to
- *   config; creates an interface to it at path.
+/* Declares the existence of an mpu9250 chip, wired according to
+ * config; creates an interface to it at path.
  *
  * Returns 0 on success, or negative errno.
- *
- ****************************************************************************/
+ */
 
 int mpu9250_register(int devno, FAR struct mpu9250_config_s *config);
 

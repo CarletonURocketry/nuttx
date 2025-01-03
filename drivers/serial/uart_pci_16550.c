@@ -1,8 +1,6 @@
 /*****************************************************************************
  * drivers/serial/uart_pci_16550.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -121,6 +119,8 @@ static int pci_u16550_probe(FAR struct pci_device_s *dev);
  * Private Data
  *****************************************************************************/
 
+#ifdef CONFIG_16550_PCI_UART_QEMU
+
 static const struct pci_u16550_type_s g_pci_u16550_qemu_x1 =
 {
   .ports    = 1,
@@ -141,16 +141,20 @@ static const struct pci_u16550_type_s g_pci_u16550_qemu_x4 =
   .regincr  = 1,
   .portincr = 8,
 };
+#endif  /* CONFIG_16550_PCI_UART_QEMU */
 
+#ifdef CONFIG_16550_PCI_UART_AX99100
 static const struct pci_u16550_type_s g_pci_u16550_ax99100_x2 =
 {
   .ports    = 2,
   .regincr  = 1,
   .portincr = 8,
 };
+#endif  /* CONFIG_16550_PCI_UART_AX99100 */
 
 static const struct pci_device_id_s g_pci_u16550_id_table[] =
 {
+#ifdef CONFIG_16550_PCI_UART_QEMU
   {
     PCI_DEVICE(0x1b36, 0x0002),
     .driver_data = (uintptr_t)&g_pci_u16550_qemu_x1
@@ -163,10 +167,13 @@ static const struct pci_device_id_s g_pci_u16550_id_table[] =
     PCI_DEVICE(0x1b36, 0x0004),
     .driver_data = (uintptr_t)&g_pci_u16550_qemu_x4
   },
+#endif
+#ifdef CONFIG_16550_PCI_UART_AX99100
   {
     PCI_DEVICE(0x125b, 0x9100),
     .driver_data = (uintptr_t)&g_pci_u16550_ax99100_x2
   },
+#endif
   { }
 };
 
@@ -239,7 +246,6 @@ static struct pci_u16550_priv_s g_pci_u16550_priv0 =
     .flow      = true,
 #endif
     .rxtrigger = 2,
-    .lock      = SP_UNLOCKED
   },
 
   /* PCI specific data */
@@ -288,7 +294,6 @@ static struct pci_u16550_priv_s g_pci_u16550_priv1 =
     .flow      = true,
 #endif
     .rxtrigger = 2,
-    .lock      = SP_UNLOCKED
   },
 
   /* PCI specific data */
@@ -337,7 +342,6 @@ static struct pci_u16550_priv_s g_pci_u16550_priv2 =
     .flow      = true,
 #endif
     .rxtrigger = 2,
-    .lock      = SP_UNLOCKED
   },
 
   /* PCI specific data */
@@ -384,7 +388,6 @@ static struct pci_u16550_priv_s g_pci_u16550_priv3 =
     .flow      = true,
 #endif
     .rxtrigger = 2,
-    .lock      = SP_UNLOCKED
   },
 
   /* PCI specific data */
@@ -757,25 +760,36 @@ static int pci_u16550_probe(FAR struct pci_device_s *dev)
  *****************************************************************************/
 
 #ifdef CONFIG_16550_PCI_CONSOLE
-void up_putc(int ch)
+int up_putc(int ch)
 {
-  FAR struct u16550_s *priv = CONSOLE_DEV.priv;
   irqstate_t flags;
 
   /* Console not initialized yet */
 
   if (CONSOLE_DEV.ops == NULL)
     {
-      return;
+      return ch;
     }
 
   /* All interrupts must be disabled to prevent re-entrancy and to prevent
    * interrupts from firing in the serial driver code.
    */
 
-  flags = spin_lock_irqsave(&priv->lock);
-  u16550_putc(priv, ch);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  flags = spin_lock_irqsave(NULL);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      u16550_putc(CONSOLE_DEV.priv, '\r');
+    }
+
+  u16550_putc(CONSOLE_DEV.priv, ch);
+  spin_unlock_irqrestore(NULL, flags);
+
+  return ch;
 }
 #endif
 

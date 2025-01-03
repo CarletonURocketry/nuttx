@@ -1,8 +1,6 @@
 # ##############################################################################
 # arch/arm64/src/cmake/platform.cmake
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -42,7 +40,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
   OUTPUT_VARIABLE extra_library)
 list(APPEND EXTRA_LIB ${extra_library})
-if(CONFIG_LIBM_TOOLCHAIN)
+if(NOT CONFIG_LIBM)
   execute_process(
     COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAG_ARGS} ${NUTTX_EXTRA_FLAGS}
             --print-file-name=libm.a
@@ -50,7 +48,7 @@ if(CONFIG_LIBM_TOOLCHAIN)
     OUTPUT_VARIABLE extra_library)
   list(APPEND EXTRA_LIB ${extra_library})
 endif()
-if(CONFIG_LIBSUPCXX_TOOLCHAIN)
+if(CONFIG_LIBSUPCXX)
   execute_process(
     COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAG_ARGS} ${NUTTX_EXTRA_FLAGS}
             --print-file-name=libsupc++.a
@@ -58,7 +56,7 @@ if(CONFIG_LIBSUPCXX_TOOLCHAIN)
     OUTPUT_VARIABLE extra_library)
   list(APPEND EXTRA_LIB ${extra_library})
 endif()
-if(CONFIG_COVERAGE_TOOLCHAIN)
+if(CONFIG_SCHED_GCOV)
   execute_process(
     COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAG_ARGS} ${NUTTX_EXTRA_FLAGS}
             --print-file-name=libgcov.a

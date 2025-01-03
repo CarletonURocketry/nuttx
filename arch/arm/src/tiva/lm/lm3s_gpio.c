@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/tiva/lm/lm3s_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -33,7 +31,6 @@
 #include <debug.h>
 
 #include <nuttx/irq.h>
-#include <nuttx/spinlock.h>
 
 #include "arm_internal.h"
 #include "tiva_enablepwr.h"
@@ -120,8 +117,6 @@ struct gpio_func_s
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-static spinlock_t g_configgpio_lock = SP_UNLOCKED;
 
 static const struct gpio_func_s g_funcbits[] =
 {
@@ -720,7 +715,7 @@ int tiva_configgpio(pinconfig_t pinconfig)
 
   /* The following requires exclusive access to the GPIO registers */
 
-  flags = spin_lock_irqsave(&g_configgpio_lock);
+  flags = enter_critical_section();
 
   /* Enable power and clocking for this GPIO peripheral.  Applies both power
    * and clocking to the GPIO peripheral, bringing it a fully functional
@@ -770,7 +765,7 @@ int tiva_configgpio(pinconfig_t pinconfig)
     }
 #endif
 
-  spin_unlock_irqrestore(&g_configgpio_lock, flags);
+  leave_critical_section(flags);
   return OK;
 }
 

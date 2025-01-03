@@ -49,9 +49,12 @@
  * Public Data
  ****************************************************************************/
 
-#if !defined(CONFIG_SCHED_TICKLESS) && \
-    !defined(CONFIG_ALARM_ARCH) && !defined(CONFIG_TIMER_ARCH)
-volatile clock_t g_system_ticks = INITIAL_SYSTEM_TIMER_TICKS;
+#ifndef CONFIG_SCHED_TICKLESS
+#ifdef CONFIG_SYSTEM_TIME64
+volatile uint64_t g_system_ticks = INITIAL_SYSTEM_TIMER_TICKS;
+#else
+volatile uint32_t g_system_ticks = INITIAL_SYSTEM_TIMER_TICKS;
+#endif
 #endif
 
 #ifndef CONFIG_CLOCK_TIMEKEEPING
@@ -302,9 +305,7 @@ void clock_synchronize(FAR const struct timespec *tp)
  *
  ****************************************************************************/
 
-#if defined(CONFIG_RTC) && !defined(CONFIG_SCHED_TICKLESS) && \
-    !defined(CONFIG_CLOCK_TIMEKEEPING) && !defined(CONFIG_ALARM_ARCH) && \
-    !defined(CONFIG_TIMER_ARCH)
+#if defined(CONFIG_RTC) && !defined(CONFIG_SCHED_TICKLESS) && !defined(CONFIG_CLOCK_TIMEKEEPING)
 void clock_resynchronize(FAR struct timespec *rtc_diff)
 {
   struct timespec rtc_time;
@@ -392,8 +393,7 @@ skip:
  *
  ****************************************************************************/
 
-#if !defined(CONFIG_SCHED_TICKLESS) && \
-    !defined(CONFIG_ALARM_ARCH) && !defined(CONFIG_TIMER_ARCH)
+#ifndef CONFIG_SCHED_TICKLESS
 void clock_timer(void)
 {
   /* Increment the per-tick system counter */

@@ -1018,11 +1018,7 @@ str_lpad:
           flags &= ~(FL_NEGATIVE | FL_ALT);
           if (x < 0)
             {
-#ifndef CONFIG_HAVE_LONG_LONG
-              x = -(unsigned long)x;
-#else
-              x = -(unsigned long long)x;
-#endif
+              x = -x;
               flags |= FL_NEGATIVE;
             }
 
@@ -1119,37 +1115,28 @@ str_lpad:
               break;
 
             case 'p':
-#ifdef CONFIG_LIBC_PRINT_EXTENSION
               c = fmt_char(fmt);
               switch (c)
                 {
-                  case 'B':
-                    {
-                      FAR struct va_format *vaf = (FAR void *)(uintptr_t)x;
-
-                      lib_bsprintf(stream, vaf->fmt, vaf->va);
-                      continue;
-                    }
-
                   case 'V':
                     {
                       FAR struct va_format *vaf = (FAR void *)(uintptr_t)x;
-#  ifdef va_copy
+#ifdef va_copy
                       va_list copy;
 
                       va_copy(copy, *vaf->va);
                       lib_vsprintf(stream, vaf->fmt, copy);
                       va_end(copy);
-#  else
+#else
                       lib_vsprintf(stream, vaf->fmt, *vaf->va);
-#  endif
+#endif
                       continue;
                     }
 
                   case 'S':
                   case 's':
                     {
-#  ifdef CONFIG_ALLSYMS
+#ifdef CONFIG_ALLSYMS
                       FAR const struct symtab_s *symbol;
                       FAR void *addr = (FAR void *)(uintptr_t)x;
                       size_t symbolsize;
@@ -1174,7 +1161,7 @@ str_lpad:
 
                           continue;
                         }
-#  endif
+#endif
                       break;
                     }
 
@@ -1182,7 +1169,6 @@ str_lpad:
                     fmt_ungetc(fmt);
                     break;
                 }
-#endif
 
               flags |= FL_ALT;
 

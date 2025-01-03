@@ -1,8 +1,6 @@
 /****************************************************************************
  * crypto/random_pool.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -510,10 +508,15 @@ void up_randompool_initialize(void)
 }
 
 /****************************************************************************
- * Name: up_rngbuf
+ * Name: arc4random_buf
  *
  * Description:
- *   Fill a buffer of arbitrary length with randomness.
+ *   Fill a buffer of arbitrary length with randomness. This is the
+ *   preferred interface for getting random numbers. The traditional
+ *   /dev/random approach is susceptible for things like the attacker
+ *   exhausting file descriptors on purpose.
+ *
+ *   Note that this function cannot fail, other than by asserting.
  *
  * Input Parameters:
  *   bytes  - Buffer for returned random bytes
@@ -524,9 +527,33 @@ void up_randompool_initialize(void)
  *
  ****************************************************************************/
 
-void up_rngbuf(FAR void *bytes, size_t nbytes)
+void arc4random_buf(FAR void *bytes, size_t nbytes)
 {
   nxmutex_lock(&g_rng.rd_lock);
   rng_buf_internal(bytes, nbytes);
   nxmutex_unlock(&g_rng.rd_lock);
+}
+
+/****************************************************************************
+ * Name: arc4random
+ *
+ * Description:
+ *   Returns a single 32-bit value. This is the preferred interface for
+ *   getting random numbers. The traditional /dev/random approach is
+ *   susceptible for things like the attacker exhausting file
+ *   descriptors on purpose.
+ *
+ *   Note that this function cannot fail, other than by asserting.
+ *
+ * Returned Value:
+ *   a random 32-bit value.
+ *
+ ****************************************************************************/
+
+uint32_t arc4random(void)
+{
+  uint32_t ret;
+
+  arc4random_buf(&ret, sizeof(ret));
+  return ret;
 }

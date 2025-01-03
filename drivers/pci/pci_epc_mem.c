@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/pci/pci_epc_mem.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -51,7 +49,6 @@
  *
  * Returned Value:
  *   Memory window alloced if success, NULL if failed
- *
  ****************************************************************************/
 
 static FAR struct pci_epc_mem_s *
@@ -92,7 +89,6 @@ pci_epc_mem_find(FAR struct pci_epc_ctrl_s *epc,
  *
  * Returned Value:
  *   0 if success, negative if failed
- *
  ****************************************************************************/
 
 int pci_epc_mem_multi_init(FAR struct pci_epc_ctrl_s *epc,
@@ -164,7 +160,6 @@ err:
  *
  * Returned Value:
  *   0 if success, negative if failed
- *
  ****************************************************************************/
 
 int pci_epc_mem_init(FAR struct pci_epc_ctrl_s *epc, FAR void *virt,
@@ -194,7 +189,6 @@ int pci_epc_mem_init(FAR struct pci_epc_ctrl_s *epc, FAR void *virt,
  *
  * Returned Value:
  *   None
- *
  ****************************************************************************/
 
 void pci_epc_mem_exit(FAR struct pci_epc_ctrl_s *epc)
@@ -233,7 +227,6 @@ void pci_epc_mem_exit(FAR struct pci_epc_ctrl_s *epc)
  *
  * Returned Value:
  *   The memory address alloced if success, NULL if failed
- *
  ****************************************************************************/
 
 FAR void *pci_epc_mem_alloc_addr(FAR struct pci_epc_ctrl_s *epc,
@@ -276,7 +269,6 @@ FAR void *pci_epc_mem_alloc_addr(FAR struct pci_epc_ctrl_s *epc,
  *
  * Returned Value:
  *   None
- *
  ****************************************************************************/
 
 void pci_epc_mem_free_addr(FAR struct pci_epc_ctrl_s *epc,

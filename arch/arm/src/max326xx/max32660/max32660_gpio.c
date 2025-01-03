@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/max326xx/max32660/max32660_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -63,8 +61,6 @@
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-static spinlock_t g_max32660_gpio_lock = SP_UNLOCKED;
 
 #ifdef CONFIG_DEBUG_GPIO_INFO
 static const char *g_afmode[4] =
@@ -244,7 +240,7 @@ int max326_gpio_config(max326_pinset_t pinset)
 
   /* Modification of all registers must be atomic */
 
-  flags = spin_lock_irqsave(&g_max32660_gpio_lock);
+  flags = spin_lock_irqsave(NULL);
 
   /* First, force the pin configuration to the default generic input state.
    * So that we know we are starting from a known state.
@@ -405,7 +401,7 @@ int max326_gpio_config(max326_pinset_t pinset)
       putreg32(regval, MAX326_GPIO0_WAKEEN);
     }
 
-  spin_unlock_irqrestore(&g_max32660_gpio_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   return OK;
 }
 
@@ -428,7 +424,7 @@ void max326_gpio_write(max326_pinset_t pinset, bool value)
 
   /* Modification of registers must be atomic */
 
-  flags  = spin_lock_irqsave(&g_max32660_gpio_lock);
+  flags  = spin_lock_irqsave(NULL);
   regval = getreg32(MAX326_GPIO0_OUT);
   if (value)
     {
@@ -440,7 +436,7 @@ void max326_gpio_write(max326_pinset_t pinset, bool value)
     }
 
   putreg32(regval, MAX326_GPIO0_OUT);
-  spin_unlock_irqrestore(&g_max32660_gpio_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************

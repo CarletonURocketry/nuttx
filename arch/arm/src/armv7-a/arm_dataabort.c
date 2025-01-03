@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv7-a/arm_dataabort.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -70,13 +68,14 @@
 uint32_t *arm_dataabort(uint32_t *regs, uint32_t dfar, uint32_t dfsr)
 {
   struct tcb_s *tcb = this_task();
-  uint32_t *saveregs;
-  bool savestate;
+  uint32_t *savestate;
 
-  savestate = up_interrupt_context();
-  saveregs = tcb->xcp.regs;
-  tcb->xcp.regs = regs;
-  up_set_interrupt_context(true);
+  /* Save the saved processor context in current_regs where it can be
+   * accessed for register dumps and possibly context switching.
+   */
+
+  savestate = up_current_regs();
+  up_set_current_regs(regs);
 
   /* In the NuttX on-demand paging implementation, only the read-only, .text
    * section is paged.  However, the ARM compiler generated PC-relative data
@@ -130,10 +129,12 @@ uint32_t *arm_dataabort(uint32_t *regs, uint32_t dfar, uint32_t dfsr)
 
   pg_miss();
 
-  /* Restore the previous value of saveregs. */
+  /* Restore the previous value of current_regs.  NULL would indicate that
+   * we are no longer in an interrupt handler.  It will be non-NULL if we
+   * are returning from a nested interrupt.
+   */
 
-  up_set_interrupt_context(savestate);
-  tcb->xcp.regs = saveregs;
+  up_set_current_regs(savestate);
   return regs;
 
 segfault:
@@ -147,10 +148,11 @@ segfault:
 
 uint32_t *arm_dataabort(uint32_t *regs, uint32_t dfar, uint32_t dfsr)
 {
-  struct tcb_s *tcb = this_task();
+  /* Save the saved processor context in current_regs where it can be
+   * accessed for register dumps and possibly context switching.
+   */
 
-  tcb->xcp.regs = regs;
-  up_set_interrupt_context(true);
+  up_set_current_regs(regs);
 
   /* Crash -- possibly showing diagnostic debug information. */
 

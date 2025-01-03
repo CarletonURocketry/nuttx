@@ -64,8 +64,8 @@ static int lzfoutstream_flush(FAR struct lib_outstream_s *self)
  * Name: lzfoutstream_puts
  ****************************************************************************/
 
-static ssize_t lzfoutstream_puts(FAR struct lib_outstream_s *self,
-                                 FAR const void *buf, size_t len)
+static int lzfoutstream_puts(FAR struct lib_outstream_s *self,
+                             FAR const void *buf, int len)
 {
   FAR struct lib_lzfoutstream_s *stream =
                                  (FAR struct lib_lzfoutstream_s *)self;
@@ -74,7 +74,7 @@ static ssize_t lzfoutstream_puts(FAR struct lib_outstream_s *self,
   size_t total = len;
   size_t copyin;
   size_t outlen;
-  ssize_t ret;
+  int ret;
 
   while (total > 0)
     {

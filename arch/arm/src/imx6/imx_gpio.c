@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/imx6/imx_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -47,8 +45,6 @@
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-static spinlock_t g_imx_gpio_lock = SP_UNLOCKED;
 
 static const uint8_t g_gpio1_padmux[IMX_GPIO_NPINS] =
 {
@@ -517,7 +513,7 @@ int imx_config_gpio(gpio_pinset_t pinset)
 
   /* Configure the pin as an input initially to avoid any spurious outputs */
 
-  flags = spin_lock_irqsave(&g_imx_gpio_lock);
+  flags = spin_lock_irqsave(NULL);
 
   /* Configure based upon the pin mode */
 
@@ -560,7 +556,7 @@ int imx_config_gpio(gpio_pinset_t pinset)
         break;
     }
 
-  spin_unlock_irqrestore(&g_imx_gpio_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   return ret;
 }
 
@@ -578,9 +574,9 @@ void imx_gpio_write(gpio_pinset_t pinset, bool value)
   int port = (pinset & GPIO_PORT_MASK) >> GPIO_PORT_SHIFT;
   int pin  = (pinset & GPIO_PIN_MASK) >> GPIO_PIN_SHIFT;
 
-  flags = spin_lock_irqsave(&g_imx_gpio_lock);
+  flags = enter_critical_section();
   imx_gpio_setoutput(port, pin, value);
-  spin_unlock_irqrestore(&g_imx_gpio_lock, flags);
+  leave_critical_section(flags);
 }
 
 /****************************************************************************
@@ -598,8 +594,8 @@ bool imx_gpio_read(gpio_pinset_t pinset)
   int pin  = (pinset & GPIO_PIN_MASK) >> GPIO_PIN_SHIFT;
   bool value;
 
-  flags = spin_lock_irqsave(&g_imx_gpio_lock);
+  flags = enter_critical_section();
   value = imx_gpio_getinput(port, pin);
-  spin_unlock_irqrestore(&g_imx_gpio_lock, flags);
+  leave_critical_section(flags);
   return value;
 }

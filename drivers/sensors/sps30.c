@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/sensors/sps30.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -179,9 +177,7 @@ static const struct file_operations g_sps30fops =
   sps30_ioctl,    /* ioctl */
   NULL,           /* mmap */
   NULL,           /* truncate */
-  NULL,           /* poll */
-  NULL,           /* readv */
-  NULL            /* writev */
+  NULL            /* poll */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   , sps30_unlink /* unlink */
 #endif

@@ -34,7 +34,6 @@
 #include <debug.h>
 
 #include <nuttx/net/net.h>
-#include <nuttx/net/netconfig.h>
 #include <nuttx/net/tcp.h>
 #include <nuttx/kmalloc.h>
 

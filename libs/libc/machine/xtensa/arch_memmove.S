@@ -47,7 +47,7 @@
  ****************************************************************************/
   .text
   .begin schedule
-  .global ARCH_LIBCFUN(memmove)
+  .global memmove
 
 /*
  * Byte by byte copy
@@ -310,7 +310,7 @@
           # return to main algorithm
 
   .align  4
-ARCH_LIBCFUN(memmove):
+memmove:
 
   ENTRY(16)
   # a2/ dst, a3/ src, a4/ len
@@ -484,6 +484,6 @@ ARCH_LIBCFUN(memmove):
   RET(16)
 
   .end schedule
-  .size ARCH_LIBCFUN(memmove), . - ARCH_LIBCFUN(memmove)
+  .size memmove, . - memmove
 
 #endif

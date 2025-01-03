@@ -37,10 +37,6 @@
 #  include <nuttx/board.h>
 #endif
 
-#ifdef CONFIG_CLOCK_TIMEKEEPING
-#  include "clock/clock_timekeeping.h"
-#endif
-
 #include "sched/sched.h"
 #include "wdog/wdog.h"
 #include "clock/clock.h"

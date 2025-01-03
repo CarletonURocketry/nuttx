@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_cpustart.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -106,9 +104,16 @@ uint64_t *const g_cpu_int_fiq_stacktop[CONFIG_SMP_NCPUS] =
  * Private Functions
  ****************************************************************************/
 
+static inline void local_delay(void)
+{
+  for (volatile int i = 0; i < 1000; i++)
+    {
+    }
+}
+
 static void arm64_smp_init_top(void)
 {
-  struct tcb_s *tcb = current_task(this_cpu());
+  struct tcb_s *tcb = this_task();
 
 #ifndef CONFIG_SUPPRESS_INTERRUPTS
   /* And finally, enable interrupts */
@@ -205,7 +210,7 @@ int up_cpu_start(int cpu)
 #ifdef CONFIG_ARM64_SMP_BUSY_WAIT
   uint32_t *address = (uint32_t *)CONFIG_ARM64_SMP_BUSY_WAIT_FLAG_ADDR;
   *address = 1;
-  up_flush_dcache((uintptr_t)address, (uintptr_t)address + sizeof(address));
+  up_flush_dcache((uintptr_t)address, sizeof(address));
 #endif
 
   arm64_start_cpu(cpu);
@@ -224,14 +229,6 @@ void arm64_boot_secondary_c_routine(void)
 #ifdef CONFIG_ARCH_HAVE_MMU
   arm64_mmu_init(false);
 #endif
-
-  /* We need to confirm that current_task has been initialized. */
-
-  while (!current_task(this_cpu()));
-
-  /* Init idle task to percpu reg */
-
-  up_update_task(current_task(this_cpu()));
 
   arm64_gic_secondary_init();
 

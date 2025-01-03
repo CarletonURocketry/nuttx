@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/xtensa/src/common/xtensa_exit.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -56,17 +54,25 @@
 
 void up_exit(int status)
 {
+  struct tcb_s *tcb = this_task();
+
   /* Destroy the task at the head of the ready to run list. */
 
   nxtask_exit();
 
-  /* Update g_running_tasks */
+  /* Now, perform the context switch to the new ready-to-run task at the
+   * head of the list.
+   */
 
-  g_running_tasks[this_cpu()] = this_task();
+  tcb = this_task();
+
+  /* Scheduler parameters will update inside syscall */
+
+  g_running_tasks[this_cpu()] = NULL;
 
   /* Then switch contexts */
 
-  xtensa_context_restore();
+  xtensa_context_restore(tcb->xcp.regs);
 
   /* xtensa_context_restore() should not return but could if the
    * software interrupts are disabled.

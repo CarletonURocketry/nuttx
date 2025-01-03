@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/stm32wb/stm32wb_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -32,8 +30,6 @@
 #include <errno.h>
 #include <debug.h>
 
-#include <nuttx/spinlock.h>
-
 #include "arm_internal.h"
 #include "chip.h"
 #include "stm32wb_gpio.h"
@@ -43,12 +39,6 @@
 #if defined(CONFIG_STM32WB_USE_LEGACY_PINMAP)
 #  pragma message "CONFIG_STM32WB_USE_LEGACY_PINMAP will be deprecated migrate board.h see tools/stm32_pinmap_tool.py"
 #endif
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
-
-static spinlock_t g_configgpio_lock = SP_UNLOCKED;
 
 /****************************************************************************
  * Public Data
@@ -168,7 +158,7 @@ int stm32wb_configgpio(uint32_t cfgset)
    * exclusive access to all of the GPIO configuration registers.
    */
 
-  flags = spin_lock_irqsave(&g_configgpio_lock);
+  flags = enter_critical_section();
 
   /* Now apply the configuration to the mode register */
 
@@ -304,7 +294,7 @@ int stm32wb_configgpio(uint32_t cfgset)
       putreg32(regval, regaddr);
     }
 
-  spin_unlock_irqrestore(&g_configgpio_lock, flags);
+  leave_critical_section(flags);
   return OK;
 }
 

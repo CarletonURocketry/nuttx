@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/misc/rpmsgdev_server.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -403,13 +401,12 @@ static int rpmsgdev_poll_handler(FAR struct rpmsg_endpoint *ept,
     }
   else
     {
-      if (dev->cfd != 0)
+      DEBUGASSERT(dev->cfd != 0);
+
+      msg->header.result = file_poll(&dev->file, &dev->fd, false);
+      if (msg->header.result == OK)
         {
-          msg->header.result = file_poll(&dev->file, &dev->fd, false);
-          if (msg->header.result == OK)
-            {
-              dev->cfd = 0;
-            }
+          dev->cfd = 0;
         }
     }
 

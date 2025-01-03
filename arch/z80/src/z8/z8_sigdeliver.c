@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/z80/src/z8/z8_sigdeliver.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -36,7 +34,6 @@
 
 #include "chip/switch.h"
 #include "sched/sched.h"
-#include "signal/signal.h"
 #include "z80_internal.h"
 
 /****************************************************************************
@@ -79,9 +76,9 @@ void z80_sigdeliver(void)
 
   board_autoled_on(LED_SIGNAL);
 
-  sinfo("rtcb=%p sigpendactionq.head=%p\n",
-        rtcb, rtcb->sigpendactionq.head);
-  DEBUGASSERT((rtcb->flags & TCB_FLAG_SIGDELIVER) != 0);
+  sinfo("rtcb=%p sigdeliver=%p sigpendactionq.head=%p\n",
+        rtcb, rtcb->sigdeliver, rtcb->sigpendactionq.head);
+  DEBUGASSERT(rtcb->sigdeliver != NULL);
 
   /* Save the return state on the stack. */
 
@@ -97,7 +94,7 @@ void z80_sigdeliver(void)
 
   /* Deliver the signals */
 
-  nxsig_deliver(rtcb);
+  (rtcb->sigdeliver)(rtcb);
 
   /* Output any debug messages BEFORE restoring errno (because they may
    * alter errno), then disable interrupts again and restore the original
@@ -119,10 +116,7 @@ void z80_sigdeliver(void)
 
   regs[XCPT_PC]     = rtcb->xcp.saved_pc;
   regs[XCPT_IRQCTL] = rtcb->xcp.saved_irqctl;
-
-  /* Allows next handler to be scheduled */
-
-  rtcb->flags &= ~TCB_FLAG_SIGDELIVER;
+  rtcb->sigdeliver  = NULL;  /* Allows next handler to be scheduled */
 
   /* Then restore the correct state for this thread of execution. */
 

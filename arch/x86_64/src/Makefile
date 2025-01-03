@@ -1,8 +1,6 @@
 ############################################################################
 # arch/x86_64/src/Makefile
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.  The
@@ -20,7 +18,7 @@
 #
 ############################################################################
 
-include $(TOPDIR)/tools/Make.defs
+include $(TOPDIR)/tools/apps-or-nuttx-Make.defs
 include chip/Make.defs
 
 ifeq ($(CONFIG_ARCH_INTEL64),y)
@@ -95,7 +93,7 @@ ifeq ($(CONFIG_LIBM_TOOLCHAIN),y)
   EXTRA_LIBS += ${wildcard ${shell $(CC) $(ARCHCPUFLAGS) --print-file-name=libm.a}}
 endif
 
-ifeq ($(CONFIG_LIBSUPCXX_TOOLCHAIN),y)
+ifeq ($(CONFIG_LIBSUPCXX),y)
   EXTRA_LIBS += ${wildcard ${shell $(CC) $(ARCHCPUFLAGS) --print-file-name=libsupc++.a}}
 endif
 
@@ -133,10 +131,6 @@ ifeq ($(CONFIG_ALLSYMS),y)
 EXTRA_LIBS += allsyms$(OBJEXT)
 endif
 
-ifeq ($(CONFIG_MM_KASAN_GLOBAL),y)
-EXTRA_LIBS += kasan_globals$(OBJEXT)
-endif
-
 define LINK_ALLSYMS_KASAN
 	$(if $(CONFIG_ALLSYMS),
 	$(Q) $(TOPDIR)/tools/mkallsyms.py $(NUTTX) allsyms.tmp --orderbyname $(CONFIG_SYMTAB_ORDEREDBYNAME)
@@ -157,6 +151,12 @@ $(addsuffix .tmp,$(ARCHSCRIPT)): $(ARCHSCRIPT)
 nuttx$(EXEEXT): $(HEAD_OBJ) board/libboard$(LIBEXT) $(addsuffix .tmp,$(ARCHSCRIPT))
 	@echo "LD: nuttx$(EXEEXT)"
 
+ifneq ($(CONFIG_WINDOWS_NATIVE),y)
+	$(Q) $(NM) $(NUTTX) | \
+	grep -v '\(compiled\)\|\(\$(OBJEXT)$$\)\|\( [aUw] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)' | \
+	sort > $(TOPDIR)/System.map
+endif
+
 ifeq ($(CONFIG_ALLSYMS)$(CONFIG_MM_KASAN_GLOBAL),)
 	$(Q) $(LD) $(LDFLAGS) $(LIBPATHS) $(EXTRA_LIBPATHS) \
 		-o $(NUTTX) $(HEAD_OBJ) $(EXTRA_OBJS) \
@@ -168,12 +168,6 @@ else
 	$(Q) $(call LINK_ALLSYMS_KASAN)
 endif
 	$(Q) $(call DELFILE, $(addsuffix .tmp,$(ARCHSCRIPT)))
-
-ifneq ($(CONFIG_WINDOWS_NATIVE),y)
-	$(Q) $(NM) $(NUTTX) | \
-	grep -v '\(compiled\)\|\(\$(OBJEXT)$$\)\|\( [aUw] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)' | \
-	sort > $(TOPDIR)/System.map
-endif
 
 ifeq ($(CONFIG_ARCH_MULTIBOOT1),y)
 	@echo "Generating: nuttx32 in ELF32/multiboot1"

@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv7-a/arm_gicv2.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -52,7 +50,7 @@
  ****************************************************************************/
 
 #if defined(CONFIG_SMP) && CONFIG_SMP_NCPUS > 1
-static atomic_t g_gic_init_done;
+static volatile cpu_set_t g_gic_init_done;
 #endif
 
 /****************************************************************************
@@ -72,7 +70,11 @@ static atomic_t g_gic_init_done;
 #if defined(CONFIG_SMP) && CONFIG_SMP_NCPUS > 1
 static void arm_gic_init_done(void)
 {
-  atomic_fetch_or(&g_gic_init_done, 1 << this_cpu());
+  irqstate_t flags;
+
+  flags = spin_lock_irqsave(NULL);
+  CPU_SET(this_cpu(), &g_gic_init_done);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 static void arm_gic_wait_done(cpu_set_t cpuset)
@@ -81,7 +83,7 @@ static void arm_gic_wait_done(cpu_set_t cpuset)
 
   do
     {
-      tmpset = (cpu_set_t)atomic_read(&g_gic_init_done) & cpuset;
+      CPU_AND(&tmpset, &g_gic_init_done, &cpuset);
     }
   while (!CPU_EQUAL(&tmpset, &cpuset));
 }

@@ -1,7 +1,6 @@
 /****************************************************************************
  * fs/mnemofs/mnemofs_blkalloc.c
- *
- * SPDX-License-Identifier: Apache-2.0 or BSD-3-Clause
+ * Block Allocator for mnemofs
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

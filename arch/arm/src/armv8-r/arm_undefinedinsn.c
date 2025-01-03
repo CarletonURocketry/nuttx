@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv8-r/arm_undefinedinsn.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -31,7 +29,6 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
-#include <sched/sched.h>
 
 #include "arm_internal.h"
 
@@ -45,10 +42,11 @@
 
 uint32_t *arm_undefinedinsn(uint32_t *regs)
 {
-  struct tcb_s *tcb = this_task();
+  /* Save the saved processor context in current_regs where it can be
+   * accessed for register dumps and possibly context switching.
+   */
 
-  tcb->xcp.regs = regs;
-  up_set_interrupt_context(true);
+  up_set_current_regs(regs);
 
   if (regs[REG_PC] >= (uint32_t)_stext && regs[REG_PC] < (uint32_t)_etext)
     {

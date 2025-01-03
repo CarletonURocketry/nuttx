@@ -170,21 +170,7 @@ longjmp:
 	vmsr		fpscr, r2			/* Restore the FPSCR */
 #endif /* CONFIG_ARCH_FPU */
 
-	/* Check and substitute the given return value to 1 if it's 0 */
-
-	movs		r0, r1
-#ifdef CONFIG_ARCH_ARMV6M
-	/* ARMv6-M only supports branching with condition
-	 * So we fall back to not use IT blocks in that case
-	 */
-
-	bne		1f
-	movs		r0, #1
-1:
-#else
-	it		eq
-	moveq		r0, #1
-#endif
+	mov		r0, r1				/* return val */
 	bx		lr
 
 	.size	longjmp, .-longjmp

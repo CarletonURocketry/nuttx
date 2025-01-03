@@ -287,11 +287,11 @@ Peripheral  Support NOTES
 =========== ======= ====================
 ADC          No
 AES          No
-Bluetooth    Yes
+Bluetooth    No
 CAN/TWAI     Yes
 CDC Console  Yes    Rev.3
 DMA          Yes
-eFuse        Yes    Also virtual mode supported
+eFuse        No
 GPIO         Yes
 I2C          Yes
 LED_PWM      Yes

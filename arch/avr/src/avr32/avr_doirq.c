@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/avr/src/avr32/avr_doirq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -60,11 +58,6 @@
 
 uint32_t *avr_doirq(int irq, uint32_t *regs)
 {
-  struct tcb_s **running_task = &g_running_tasks[this_cpu()];
-  struct tcb_s *tcb;
-
-  avr_copystate((*running_task)->xcp.regs, regs);
-
   board_autoled_on(LED_INIRQ);
 #ifdef CONFIG_SUPPRESS_INTERRUPTS
   PANIC();
@@ -91,8 +84,6 @@ uint32_t *avr_doirq(int irq, uint32_t *regs)
 
   if (regs != up_current_regs())
     {
-      tcb = this_task();
-
 #ifdef CONFIG_ARCH_FPU
       /* Restore floating point registers */
 
@@ -106,7 +97,7 @@ uint32_t *avr_doirq(int irq, uint32_t *regs)
        * thread at the head of the ready-to-run list.
        */
 
-      addrenv_switch(tcb);
+      addrenv_switch(NULL);
 #endif
 
       /* Record the new "running" task when context switch occurred.
@@ -114,7 +105,7 @@ uint32_t *avr_doirq(int irq, uint32_t *regs)
        * crashes.
        */
 
-      *running_task = tcb;
+      g_running_tasks[this_cpu()] = this_task();
     }
 
   /* If a context switch occurred while processing the interrupt then

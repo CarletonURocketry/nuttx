@@ -46,11 +46,22 @@ struct smp_call_cookie_s
   int         error;
 };
 
+struct smp_call_data_s
+{
+  sq_entry_t                    node[CONFIG_SMP_NCPUS];
+  nxsched_smp_call_t            func;
+  FAR void                     *arg;
+  FAR struct smp_call_cookie_s *cookie;
+  spinlock_t                    lock;
+  volatile int                  refcount;
+};
+
 /****************************************************************************
  * Private Data
  ****************************************************************************/
 
 static sq_queue_t g_smp_call_queue[CONFIG_SMP_NCPUS];
+static struct smp_call_data_s g_smp_call_data;
 static spinlock_t g_smp_call_lock;
 
 /****************************************************************************
@@ -65,7 +76,7 @@ static spinlock_t g_smp_call_lock;
  *
  * Input Parameters:
  *   cpu        - Target cpu id
- *   data  - Call data
+ *   call_data  - Call data
  *
  * Returned Value:
  *   None
@@ -73,16 +84,12 @@ static spinlock_t g_smp_call_lock;
  ****************************************************************************/
 
 static void nxsched_smp_call_add(int cpu,
-                                 FAR struct smp_call_data_s *data)
+                                 FAR struct smp_call_data_s *call_data)
 {
   irqstate_t flags;
 
   flags = spin_lock_irqsave(&g_smp_call_lock);
-  if (!sq_inqueue(&data->node[cpu], &g_smp_call_queue[cpu]))
-    {
-      sq_addlast(&data->node[cpu], &g_smp_call_queue[cpu]);
-    }
-
+  sq_addlast(&call_data->node[cpu], &g_smp_call_queue[cpu]);
   spin_unlock_irqrestore(&g_smp_call_lock, flags);
 }
 
@@ -120,26 +127,33 @@ int nxsched_smp_call_handler(int irq, FAR void *context,
 
   sq_for_every_safe(call_queue, curr, next)
     {
-      FAR struct smp_call_data_s *data =
+      FAR struct smp_call_data_s *call_data =
         container_of(curr, struct smp_call_data_s, node[cpu]);
       int ret;
 
-      sq_rem(&data->node[cpu], call_queue);
+      sq_rem(&call_data->node[cpu], call_queue);
 
       spin_unlock_irqrestore(&g_smp_call_lock, flags);
 
-      ret = data->func(data->arg);
+      ret = call_data->func(call_data->arg);
 
       flags = spin_lock_irqsave(&g_smp_call_lock);
+      if (spin_is_locked(&call_data->lock))
+        {
+          if (--call_data->refcount == 0)
+            {
+              spin_unlock(&call_data->lock);
+            }
+        }
 
-      if (data->cookie != NULL)
+      if (call_data->cookie != NULL)
         {
           if (ret < 0)
             {
-              data->cookie->error = ret;
+              call_data->cookie->error = ret;
             }
 
-          nxsem_post(&data->cookie->sem);
+          nxsem_post(&call_data->cookie->sem);
         }
     }
 
@@ -148,41 +162,16 @@ int nxsched_smp_call_handler(int irq, FAR void *context,
 }
 
 /****************************************************************************
- * Name: nxsched_smp_call_init
- *
- * Description:
- *   Init call_data
- *
- * Input Parameters:
- *   data - Call data
- *   func - Function
- *   arg  - Function args
- *
- * Returned Value:
- *   Result
- *
- ****************************************************************************/
-
-void nxsched_smp_call_init(FAR struct smp_call_data_s *data,
-                           nxsched_smp_call_t func, FAR void *arg)
-{
-  DEBUGASSERT(data != NULL && func != NULL);
-
-  memset(data, 0, sizeof(struct smp_call_data_s));
-  data->func = func;
-  data->arg = arg;
-}
-
-/****************************************************************************
  * Name: nxsched_smp_call_single
  *
  * Description:
- *   Call function on single processor, wait function callback
+ *   Call function on single processor
  *
  * Input Parameters:
  *   cpuid - Target cpu id
  *   func  - Function
  *   arg   - Function args
+ *   wait  - Wait function callback or not
  *
  * Returned Value:
  *   Result
@@ -190,25 +179,26 @@ void nxsched_smp_call_init(FAR struct smp_call_data_s *data,
  ****************************************************************************/
 
 int nxsched_smp_call_single(int cpuid, nxsched_smp_call_t func,
-                            FAR void *arg)
+                            FAR void *arg, bool wait)
 {
   cpu_set_t cpuset;
 
   CPU_ZERO(&cpuset);
   CPU_SET(cpuid, &cpuset);
-  return nxsched_smp_call(cpuset, func, arg);
+  return nxsched_smp_call(cpuset, func, arg, wait);
 }
 
 /****************************************************************************
  * Name: nxsched_smp_call
  *
  * Description:
- *   Call function on multi processors, wait function callback
+ *   Call function on multi processors
  *
  * Input Parameters:
  *   cpuset - Target cpuset
  *   func   - Function
  *   arg    - Function args
+ *   wait   - Wait function callback or not
  *
  * Returned Value:
  *   Result
@@ -216,96 +206,26 @@ int nxsched_smp_call_single(int cpuid, nxsched_smp_call_t func,
  ****************************************************************************/
 
 int nxsched_smp_call(cpu_set_t cpuset, nxsched_smp_call_t func,
-                     FAR void *arg)
+                     FAR void *arg, bool wait)
 {
-  struct smp_call_data_s data;
-  struct smp_call_cookie_s cookie;
-  int cpucnt;
+  struct smp_call_data_s call_data_stack =
+    {
+      0
+    };
+
+  struct smp_call_cookie_s cookie =
+    {
+      0
+    };
+
+  FAR struct smp_call_data_s *call_data;
+  int remote_cpus;
   int ret = OK;
   int i;
 
   /* Cannot wait in interrupt context. */
 
-  DEBUGASSERT(!up_interrupt_context());
-  nxsched_smp_call_init(&data, func, arg);
-  cookie.error = 0;
-  nxsem_init(&cookie.sem, 0, 0);
-
-  data.cookie = &cookie;
-  ret = nxsched_smp_call_async(cpuset, &data);
-
-  if (ret < 0)
-    {
-      nxsem_destroy(&cookie.sem);
-      return ret;
-    }
-
-  cpucnt = CPU_COUNT(&cpuset);
-  for (i = 0; i < cpucnt; i++)
-    {
-      int rc = nxsem_wait_uninterruptible(&cookie.sem);
-      if (rc < 0)
-        {
-          ret = rc;
-        }
-    }
-
-  if (cookie.error < 0)
-    {
-      ret = cookie.error;
-    }
-
-  nxsem_destroy(&cookie.sem);
-
-  return ret;
-}
-
-/****************************************************************************
- * Name: nxsched_smp_call_single_async
- *
- * Description:
- *   Call function on single processor async
- *
- * Input Parameters:
- *   cpuset - Target cpuset
- *   data   - Call data
- *
- * Returned Value:
- *   Result
- *
- ****************************************************************************/
-
-int nxsched_smp_call_single_async(int cpuid,
-                                  FAR struct smp_call_data_s *data)
-{
-  cpu_set_t cpuset;
-
-  CPU_ZERO(&cpuset);
-  CPU_SET(cpuid, &cpuset);
-  return nxsched_smp_call_async(cpuset, data);
-}
-
-/****************************************************************************
- * Name: nxsched_smp_call_async
- *
- * Description:
- *   Call function on multi processors async
- *
- * Input Parameters:
- *   cpuset - Target cpuset
- *   data   - Call data
- *
- * Returned Value:
- *   Result
- *
- ****************************************************************************/
-
-int nxsched_smp_call_async(cpu_set_t cpuset,
-                           FAR struct smp_call_data_s *data)
-{
-  int cpucnt;
-  int ret = OK;
-  int i;
+  DEBUGASSERT(!(wait && up_interrupt_context()));
 
   /* Prevent reschedule on another processor */
 
@@ -316,39 +236,68 @@ int nxsched_smp_call_async(cpu_set_t cpuset,
 
   if (CPU_ISSET(this_cpu(), &cpuset))
     {
-      ret = data->func(data->arg);
-      if (data->cookie != NULL)
+      ret = func(arg);
+      if (ret < 0)
         {
-          data->cookie->error = ret;
-          nxsem_post(&data->cookie->sem);
-          if (ret < 0)
-            {
-              goto out;
-            }
+          goto out;
         }
 
       CPU_CLR(this_cpu(), &cpuset);
     }
 
-  cpucnt = CPU_COUNT(&cpuset);
-  if (cpucnt == 0)
+  remote_cpus = CPU_COUNT(&cpuset);
+  if (remote_cpus == 0)
     {
       goto out;
     }
+
+  /* If waiting is necessary, initialize and wait for the cookie. */
+
+  if (wait)
+    {
+      nxsem_init(&cookie.sem, 0, 0);
+
+      call_data = &call_data_stack;
+      call_data->cookie = &cookie;
+    }
+  else
+    {
+      call_data = &g_smp_call_data;
+      spin_lock(&call_data->lock);
+    }
+
+  call_data->func = func;
+  call_data->arg  = arg;
+  call_data->refcount = remote_cpus;
 
   for (i = 0; i < CONFIG_SMP_NCPUS; i++)
     {
       if (CPU_ISSET(i, &cpuset))
         {
-          nxsched_smp_call_add(i, data);
-          if (--cpucnt == 0)
-            {
-              break;
-            }
+          nxsched_smp_call_add(i, call_data);
         }
     }
 
   up_send_smp_call(cpuset);
+
+  if (wait)
+    {
+      for (i = 0; i < remote_cpus; i++)
+        {
+          int wait_ret = nxsem_wait_uninterruptible(&cookie.sem);
+          if (wait_ret < 0)
+            {
+              ret = wait_ret;
+            }
+        }
+
+      if (cookie.error < 0)
+        {
+          ret = cookie.error;
+        }
+
+      nxsem_destroy(&cookie.sem);
+    }
 
 out:
   if (!up_interrupt_context())

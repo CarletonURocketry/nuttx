@@ -65,21 +65,13 @@
 
 int openat(int dirfd, FAR const char *path, int oflags, ...)
 {
-  FAR char *fullpath;
+  char fullpath[PATH_MAX];
   mode_t mode = 0;
   int ret;
 
-  fullpath = lib_get_pathbuffer();
-  if (fullpath == NULL)
-    {
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
-  ret = lib_getfullpath(dirfd, path, fullpath, PATH_MAX);
+  ret = lib_getfullpath(dirfd, path, fullpath, sizeof(fullpath));
   if (ret < 0)
     {
-      lib_put_pathbuffer(fullpath);
       set_errno(-ret);
       return ERROR;
     }
@@ -93,7 +85,5 @@ int openat(int dirfd, FAR const char *path, int oflags, ...)
       va_end(ap);
     }
 
-  ret = open(fullpath, oflags, mode);
-  lib_put_pathbuffer(fullpath);
-  return ret;
+  return open(fullpath, oflags, mode);
 }

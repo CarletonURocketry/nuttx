@@ -47,7 +47,7 @@ static void rawsostream_putc(FAR struct lib_sostream_s *self, int ch)
   FAR struct lib_rawsostream_s *stream =
                                        (FAR struct lib_rawsostream_s *)self;
   char buffer = ch;
-  ssize_t nwritten;
+  int nwritten;
 
   DEBUGASSERT(self && stream->fd >= 0);
 
@@ -79,12 +79,12 @@ static void rawsostream_putc(FAR struct lib_sostream_s *self, int ch)
  * Name: rawsostream_puts
  ****************************************************************************/
 
-static ssize_t rawsostream_puts(FAR struct lib_sostream_s *self,
-                                FAR const void *buffer, size_t len)
+static int rawsostream_puts(FAR struct lib_sostream_s *self,
+                            FAR const void *buffer, int len)
 {
   FAR struct lib_rawsostream_s *stream =
                                        (FAR struct lib_rawsostream_s *)self;
-  ssize_t nwritten;
+  int nwritten;
 
   DEBUGASSERT(self && stream->fd >= 0);
 
@@ -125,13 +125,7 @@ static off_t rawsostream_seek(FAR struct lib_sostream_s *self, off_t offset,
                                        (FAR struct lib_rawsostream_s *)self;
 
   DEBUGASSERT(self);
-  offset = _NX_SEEK(stream->fd, offset, whence);
-  if (offset < 0)
-    {
-      offset = _NX_GETERRVAL(offset);
-    }
-
-  return offset;
+  return _NX_SEEK(stream->fd, offset, whence);
 }
 
 /****************************************************************************

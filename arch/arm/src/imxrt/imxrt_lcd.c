@@ -1,10 +1,9 @@
 /****************************************************************************
  * arch/arm/src/imxrt/imxrt_lcd.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2019 Gregory Nutt. All rights reserved.
- * SPDX-FileCopyrightText: 2017, NXP Semiconductors, Inc.
- * SPDX-FileContributor: Johannes Schock (Port)
+ *   Copyright (C) 2019 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2017, NXP Semiconductors, Inc.
+ *   Author: Johannes Schock (Port)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

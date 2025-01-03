@@ -1,10 +1,11 @@
 /****************************************************************************
  * include/crypto/poly1305.h
- *
- * SPDX-License-Identifier: NuttX-PublicDomain
+ * $OpenBSD: poly1305.h,v 1.2 2020/07/22 13:54:30 tobhe Exp $
  *
  * Public Domain poly1305 from Andrew Moon
  *
+ * poly1305 implementation using 32 bit * 32 bit = 64 bit multiplication
+ * and 64 bit addition from https://github.com/floodyberry/poly1305-donna
  ****************************************************************************/
 
 #ifndef __INCLUDE_CRYPTO_POLY1305_H

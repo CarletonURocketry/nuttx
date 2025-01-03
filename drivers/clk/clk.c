@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/clk/clk.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -1339,9 +1337,8 @@ FAR struct clk_s *clk_register(FAR const char *name,
       return clk;
     }
 
-  clk_list_unlock(irqflags);
-
 out:
+  clk_list_unlock(irqflags);
   if (clk->parents)
     {
       kmm_free(clk->parents);

@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv7-a/arm_vectors.S
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -173,8 +171,6 @@
 	.type	arm_vectorirq, %function
 
 arm_vectorirq:
-	.cfi_sections	.debug_frame
-	.cfi_startproc
 
 	/* Save the LR and SPSR onto the SYS mode stack before switch. */
 
@@ -236,11 +232,6 @@ arm_vectorirq:
 #endif
 
 	bic		sp, sp, #7			/* Force 8-byte alignment */
-	mov		fp,	r0
-	.cfi_def_cfa	fp,	0			/* Register in fp, so we just set fp as frame */
-	.cfi_offset	pc,	REG_PC * 4
-	.cfi_offset	sp,	REG_SP * 4
-	.cfi_offset	lr,	REG_LR * 4
 	bl		arm_decodeirq			/* Call the handler */
 	mov		sp, r4				/* Restore the possibly unaligned stack pointer */
 
@@ -274,7 +265,6 @@ arm_vectorirq:
 .Lirqstacktop:
 	.word	g_intstacktop
 #endif
-	.cfi_endproc
 	.size	arm_vectorirq, . - arm_vectorirq
 
 	.align	5
@@ -402,8 +392,6 @@ arm_vectorsvc:
 	.type	arm_vectordata, %function
 
 arm_vectordata:
-	.cfi_sections	.debug_frame
-	.cfi_startproc
 
 	/* Save the LR and SPSR onto the SYS mode stack before switch. */
 
@@ -447,11 +435,6 @@ arm_vectordata:
 	mrc		CP15_DFSR(r2)			/* Get r2=DFSR */
 	mov		r4, sp				/* Save the SP in a preserved register */
 	bic		sp, sp, #7			/* Force 8-byte alignment */
-	mov		fp,	r0
-	.cfi_def_cfa	fp,	0			/* Register in fp, so we just set fp as frame */
-	.cfi_offset	pc,	REG_PC * 4
-	.cfi_offset	sp,	REG_SP * 4
-	.cfi_offset	lr,	REG_LR * 4
 	bl		arm_dataabort			/* Call the handler */
 	mov		sp, r4				/* Restore the possibly unaligned stack pointer */
 
@@ -480,7 +463,6 @@ arm_vectordata:
 	/* Restore the CPSR, SYS mode registers and return. */
 
 	rfeia		r14
-	.cfi_endproc
 	.size	arm_vectordata, . - arm_vectordata
 
 	.align	5
@@ -501,8 +483,6 @@ arm_vectordata:
 	.type	arm_vectorprefetch, %function
 
 arm_vectorprefetch:
-	.cfi_sections	.debug_frame
-	.cfi_startproc
 
 	/* Save the LR and SPSR onto the SYS mode stack before switch. */
 
@@ -540,11 +520,6 @@ arm_vectorprefetch:
 	mrc		CP15_IFSR(r2)			/* Get r2=IFSR */
 	mov		r4, sp				/* Save the SP in a preserved register */
 	bic		sp, sp, #7			/* Force 8-byte alignment */
-	mov		fp,	r0
-	.cfi_def_cfa	fp,	0			/* Register in fp, so we just set fp as frame */
-	.cfi_offset	pc,	REG_PC * 4
-	.cfi_offset	sp,	REG_SP * 4
-	.cfi_offset	lr,	REG_LR * 4
 	bl		arm_prefetchabort		/* Call the handler */
 	mov		sp, r4				/* Restore the possibly unaligned stack pointer */
 
@@ -573,7 +548,6 @@ arm_vectorprefetch:
 	/* Restore the CPSR, SYS mode registers and return. */
 
 	rfeia		r14
-	.cfi_endproc
 	.size	arm_vectorprefetch, . - arm_vectorprefetch
 
 	.align	5
@@ -592,8 +566,7 @@ arm_vectorprefetch:
 	.type	arm_vectorundefinsn, %function
 
 arm_vectorundefinsn:
-	.cfi_sections	.debug_frame
-	.cfi_startproc
+
 	/* Save the LR and SPSR onto the SYS mode stack before switch. */
 
 	srsdb		sp!, #PSR_MODE_SYS
@@ -627,11 +600,6 @@ arm_vectorundefinsn:
 	mov		r0, sp				/* Get r0=xcp */
 	mov		r4, sp				/* Save the SP in a preserved register */
 	bic		sp, sp, #7			/* Force 8-byte alignment */
-	mov		fp,	r0
-	.cfi_def_cfa	fp,	0			/* Register in fp, so we just set fp as frame */
-	.cfi_offset	pc,	REG_PC * 4
-	.cfi_offset	sp,	REG_SP * 4
-	.cfi_offset	lr,	REG_LR * 4
 	bl		arm_undefinedinsn		/* Call the handler */
 	mov		sp, r4				/* Restore the possibly unaligned stack pointer */
 
@@ -660,7 +628,6 @@ arm_vectorundefinsn:
 	/* Restore the CPSR, SYS mode registers and return. */
 
 	rfeia		r14
-	.cfi_endproc
 	.size	arm_vectorundefinsn, . - arm_vectorundefinsn
 
 	.align	5
@@ -681,8 +648,6 @@ arm_vectorundefinsn:
 	.type	arm_vectorfiq, %function
 
 arm_vectorfiq:
-	.cfi_sections	.debug_frame
-	.cfi_startproc
 #if defined(CONFIG_ARCH_TRUSTZONE_SECURE) || defined(CONFIG_ARCH_HIPRI_INTERRUPT)
 
 	/* Save the LR and SPSR onto the SYS mode stack before switch. */
@@ -725,11 +690,6 @@ arm_vectorfiq:
 #endif
 
 	bic		sp, sp, #7			/* Force 8-byte alignment */
-	mov		fp,	r0
-	.cfi_def_cfa	fp,	0			/* Register in fp, so we just set fp as frame */
-	.cfi_offset	pc,	REG_PC * 4
-	.cfi_offset	sp,	REG_SP * 4
-	.cfi_offset	lr,	REG_LR * 4
 	bl		arm_decodefiq			/* Call the handler */
 	mov		sp, r4				/* Restore the possibly unaligned stack pointer */
 
@@ -769,7 +729,6 @@ arm_vectorfiq:
 #else
 	subs	pc, lr, #4
 #endif
-	.cfi_endproc
 	.size	arm_vectorfiq, . - arm_vectorfiq
 
 /****************************************************************************

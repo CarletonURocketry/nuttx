@@ -36,8 +36,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <nuttx/lib/lib.h>
-
 #ifdef CONFIG_LIBC_LOCALE_CATALOG
 
 /****************************************************************************
@@ -179,7 +177,6 @@ nl_catd catopen(FAR const char *name, int oflag)
   FAR const char *lang;
   FAR const char *p;
   FAR const char *z;
-  FAR char *buf;
 
   if (strchr(name, '/'))
     {
@@ -198,15 +195,9 @@ nl_catd catopen(FAR const char *name, int oflag)
       lang = "";
     }
 
-  buf = lib_get_pathbuffer();
-  if (buf == NULL)
-    {
-      set_errno(ENOMEM);
-      return MAP_FAILED;
-    }
-
   for (p = path; *p; p = z)
     {
+      char buf[PATH_MAX];
       nl_catd catd;
       size_t i;
 
@@ -270,7 +261,7 @@ nl_catd catopen(FAR const char *name, int oflag)
               l = 1;
             }
 
-          if (v == NULL || i + l >= PATH_MAX)
+          if (v == NULL || i + l >= sizeof(buf))
             {
               break;
             }
@@ -295,12 +286,10 @@ nl_catd catopen(FAR const char *name, int oflag)
         catd = catmap(i ? buf : name);
         if (catd != MAP_FAILED)
           {
-            lib_put_pathbuffer(buf);
             return catd;
           }
       }
 
-  lib_put_pathbuffer(buf);
   set_errno(ENOENT);
   return MAP_FAILED;
 }

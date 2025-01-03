@@ -49,7 +49,7 @@
  * SP_LOCKED and SP_UNLOCKED must constants of type spinlock_t.
  */
 
-#  include <nuttx/spinlock_type.h>
+#  include <nuttx/spinlock.h>
 #endif
 
 /****************************************************************************
@@ -269,7 +269,6 @@ struct pthread_cond_s
 {
   sem_t sem;
   clockid_t clockid;
-  uint16_t wait_count;
 };
 
 #ifndef __PTHREAD_COND_T_DEFINED
@@ -368,8 +367,6 @@ struct pthread_barrier_s
 {
   sem_t        sem;
   unsigned int count;
-  unsigned int wait_count;
-  mutex_t      mutex;
 };
 
 #ifndef __PTHREAD_BARRIER_T_DEFINED

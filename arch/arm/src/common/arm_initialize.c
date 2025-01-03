@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/common/arm_initialize.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -34,9 +32,16 @@
  * Public Data
  ****************************************************************************/
 
-/* g_interrupt_context store irq status */
+/* g_current_regs[] holds a references to the current interrupt level
+ * register storage structure.  If is non-NULL only during interrupt
+ * processing.  Access to g_current_regs[] must be through the
+ * [get/set]_current_regs for portability.
+ */
 
-volatile bool g_interrupt_context[CONFIG_SMP_NCPUS];
+#if defined(CONFIG_ARCH_ARMV7M) || defined(CONFIG_ARCH_ARMV8M) || \
+      defined(CONFIG_ARCH_ARMV6M) || defined(CONFIG_ARCH_ARM)
+volatile uint32_t *g_current_regs[CONFIG_SMP_NCPUS];
+#endif
 
 /****************************************************************************
  * Private Functions
@@ -143,10 +148,6 @@ void up_initialize(void)
   /* Initialize USB -- device and/or host */
 
   arm_usbinitialize();
-#endif
-
-#ifdef CONFIG_ARM_COREDUMP_REGION
-  arm_coredump_add_region();
 #endif
 
   /* Initialize the L2 cache if present and selected */

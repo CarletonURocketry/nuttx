@@ -100,7 +100,6 @@ else()
 endif()
 
 set(WITH_LIBMETAL_FIND OFF)
-set(WITH_PROXY OFF)
 
 if(NOT CMAKE_SYSTEM_PROCESSOR)
   set(CMAKE_SYSTEM_PROCESSOR ${CONFIG_ARCH})
@@ -108,8 +107,5 @@ endif()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/open-amp
                  ${CMAKE_CURRENT_BINARY_DIR}/open-amp EXCLUDE_FROM_ALL)
-
-target_include_directories(
-  open_amp-static PRIVATE $<TARGET_PROPERTY:metal-static,INCLUDE_DIRECTORIES>)
 
 nuttx_add_external_library(open_amp-static MODE KERNEL)

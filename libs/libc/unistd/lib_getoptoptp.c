@@ -26,6 +26,8 @@
 
 #include <nuttx/config.h>
 
+#include <unistd.h>
+
 #include "unistd.h"
 
 /****************************************************************************

@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/sensors/sensor.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -41,7 +39,6 @@
 #include <nuttx/circbuf.h>
 #include <nuttx/mutex.h>
 #include <nuttx/sensors/sensor.h>
-#include <nuttx/lib/lib.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -214,7 +211,6 @@ static const struct sensor_meta_s g_sensor_meta[] =
   {sizeof(struct sensor_gnss_measurement),    "gnss_measurement"},
   {sizeof(struct sensor_gnss_clock),          "gnss_clock"},
   {sizeof(struct sensor_gnss_geofence_event), "gnss_geofence_event"},
-  {sizeof(struct sensor_velocity),            "velocity"},
 };
 
 static const struct file_operations g_sensor_fops =
@@ -1242,25 +1238,16 @@ void sensor_remap_vector_raw16(FAR const int16_t *in, FAR int16_t *out,
 
 int sensor_register(FAR struct sensor_lowerhalf_s *lower, int devno)
 {
-  FAR char *path;
-  int ret;
+  char path[PATH_MAX];
 
   DEBUGASSERT(lower != NULL);
-
-  path = lib_get_pathbuffer();
-  if (path == NULL)
-    {
-      return -ENOMEM;
-    }
 
   snprintf(path, PATH_MAX, DEVNAME_FMT,
            g_sensor_meta[lower->type].name,
            lower->uncalibrated ? DEVNAME_UNCAL : "",
            devno);
-  ret = sensor_custom_register(lower, path,
-                               g_sensor_meta[lower->type].esize);
-  lib_put_pathbuffer(path);
-  return ret;
+  return sensor_custom_register(lower, path,
+                                g_sensor_meta[lower->type].esize);
 }
 
 /****************************************************************************
@@ -1388,25 +1375,17 @@ rpmsg_err:
  *           instance is bound to the sensor driver and must persists as long
  *           as the driver persists.
  *   devno - The user specifies which device of this type, from 0.
- *
  ****************************************************************************/
 
 void sensor_unregister(FAR struct sensor_lowerhalf_s *lower, int devno)
 {
-  FAR char *path;
-
-  path = lib_get_pathbuffer();
-  if (path == NULL)
-    {
-      return;
-    }
+  char path[PATH_MAX];
 
   snprintf(path, PATH_MAX, DEVNAME_FMT,
            g_sensor_meta[lower->type].name,
            lower->uncalibrated ? DEVNAME_UNCAL : "",
            devno);
   sensor_custom_unregister(lower, path);
-  lib_put_pathbuffer(path);
 }
 
 /****************************************************************************
@@ -1421,7 +1400,6 @@ void sensor_unregister(FAR struct sensor_lowerhalf_s *lower, int devno)
  *           instance is bound to the sensor driver and must persists as long
  *           as the driver persists.
  *   path  - The user specifies path of device, ex: /dev/uorb/xxx
- *
  ****************************************************************************/
 
 void sensor_custom_unregister(FAR struct sensor_lowerhalf_s *lower,

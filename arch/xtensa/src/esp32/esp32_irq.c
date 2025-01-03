@@ -578,7 +578,11 @@ void up_irqinitialize(void)
 
   /* Attach the software interrupt */
 
-  irq_attach(XTENSA_IRQ_SYSCALL, xtensa_swint, NULL);
+  irq_attach(XTENSA_IRQ_SWINT, (xcpt_t)xtensa_swint, NULL);
+
+  /* Enable the software interrupt. */
+
+  up_enable_irq(XTENSA_IRQ_SWINT);
 }
 
 /****************************************************************************

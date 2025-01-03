@@ -1,8 +1,6 @@
 # ##############################################################################
 # arch/x86_64/src/intel64/CMakeLists.txt
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -33,6 +31,7 @@ set(SRCS
     intel64_releasestack.c
     intel64_rtc.c
     intel64_restore_auxstate.c
+    intel64_savestate.c
     intel64_stackframe.c
     intel64_schedulesigaction.c
     intel64_sigdeliver.c
@@ -49,7 +48,7 @@ set(SRCS
     intel64_check_capability.c
     intel64_cpu.c)
 
-if(CONFIG_X86_64_UNWINDER_FRAME_POINTER)
+if(CONFIG_x86_64_UNWINDER_FRAME_POINTER)
   list(APPEND SRCS intel64_backtrace_fp.c)
 endif()
 
@@ -74,11 +73,7 @@ if(CONFIG_SMP)
 endif()
 
 if(CONFIG_MULTBOOT2_FB_TERM)
-  list(APPEND SRCS intel64_fbterm.c)
-endif()
-
-if(CONFIG_MULTBOOT2_FB)
-  list(APPEND SRCS intel64_fb.c)
+  list(APPEND SRCS intel64_mbfb.c)
 endif()
 
 if(CONFIG_ARCH_INTEL64_HAVE_TSC)

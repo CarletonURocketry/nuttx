@@ -1,8 +1,6 @@
 ############################################################################
 # arch/x86_64/src/intel64/Make.defs
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.  The
@@ -24,7 +22,7 @@ include common/Make.defs
 
 CMN_CSRCS += intel64_createstack.c intel64_initialstate.c intel64_irq.c
 CMN_CSRCS += intel64_map_region.c intel64_regdump.c intel64_releasestack.c
-CMN_CSRCS += intel64_rtc.c intel64_restore_auxstate.c
+CMN_CSRCS += intel64_rtc.c intel64_restore_auxstate.c intel64_savestate.c
 CMN_CSRCS += intel64_stackframe.c intel64_schedulesigaction.c
 CMN_CSRCS += intel64_sigdeliver.c intel64_usestack.c x86_64_tcbinfo.c
 CMN_CSRCS += intel64_systemreset.c intel64_freq.c intel64_cache.c
@@ -65,11 +63,7 @@ endif
 # Configuration-dependent intel64 files
 
 ifeq ($(CONFIG_MULTBOOT2_FB_TERM),y)
-CHIP_CSRCS += intel64_fbterm.c
-endif
-
-ifeq ($(CONFIG_MULTBOOT2_FB),y)
-CHIP_CSRCS += intel64_fb.c
+CHIP_CSRCS += intel64_mbfb.c
 endif
 
 ifeq ($(CONFIG_ARCH_INTEL64_HAVE_TSC),y)

@@ -258,11 +258,13 @@ class Trace(object):
             except Exception:
                 continue
 
-    def dump_trace(self):
+    def dump_trace(self, output="trace.systrace"):
         formatted = ["# tracer: nop", "#"]
         for trace in self.all_trace:
             formatted.append(trace.dump_one_trace())
-        return formatted
+        with open(output, "w") as fp:
+            fp.writelines("\n".join(formatted))
+        return output
 
 
 class ParseBinaryLogTool:
@@ -484,14 +486,14 @@ class TraceDecoder(SymbolTables):
         return "%s", length, fmt % value
 
     def extract_string(self, fmt, data):
-        length = 0
+        lenght = 0
         if fmt == "%.*s":
-            length = int.from_bytes(
+            lenght = int.from_bytes(
                 data[:4], byteorder=self.elfinfo["byteorder"], signed=True
             )
             data = data[4:]
         else:
-            length = 0
+            lenght = 0
 
         try:
             string = data.split(b"\x00")[0].decode("utf-8")
@@ -501,17 +503,17 @@ class TraceDecoder(SymbolTables):
                     data[:size], byteorder=self.elfinfo["byteorder"], signed=False
                 )
                 string = f"<<0x{address}>>"
-                length += size
+                lenght += size
             else:
-                length += len(string) + 1
+                lenght += len(string) + 1
         except Exception:
             size = 4 if self.typeinfo["size_t"] == "uint32" else 8
             address = int.from_bytes(
                 data[:size], byteorder=self.elfinfo["byteorder"], signed=False
             )
             string = f"<<0x{address}>>"
-            length += size
-        return "%s", length, string
+            lenght += size
+        return "%s", lenght, string
 
     def extract_point(self, fmt, data):
         length = 4 if self.typeinfo["size_t"] == "int32" else 8
@@ -635,7 +637,7 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    out_path = args.output if args.output else "trace.systrace"
+    out = args.output if not args.output else "trace.systrace"
     logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     if args.trace is None and args.device is None:
@@ -664,10 +666,9 @@ if __name__ == "__main__":
                         )
 
                 lines = trace.dump_trace()
-                with open(out_path, "w") as out:
-                    out.write("\n".join(lines))
-                    out.write("\n")
-                    print(os.path.abspath(out_path))
+                with open(args.out, "w") as out:
+                    out.writelines("\n".join(lines))
+                    print(os.path.abspath(args.out))
         else:
             print("trace log type is binary")
             if args.elf:
@@ -675,7 +676,7 @@ if __name__ == "__main__":
                     "parse_binary_log, default config, size_long=4, config_endian_big=False, config_smp=0"
                 )
                 parse_binary_log_tool = ParseBinaryLogTool(
-                    args.trace, args.elf, out_path
+                    args.trace, args.elf, args.out
                 )
                 parse_binary_log_tool.symbol_tables.parse_symbol()
                 parse_binary_log_tool.parse_binary_log()

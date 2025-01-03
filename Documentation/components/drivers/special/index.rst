@@ -49,7 +49,6 @@ following section.
   usrsock.rst
   mmcsd.rst
   net/index.rst
-  pci/index.rst
   pinctrl.rst
   pipes.rst
   power/index.rst

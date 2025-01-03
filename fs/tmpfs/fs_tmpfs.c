@@ -1,8 +1,6 @@
 /****************************************************************************
  * fs/tmpfs/fs_tmpfs.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -35,7 +33,6 @@
 #include <assert.h>
 #include <debug.h>
 
-#include <nuttx/sched.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/fs/fs.h>
 #include <nuttx/fs/ioctl.h>
@@ -190,8 +187,6 @@ const struct mountpt_operations g_tmpfs_operations =
   tmpfs_mmap,       /* mmap */
   tmpfs_truncate,   /* truncate */
   NULL,             /* poll */
-  NULL,             /* readv */
-  NULL,             /* writev */
 
   tmpfs_sync,       /* sync */
   tmpfs_dup,        /* dup */
@@ -476,7 +471,7 @@ static int tmpfs_remove_dirent(FAR struct tmpfs_directory_s *tdo,
 
   if (tdo->tdo_entry[index].tde_name != NULL)
     {
-      fs_heap_free(tdo->tdo_entry[index].tde_name);
+      lib_free(tdo->tdo_entry[index].tde_name);
     }
 
   /* Remove by replacing this entry with the final directory entry */
@@ -526,7 +521,7 @@ static int tmpfs_add_dirent(FAR struct tmpfs_directory_s *tdo,
         }
     }
 
-  newname = fs_heap_strndup(name, namelen);
+  newname = strndup(name, namelen);
   if (newname == NULL)
     {
       return -ENOMEM;
@@ -889,14 +884,6 @@ static int tmpfs_find_object(FAR struct tmpfs_s *fs,
        * relpath.
        */
 
-      /* Skip any slash. */
-
-      while (*segment == '/')
-        {
-          segment++;
-          len--;
-        }
-
       next_segment = memchr(segment, '/', len);
       if (next_segment)
         {
@@ -1229,7 +1216,7 @@ static int tmpfs_free_callout(FAR struct tmpfs_directory_s *tdo,
 
   if (tdo->tdo_entry[index].tde_name != NULL)
     {
-      fs_heap_free(tdo->tdo_entry[index].tde_name);
+      lib_free(tdo->tdo_entry[index].tde_name);
     }
 
   /* Remove by replacing this entry with the final directory entry */

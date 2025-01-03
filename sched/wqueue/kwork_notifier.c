@@ -34,7 +34,6 @@
 #include <sched.h>
 #include <assert.h>
 
-#include <nuttx/arch.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/wqueue.h>
 
@@ -66,7 +65,7 @@ struct work_notifier_entry_s
 
   /* Additional payload needed to manage the notification */
 
-  int key;                      /* Unique ID for the notification */
+  uint32_t key;                 /* Unique ID for the notification */
 };
 
 /****************************************************************************
@@ -100,7 +99,7 @@ static dq_queue_t g_notifier_pending;
  *
  ****************************************************************************/
 
-static FAR struct work_notifier_entry_s *work_notifier_find(int key)
+static FAR struct work_notifier_entry_s *work_notifier_find(uint32_t key)
 {
   FAR struct work_notifier_entry_s *notifier;
   FAR dq_entry_t *entry;
@@ -134,11 +133,11 @@ static FAR struct work_notifier_entry_s *work_notifier_find(int key)
  *
  ****************************************************************************/
 
-static int work_notifier_key(void)
+static uint32_t work_notifier_key(void)
 {
-  static int notifier_key;
+  static uint32_t notifier_key;
 
-  if (++notifier_key <= 0)
+  if (++notifier_key == 0)
     {
       notifier_key = 1;
     }
@@ -295,7 +294,7 @@ void work_notifier_teardown(int key)
 
   flags = enter_critical_section();
 
-  /* Find the entry matching this key in the g_notifier_pending list.  We
+  /* Find the entry matching this PID in the g_notifier_pending list.  We
    * assume that there is only one.
    */
 
@@ -349,7 +348,7 @@ void work_notifier_signal(enum work_evtype_e evtype,
   irqstate_t flags;
 
   /* Don't let any newly started threads block this thread until all of
-   * the notifications have been sent.
+   * the notifications and been sent.
    */
 
   flags = enter_critical_section();
@@ -376,7 +375,7 @@ void work_notifier_signal(enum work_evtype_e evtype,
       notifier = (FAR struct work_notifier_entry_s *)entry;
       info     = &notifier->info;
 
-      /* Check if this is a notification request for the event that
+      /* Check if this is the a notification request for the event that
        * just occurred.
        */
 

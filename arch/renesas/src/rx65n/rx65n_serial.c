@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/renesas/src/rx65n/rx65n_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -1694,7 +1692,7 @@ void renesas_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_CONSOLE
   struct up_dev_s *priv;
@@ -1702,11 +1700,22 @@ void up_putc(int ch)
   priv = (struct up_dev_s *)CONSOLE_DEV.priv;
   up_disablesciint(priv, &scr);
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      up_waittxready(priv);
+      up_serialout(priv, RX_SCI_TDR_OFFSET, '\r');
+    }
+
   up_waittxready(priv);
   up_serialout(priv, RX_SCI_TDR_OFFSET, (uint8_t)ch);
   up_waittxready(priv);
   up_restoresciint(priv, scr);
 #endif
+  return ch;
 }
 #else /* USE_SERIALDRIVER */
 
@@ -1718,11 +1727,22 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_CONSOLE
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      renesas_lowputc('\r');
+    }
+
   renesas_lowputc(ch);
 #endif
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

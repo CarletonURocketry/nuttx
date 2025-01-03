@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/tlsr82/tlsr82_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -1593,9 +1591,18 @@ static inline int tlsr82_uart_lowputc(int ch)
  ****************************************************************************/
 
 #ifndef CONFIG_TLSR82_SPI_SYSLOG
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      tlsr82_uart_lowputc('\r');
+    }
+
   tlsr82_uart_lowputc(ch);
+
+  return 0;
 }
 #endif
 

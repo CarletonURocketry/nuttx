@@ -25,7 +25,7 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <nuttx/atomic.h>
+#include <nuttx/mutex.h>
 #include <nuttx/lib/lib.h>
 
 #include <stdlib.h>
@@ -35,20 +35,15 @@
  * Pre-processor definitions
  ****************************************************************************/
 
-#if CONFIG_PATH_MAX > CONFIG_LINE_MAX
-#  define PATH_MAX_SIZE CONFIG_PATH_MAX
-#else
-#  define PATH_MAX_SIZE CONFIG_LINE_MAX
-#endif
-
 /****************************************************************************
  * Private Types
  ****************************************************************************/
 
 struct pathbuffer_s
 {
-  atomic_t free_bitmap; /* Bitmap of free buffer */
-  char buffer[CONFIG_LIBC_PATHBUFFER_MAX][PATH_MAX_SIZE];
+  mutex_t lock;             /* Lock for the buffer */
+  unsigned int free_bitmap; /* Bitmap of free buffer */
+  char buffer[CONFIG_LIBC_MAX_PATHBUFFER][PATH_MAX];
 };
 
 /****************************************************************************
@@ -57,7 +52,8 @@ struct pathbuffer_s
 
 static struct pathbuffer_s g_pathbuffer =
 {
-  (1u << CONFIG_LIBC_PATHBUFFER_MAX) - 1,
+  NXMUTEX_INITIALIZER,
+  (1u << CONFIG_LIBC_MAX_PATHBUFFER) - 1,
 };
 
 /****************************************************************************
@@ -75,7 +71,7 @@ static struct pathbuffer_s g_pathbuffer =
  *   The lib_get_pathbuffer() function returns a pointer to a temporary
  *   buffer.  The buffer is allocated from a pool of pre-allocated buffers
  *   and if the pool is exhausted, a new buffer is allocated through
- *   kmm_malloc(). The size of the buffer is PATH_MAX_SIZE, and must freed by
+ *   kmm_malloc(). The size of the buffer is PATH_MAX, and must freed by
  *   calling lib_put_pathbuffer().
  *
  * Returned Value:
@@ -86,30 +82,27 @@ static struct pathbuffer_s g_pathbuffer =
 
 FAR char *lib_get_pathbuffer(void)
 {
-  for (; ; )
-    {
-      int32_t update;
-      int32_t free_bitmap = atomic_read(&g_pathbuffer.free_bitmap);
-      int index = ffsl(free_bitmap) - 1;
-      if (index < 0 || index >= CONFIG_LIBC_PATHBUFFER_MAX)
-        {
-          break;
-        }
+  int index;
 
-      update = free_bitmap & ~(1u << index);
-      if (atomic_cmpxchg(&g_pathbuffer.free_bitmap, &free_bitmap,
-                         update))
-        {
-          return g_pathbuffer.buffer[index];
-        }
+  /* Try to find a free buffer */
+
+  nxmutex_lock(&g_pathbuffer.lock);
+  index = ffs(g_pathbuffer.free_bitmap) - 1;
+  if (index >= 0 && index < CONFIG_LIBC_MAX_PATHBUFFER)
+    {
+      g_pathbuffer.free_bitmap &= ~(1u << index);
+      nxmutex_unlock(&g_pathbuffer.lock);
+      return g_pathbuffer.buffer[index];
     }
+
+  nxmutex_unlock(&g_pathbuffer.lock);
 
   /* If no free buffer is found, allocate a new one if
    * CONFIG_LIBC_PATHBUFFER_MALLOC is enabled
    */
 
 #ifdef CONFIG_LIBC_PATHBUFFER_MALLOC
-  return lib_malloc(PATH_MAX_SIZE);
+  return lib_malloc(PATH_MAX);
 #else
   return NULL;
 #endif
@@ -131,14 +124,21 @@ FAR char *lib_get_pathbuffer(void)
 
 void lib_put_pathbuffer(FAR char *buffer)
 {
-  int index = (buffer - &g_pathbuffer.buffer[0][0]) / PATH_MAX_SIZE;
-  if (index >= 0 && index < CONFIG_LIBC_PATHBUFFER_MAX)
+  int index;
+
+  nxmutex_lock(&g_pathbuffer.lock);
+  index = (buffer - &g_pathbuffer.buffer[0][0]) / PATH_MAX;
+
+  if (index >= 0 && index < CONFIG_LIBC_MAX_PATHBUFFER)
     {
-      DEBUGASSERT((atomic_read(&g_pathbuffer.free_bitmap) &
-                  (1u << index)) == 0);
-      atomic_fetch_or_acquire(&g_pathbuffer.free_bitmap, 1u << index);
+      /* Mark the corresponding bit as free */
+
+      g_pathbuffer.free_bitmap |= 1u << index;
+      nxmutex_unlock(&g_pathbuffer.lock);
       return;
     }
+
+  nxmutex_unlock(&g_pathbuffer.lock);
 
   /* Free the buffer if it was dynamically allocated */
 

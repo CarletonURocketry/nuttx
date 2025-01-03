@@ -1,7 +1,6 @@
 /****************************************************************************
  * arch/arm/src/sama5/hardware/sam_rstc.h
- *
- * SPDX-License-Identifier: Apache-2.0
+ * Reset Controller (RSTC) definitions for the SAMA5
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

@@ -1,11 +1,16 @@
 /****************************************************************************
  * include/crypto/rijndael.h
+ * $OpenBSD: rijndael.h,v 1.13 2008/06/09 07:49:45 djm Exp $
  *
- * SPDX-License-Identifier: NuttX-PublicDomain
+ * rijndael-alg-fst.h
  *
- * SPDX-FileContributor: Vincent Rijmen <vincent.rijmen@esat.kuleuven.ac.be>
- * SPDX-FileContributor: Antoon Bosselaers <antoon.bosselaers@esat.kuleuven.ac.be>
- * SPDX-FileContributor: Paulo Barreto <paulo.barreto@terra.com.br>
+ * @version 3.0 (December 2000)
+ *
+ * Optimised ANSI C code for the Rijndael cipher (now AES)
+ *
+ * @author Vincent Rijmen <vincent.rijmen@esat.kuleuven.ac.be>
+ * @author Antoon Bosselaers <antoon.bosselaers@esat.kuleuven.ac.be>
+ * @author Paulo Barreto <paulo.barreto@terra.com.br>
  *
  * This code is hereby placed in the public domain.
  *

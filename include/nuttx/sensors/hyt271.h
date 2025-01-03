@@ -98,7 +98,6 @@ extern "C"
  *
  * Returned Value:
  *   Zero (OK) on success; a negated errno value on failure.
- *
  ****************************************************************************/
 
 int hyt271_register(int devno, FAR struct i2c_master_s *i2c, uint8_t addr,

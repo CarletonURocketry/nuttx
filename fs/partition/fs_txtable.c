@@ -1,8 +1,6 @@
 /****************************************************************************
  * fs/partition/fs_txtable.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -133,8 +131,7 @@ int parse_txtable_partition(FAR struct partition_state_s *state,
       /* Parsing data of partition table */
 
       token = strtok_r(token, "\n", &save_ptr);
-      if (token == NULL ||
-          strncmp(token, TXTABLE_MAGIC, strlen(TXTABLE_MAGIC)) != 0)
+      if (strncmp(token, TXTABLE_MAGIC, strlen(TXTABLE_MAGIC)) != 0)
         {
           save_ptr = NULL;
           ret = -EFTYPE;

@@ -567,14 +567,19 @@ ssize_t circbuf_overwrite(FAR struct circbuf_s *circ,
 FAR void *circbuf_get_writeptr(FAR struct circbuf_s *circ, FAR size_t *size)
 {
   size_t off;
+  size_t pos;
 
   DEBUGASSERT(circ);
 
-  *size = circbuf_space(circ);
   off = circ->head % circ->size;
-  if (off + *size > circ->size)
+  pos = circ->tail % circ->size;
+  if (off >= pos)
     {
       *size = circ->size - off;
+    }
+  else
+    {
+      *size = pos - off;
     }
 
   return (FAR char *)circ->base + off;
@@ -598,17 +603,22 @@ FAR void *circbuf_get_writeptr(FAR struct circbuf_s *circ, FAR size_t *size)
 FAR void *circbuf_get_readptr(FAR struct circbuf_s *circ, size_t *size)
 {
   size_t off;
+  size_t pos;
 
   DEBUGASSERT(circ);
 
-  *size = circbuf_used(circ);
-  off = circ->tail % circ->size;
-  if (off + *size > circ->size)
+  off = circ->head % circ->size;
+  pos = circ->tail % circ->size;
+  if (pos > off)
     {
-      *size = circ->size - off;
+      *size = circ->size - pos;
+    }
+  else
+    {
+      *size = off - pos;
     }
 
-  return (FAR char *)circ->base + off;
+  return (FAR char *)circ->base + pos;
 }
 
 /****************************************************************************

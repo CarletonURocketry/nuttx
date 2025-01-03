@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/arm/nrf53/nrf5340-dk/src/nrf53_bringup.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -57,7 +55,10 @@
 
 #ifdef CONFIG_RPTUN
 #  include <nuttx/wireless/bluetooth/bt_rpmsghci.h>
-#  ifdef CONFIG_DRIVERS_BLUETOOTH
+#  ifdef CONFIG_UART_BTH4
+#    include <nuttx/serial/uart_bth4.h>
+#  endif
+#  ifdef CONFIG_NET_BLUETOOTH
 #    include <nuttx/wireless/bluetooth/bt_driver.h>
 #  endif
 #  include "nrf53_rptun.h"
@@ -103,11 +104,21 @@ static int nrf53_appcore_bleinit(void)
       return -ENOMEM;
     }
 
-#  ifdef CONFIG_DRIVERS_BLUETOOTH
-  ret = bt_driver_register(bt_dev);
+#  ifdef CONFIG_UART_BTH4
+  /* Register UART BT H4 device */
+
+  ret = uart_bth4_register("/dev/ttyHCI", bt_dev);
   if (ret < 0)
     {
-      syslog(LOG_ERR, "bt_driver_register error: %d\n", ret);
+      syslog(LOG_ERR, "bt_bth4_register error: %d\n", ret);
+    }
+#  elif defined(CONFIG_NET_BLUETOOTH)
+  /* Register network device */
+
+  ret = bt_netdev_register(bt_dev);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "bt_netdev_register error: %d\n", ret);
     }
 #  else
 #    error

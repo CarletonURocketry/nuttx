@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/fe310/fe310_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -37,12 +35,6 @@
 #include "riscv_internal.h"
 #include "fe310_gpio.h"
 #include "fe310_memorymap.h"
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
-
-static spinlock_t g_fe310_gpio_lock = SP_UNLOCKED;
 
 /****************************************************************************
  * Private Functions
@@ -153,7 +145,7 @@ int fe310_gpio_config(uint16_t gpiocfg)
 
   uint32_t pin  = fe310_gpio_getpin(gpiocfg);
 
-  flags = spin_lock_irqsave(&g_fe310_gpio_lock);
+  flags = spin_lock_irqsave(NULL);
 
   /* Disable IOF for the pin to be used as GPIO */
 
@@ -188,7 +180,7 @@ int fe310_gpio_config(uint16_t gpiocfg)
         break;
     }
 
-  spin_unlock_irqrestore(&g_fe310_gpio_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return ret;
 }

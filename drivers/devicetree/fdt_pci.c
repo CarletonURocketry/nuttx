@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/devicetree/fdt_pci.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -118,39 +116,22 @@ int fdt_pci_ecam_register(FAR const void *fdt)
 
       if ((type & FDT_PCI_TYPE_MASK) == FDT_PCI_TYPE_IO)
         {
-          io.start = fdt_ld_by_cells(ranges + 1, na - 1);
+          io.start = fdt_ld_by_cells(ranges + na, pna);
           io.end = io.start + fdt_ld_by_cells(ranges + na + pna, ns);
-          io.offset = fdt_ld_by_cells(ranges + na, pna) - io.start;
-          io.flags = PCI_RESOURCE_IO;
         }
-      else if ((type & FDT_PCI_PREFTCH) == FDT_PCI_PREFTCH ||
-               (type & FDT_PCI_TYPE_MASK) == FDT_PCI_TYPE_MEM64)
+      else if ((type & FDT_PCI_PREFTCH) == FDT_PCI_PREFTCH)
         {
-          prefetch.start = fdt_ld_by_cells(ranges + 1, na - 1);
+          prefetch.start = fdt_ld_by_cells(ranges + na, pna);
           prefetch.end = prefetch.start +
                          fdt_ld_by_cells(ranges + na + pna, ns);
-          prefetch.offset = fdt_ld_by_cells(ranges + na, pna) -
-                            prefetch.start;
-          if ((type & FDT_PCI_PREFTCH) == FDT_PCI_PREFTCH)
-            {
-              prefetch.flags = PCI_RESOURCE_PREFETCH;
-            }
-
-          if ((type & FDT_PCI_TYPE_MASK) == FDT_PCI_TYPE_MEM64)
-            {
-              prefetch.flags |= PCI_RESOURCE_MEM_64;
-            }
-          else
-            {
-              prefetch.flags |= PCI_RESOURCE_MEM;
-            }
         }
-      else
+      else if (((type & FDT_PCI_TYPE_MEM32) == FDT_PCI_TYPE_MEM32 &&
+                sizeof(uintptr_t) == 4) ||
+               ((type & FDT_PCI_TYPE_MEM64) == FDT_PCI_TYPE_MEM64 &&
+                sizeof(uintptr_t) == 8))
         {
-          mem.start = fdt_ld_by_cells(ranges + 1, na - 1);
+          mem.start = fdt_ld_by_cells(ranges + na, pna);
           mem.end = mem.start + fdt_ld_by_cells(ranges + na + pna, ns);
-          mem.offset = fdt_ld_by_cells(ranges + na, pna) - mem.start;
-          mem.flags = PCI_RESOURCE_MEM;
         }
     }
 

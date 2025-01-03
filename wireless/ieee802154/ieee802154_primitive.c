@@ -31,7 +31,6 @@
 #include <assert.h>
 #include <debug.h>
 
-#include <nuttx/irq.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/wireless/ieee802154/ieee802154_mac.h>
 

@@ -118,10 +118,10 @@ void esp_spiram_init_cache(void);
  *              stuff in SPI RAM.
  *
  * return:
- *   OK on success, ERROR on failed memory test
+ *   true on success, false on failed memory test
  */
 
-int esp_spiram_test(void);
+bool esp_spiram_test(void);
 
 /* Description Add the initialized SPI RAM to the heap allocator. */
 

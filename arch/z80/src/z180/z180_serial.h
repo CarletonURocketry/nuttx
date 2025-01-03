@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/z80/src/z180/z180_serial.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -61,7 +59,7 @@ void z180_putc(uint8_t ch) __naked;
 #ifdef USE_SERIALDRIVER
 int z80_lowputc(int ch);
 #else
-void up_putc(int ch);
+int up_putc(int ch);
 #  define z80_lowputc(ch) up_putc(ch)
 #endif
 

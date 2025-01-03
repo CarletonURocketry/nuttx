@@ -56,7 +56,7 @@
  * Public Data
  ****************************************************************************/
 
-#if !defined(__HAVE_KERNEL_GLOBALS)
+#if !defined(CONFIG_SCHED_TICKLESS) && !defined(__HAVE_KERNEL_GLOBALS)
   /* The system clock exists (CONFIG_SCHED_TICKLESS), but it not prototyped
    * globally in include/nuttx/clock.h.
    */
@@ -75,8 +75,7 @@ extern struct timespec  g_basetime;
 int  clock_basetime(FAR struct timespec *tp);
 
 void clock_initialize(void);
-#if !defined(CONFIG_SCHED_TICKLESS) && \
-    !defined(CONFIG_ALARM_ARCH) && !defined(CONFIG_TIMER_ARCH)
+#ifndef CONFIG_SCHED_TICKLESS
 void clock_timer(void);
 #else
 #  define clock_timer()

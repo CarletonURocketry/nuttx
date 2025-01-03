@@ -340,7 +340,7 @@ I2C          Yes
 I2S          Yes
 LED_PWM      Yes
 MCPWM        Yes
-Pulse_CNT    Yes
+Pulse_CNT    No
 RMT          Yes
 RNG          Yes
 RSA          No

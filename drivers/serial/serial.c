@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/serial/serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -147,9 +145,7 @@ static const struct file_operations g_serialops =
   uart_ioctl,   /* ioctl */
   NULL,         /* mmap */
   NULL,         /* truncate */
-  uart_poll,    /* poll */
-  NULL,         /* readv */
-  NULL          /* writev */
+  uart_poll     /* poll */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   , uart_unlink /* unlink */
 #endif
@@ -214,13 +210,13 @@ static void uart_poll_notify(FAR uart_dev_t *dev, unsigned int min,
   DEBUGASSERT(max > min && max - min <= CONFIG_SERIAL_NPOLLWAITERS);
 
   flags = enter_critical_section();
-  sched_lock();
+  nxsched_lock_irq();
 
   /* Notify the fds in range dev->fds[min] - dev->fds[max] */
 
   poll_notify(&dev->fds[min], max - min, eventset);
 
-  sched_unlock();
+  nxsched_unlock_irq();
   leave_critical_section(flags);
 }
 
@@ -268,10 +264,6 @@ static int uart_putxmitchar(FAR uart_dev_t *dev, int ch, bool oktoblock)
         {
           /* The following steps must be atomic with respect to serial
            * interrupt handling.
-           *
-           * This critical section is also used for the serialization
-           * with the up_putc-based syslog channels.
-           * See https://github.com/apache/nuttx/issues/14662
            */
 
           flags = enter_critical_section();
@@ -2154,7 +2146,7 @@ void uart_connected(FAR uart_dev_t *dev, bool connected)
    */
 
   flags = enter_critical_section();
-  sched_lock();
+  nxsched_lock_irq();
   dev->disconnected = !connected;
   if (!connected)
     {
@@ -2175,7 +2167,7 @@ void uart_connected(FAR uart_dev_t *dev, bool connected)
       uart_wakeup(&dev->recvsem);
     }
 
-  sched_unlock();
+  nxsched_unlock_irq();
   leave_critical_section(flags);
 }
 #endif

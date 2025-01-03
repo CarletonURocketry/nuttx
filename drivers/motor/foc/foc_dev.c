@@ -1,7 +1,6 @@
 /****************************************************************************
  * drivers/motor/foc/foc_dev.c
- *
- * SPDX-License-Identifier: Apache-2.0
+ * Upper-half FOC controller logic
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

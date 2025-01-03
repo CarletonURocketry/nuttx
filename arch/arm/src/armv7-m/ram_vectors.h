@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv7-m/ram_vectors.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -86,7 +84,7 @@
  * appropriate mask.
  */
 
-#define VECTAB_ALIGN ((~NVIC_VECTAB_TBLOFF_MASK & 0xffff) + 1)
+#define VECTOR_ALIGN ((~NVIC_VECTAB_TBLOFF_MASK & 0xffff) + 1)
 
 #ifdef CONFIG_ARCH_RAMVECTORS
 
@@ -107,7 +105,7 @@
  */
 
 extern up_vector_t g_ram_vectors[ARMV7M_VECTAB_SIZE]
-  locate_data(".ram_vectors") aligned_data(VECTAB_ALIGN);
+  locate_data(".ram_vectors") aligned_data(128);
 
 /****************************************************************************
  * Public Function Prototypes

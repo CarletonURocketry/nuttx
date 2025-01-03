@@ -43,8 +43,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <nuttx/spinlock.h>
-
 /****************************************************************************
  * Public Types
  ****************************************************************************/
@@ -116,7 +114,6 @@ struct bt_bufferlist_s
 {
   FAR struct bt_buf_s *head;
   FAR struct bt_buf_s *tail;
-  spinlock_t lock;
 };
 
 /****************************************************************************

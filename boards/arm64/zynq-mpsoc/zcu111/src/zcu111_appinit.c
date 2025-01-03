@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/arm64/zynq-mpsoc/zcu111/src/zcu111_appinit.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -60,13 +58,7 @@
 
 int board_app_initialize(uintptr_t arg)
 {
-#ifdef CONFIG_BOARD_LATE_INITIALIZE
-  /* Board initialization already performed by board_late_initialize() */
+  /* Perform board initialization */
 
   return OK;
-#else
-  /* Perform board-specific initialization */
-
-  return zcu111_bringup();
-#endif
 }

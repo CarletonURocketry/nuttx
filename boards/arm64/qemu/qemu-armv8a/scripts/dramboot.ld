@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/arm64/qemu/qemu-armv8a/scripts/dramboot.ld
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -107,11 +105,6 @@ SECTIONS
        *(.data.page_aligned)
        *(.data)
        . = ALIGN(8);
-        __start_impls = .;
-        *(.impls)
-        KEEP(*(.impls))
-        . = ALIGN(4);
-        __stop_impls = .;
        *(.data.rel)
        *(.data.rel.*)
        CONSTRUCTORS
@@ -144,6 +137,7 @@ SECTIONS
        *(.exit.text)
        *(.exit.data)
        *(.exitcall.exit)
+       *(.eh_frame)
   }
 
   /* Stabs debugging sections.  */

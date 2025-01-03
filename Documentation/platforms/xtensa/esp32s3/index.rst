@@ -363,7 +363,7 @@ I2S          Yes
 LCD          No
 LED_PWM      No
 MCPWM        Yes
-Pulse_CNT    Yes
+Pulse_CNT    No
 RMT          No
 RNG          No
 RSA          No

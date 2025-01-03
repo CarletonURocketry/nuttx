@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/bl602/bl602_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -151,8 +149,6 @@ static bool bl602_txempty(struct uart_dev_s *dev);
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-static spinlock_t g_bl602_serial_lock = SP_UNLOCKED;
 
 static const struct uart_ops_s g_uart_ops =
 {
@@ -890,14 +886,24 @@ void riscv_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
-  irqstate_t flags = spin_lock_irqsave(&g_bl602_serial_lock);
+  irqstate_t flags = spin_lock_irqsave(NULL);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      riscv_lowputc('\r');
+    }
 
   riscv_lowputc(ch);
-  spin_unlock_irqrestore(&g_bl602_serial_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 #endif
+  return ch;
 }
 
 /****************************************************************************
@@ -920,8 +926,9 @@ void riscv_serialinit(void)
 {
 }
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  return ch;
 }
 
 #endif /* HAVE_UART_DEVICE */
@@ -935,11 +942,21 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      riscv_lowputc('\r');
+    }
+
   riscv_lowputc(ch);
 #endif
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

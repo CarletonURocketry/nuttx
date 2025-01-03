@@ -68,33 +68,20 @@
 
 int unlinkat(int dirfd, FAR const char *path, int flags)
 {
-  FAR char *fullpath;
+  char fullpath[PATH_MAX];
   int ret;
 
-  fullpath = lib_get_pathbuffer();
-  if (fullpath == NULL)
-    {
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
-  ret = lib_getfullpath(dirfd, path, fullpath, PATH_MAX);
+  ret = lib_getfullpath(dirfd, path, fullpath, sizeof(fullpath));
   if (ret < 0)
     {
-      lib_put_pathbuffer(fullpath);
       set_errno(-ret);
       return ERROR;
     }
 
   if ((flags & AT_REMOVEDIR) != 0)
     {
-      ret = rmdir(fullpath);
-    }
-  else
-    {
-      ret = unlink(fullpath);
+      return rmdir(fullpath);
     }
 
-  lib_put_pathbuffer(fullpath);
-  return ret;
+  return unlink(fullpath);
 }

@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/common/espressif/esp_tickless.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -58,8 +56,6 @@
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-static spinlock_t g_esp_tickless_lock = SP_UNLOCKED;
 
 /* Systimer HAL layer object */
 
@@ -128,10 +124,10 @@ uint32_t up_get_idletime(void)
   uint64_t counter;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&g_esp_tickless_lock);
+  flags = spin_lock_irqsave(NULL);
   if (!g_timer_started)
     {
-      spin_unlock_irqrestore(&g_esp_tickless_lock, flags);
+      spin_unlock_irqrestore(NULL, flags);
 
       return 0;
     }
@@ -149,7 +145,7 @@ uint32_t up_get_idletime(void)
       us = 0;
     }
 
-  spin_unlock_irqrestore(&g_esp_tickless_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return us;
 }
@@ -174,12 +170,12 @@ void up_step_idletime(uint32_t idletime_us)
 
   DEBUGASSERT(g_timer_started);
 
-  flags = spin_lock_irqsave(&g_esp_tickless_lock);
+  flags = spin_lock_irqsave(NULL);
 
   systimer_hal_counter_value_advance(&systimer_hal, SYSTIMER_COUNTER_OS_TICK,
                                      idletime_us);
 
-  spin_unlock_irqrestore(&g_esp_tickless_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -218,13 +214,13 @@ void up_step_idletime(uint32_t idletime_us)
 int IRAM_ATTR up_timer_gettime(struct timespec *ts)
 {
   uint64_t time_us;
-  irqstate_t flags = spin_lock_irqsave(&g_esp_tickless_lock);
+  irqstate_t flags = spin_lock_irqsave(NULL);
 
   time_us = systimer_hal_get_time(&systimer_hal, SYSTIMER_COUNTER_OS_TICK);
   ts->tv_sec  = time_us / USEC_PER_SEC;
   ts->tv_nsec = (time_us % USEC_PER_SEC) * NSEC_PER_USEC;
 
-  spin_unlock_irqrestore(&g_esp_tickless_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return OK;
 }
@@ -269,7 +265,7 @@ int IRAM_ATTR up_timer_cancel(struct timespec *ts)
 {
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&g_esp_tickless_lock);
+  flags = spin_lock_irqsave(NULL);
 
   if (ts != NULL)
     {
@@ -316,7 +312,7 @@ int IRAM_ATTR up_timer_cancel(struct timespec *ts)
   systimer_ll_clear_alarm_int(systimer_hal.dev,
                               SYSTIMER_ALARM_OS_TICK_CORE0);
 
-  spin_unlock_irqrestore(&g_esp_tickless_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return OK;
 }
@@ -352,7 +348,7 @@ int IRAM_ATTR up_timer_start(const struct timespec *ts)
   uint64_t alarm_ticks;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&g_esp_tickless_lock);
+  flags = spin_lock_irqsave(NULL);
 
   if (g_timer_started)
     {
@@ -377,7 +373,7 @@ int IRAM_ATTR up_timer_start(const struct timespec *ts)
 
   g_timer_started = true;
 
-  spin_unlock_irqrestore(&g_esp_tickless_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return OK;
 }

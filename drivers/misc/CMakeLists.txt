@@ -1,8 +1,6 @@
 # ##############################################################################
 # drivers/misc/CMakeLists.txt
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -31,10 +29,6 @@ endif()
 
 if(CONFIG_DEV_ZERO)
   list(APPEND SRCS dev_zero.c)
-endif()
-
-if(CONFIG_DEV_MEM)
-  list(APPEND SRCS dev_mem.c)
 endif()
 
 if(CONFIG_DEV_ASCII)
@@ -71,19 +65,10 @@ if(CONFIG_BLK_RPMSG)
 endif()
 
 if(CONFIG_BLK_RPMSG_SERVER)
-  target_include_directories(drivers PRIVATE ${NUTTX_DIR}/fs/inode
-                                             ${NUTTX_DIR}/fs)
-  set_source_files_properties(rpmsgblk_server.c DIRECTORY
-                              ${CMAKE_CURRENT_LIST_DIR}/..)
+  set_source_files_properties(
+    rpmsgblk_server.c DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/..
+    PROPERTIES INCLUDE_DIRECTORIES ${NUTTX_DIR}/fs/inode)
   list(APPEND SRCS rpmsgblk_server.c)
-endif()
-
-if(NOT CONFIG_DEV_OPTEE_NONE)
-  list(APPEND SRCS optee.c)
-endif()
-
-if(CONFIG_GOLDFISH_PIPE)
-  list(APPEND SRCS goldfish_pipe.c)
 endif()
 
 target_sources(drivers PRIVATE ${SRCS})

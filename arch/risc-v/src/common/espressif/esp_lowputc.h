@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/common/espressif/esp_lowputc.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -39,7 +37,6 @@
 
 #include <nuttx/arch.h>
 #include <nuttx/irq.h>
-#include <nuttx/spinlock.h>
 
 #include "chip.h"
 #include "esp_irq.h"
@@ -77,7 +74,6 @@ struct esp_uart_s
   bool                oflow;     /* Output flow control (CTS) enabled */
 #endif
   uart_hal_context_t *hal;       /* HAL context */
-  spinlock_t          lock;      /* Spinlock */
 };
 
 extern struct esp_uart_s g_uart0_config;
@@ -129,7 +125,7 @@ void esp_lowputc_enable_sysclk(const struct esp_uart_s *priv);
  *
  ****************************************************************************/
 
-void esp_lowputc_disable_all_uart_int(struct esp_uart_s *priv,
+void esp_lowputc_disable_all_uart_int(const struct esp_uart_s *priv,
                                       uint32_t *current_status);
 
 /****************************************************************************

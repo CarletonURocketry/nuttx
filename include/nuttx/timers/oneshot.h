@@ -269,10 +269,7 @@ int oneshot_max_delay(FAR struct oneshot_lowerhalf_s *lower,
   clock_t tick;
   int ret;
 
-  if (lower->ops->tick_max_delay == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->tick_max_delay);
 
   ret = lower->ops->tick_max_delay(lower, &tick);
   clock_ticks2time(ts, tick);
@@ -286,10 +283,7 @@ int oneshot_start(FAR struct oneshot_lowerhalf_s *lower,
 {
   clock_t tick;
 
-  if (lower->ops->tick_start == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->tick_start);
 
   tick = clock_time2ticks(ts);
   return lower->ops->tick_start(lower, callback, arg, tick);
@@ -302,10 +296,7 @@ int oneshot_cancel(FAR struct oneshot_lowerhalf_s *lower,
   clock_t tick;
   int ret;
 
-  if (lower->ops->tick_cancel == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->tick_cancel);
 
   ret = lower->ops->tick_cancel(lower, &tick);
   clock_ticks2time(ts, tick);
@@ -320,10 +311,7 @@ int oneshot_current(FAR struct oneshot_lowerhalf_s *lower,
   clock_t tick;
   int ret;
 
-  if (lower->ops->tick_current == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->tick_current);
 
   ret = lower->ops->tick_current(lower, &tick);
   clock_ticks2time(ts, tick);
@@ -338,10 +326,7 @@ int oneshot_tick_max_delay(FAR struct oneshot_lowerhalf_s *lower,
   struct timespec ts;
   int ret;
 
-  if (lower->ops->max_delay == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->max_delay);
 
   ret = lower->ops->max_delay(lower, &ts);
   *ticks = clock_time2ticks(&ts);
@@ -355,10 +340,7 @@ int oneshot_tick_start(FAR struct oneshot_lowerhalf_s *lower,
 {
   struct timespec ts;
 
-  if (lower->ops->start == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->start);
 
   clock_ticks2time(&ts, ticks);
   return lower->ops->start(lower, callback, arg, &ts);
@@ -371,10 +353,7 @@ int oneshot_tick_cancel(FAR struct oneshot_lowerhalf_s *lower,
   struct timespec ts;
   int ret;
 
-  if (lower->ops->cancel == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->cancel);
 
   ret = lower->ops->cancel(lower, &ts);
   *ticks = clock_time2ticks(&ts);
@@ -389,10 +368,7 @@ int oneshot_tick_current(FAR struct oneshot_lowerhalf_s *lower,
   struct timespec ts;
   int ret;
 
-  if (lower->ops->current == NULL)
-    {
-      return -ENOTSUP;
-    }
+  DEBUGASSERT(lower->ops->current);
 
   ret = lower->ops->current(lower, &ts);
   *ticks = clock_time2ticks(&ts);

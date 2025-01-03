@@ -236,9 +236,8 @@
 
 struct pci_resource_s
 {
-  uint64_t start;
-  uint64_t end;
-  uint64_t offset;
+  uintptr_t start;
+  uintptr_t end;
   unsigned int flags;
 };
 

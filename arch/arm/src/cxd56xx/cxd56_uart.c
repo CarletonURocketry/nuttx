@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/cxd56xx/cxd56_uart.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -129,8 +127,6 @@ struct uartdev
  * Private Data
  ****************************************************************************/
 
-static spinlock_t g_cxd32xx_lock = SP_UNLOCKED;
-
 static struct uartdev g_uartdevs[] =
 {
   {
@@ -208,7 +204,7 @@ static void cxd56_uart_pincontrol(int ch, bool on)
 
 static void cxd56_uart_start(int ch)
 {
-  irqstate_t flags = spin_lock_irqsave(&g_cxd32xx_lock);
+  irqstate_t flags = enter_critical_section();
 
   cxd56_setbaud(CONSOLE_BASE, CONSOLE_BASEFREQ, CONSOLE_BAUD);
 
@@ -216,7 +212,7 @@ static void cxd56_uart_start(int ch)
 
   putreg32(g_cr, g_uartdevs[ch].uartbase + CXD56_UART_CR);
 
-  spin_unlock_irqrestore(&g_cxd32xx_lock, flags);
+  leave_critical_section(flags);
 }
 
 /****************************************************************************
@@ -232,7 +228,7 @@ static void cxd56_uart_stop(int ch)
 {
   uint32_t cr;
 
-  irqstate_t flags = spin_lock_irqsave(&g_cxd32xx_lock);
+  irqstate_t flags = enter_critical_section();
 
   while (UART_FR_BUSY & getreg32(g_uartdevs[ch].uartbase + CXD56_UART_FR));
 
@@ -244,7 +240,7 @@ static void cxd56_uart_stop(int ch)
   g_lcr = getreg32(g_uartdevs[ch].uartbase + CXD56_UART_LCR_H);
   putreg32(0, g_uartdevs[ch].uartbase + CXD56_UART_LCR_H);
 
-  spin_unlock_irqrestore(&g_cxd32xx_lock, flags);
+  leave_critical_section(flags);
 }
 
 /****************************************************************************
@@ -465,7 +461,7 @@ void cxd56_setbaud(uintptr_t uartbase, uint32_t basefreq, uint32_t baud)
   uint32_t div;
   uint32_t lcr_h;
 
-  irqstate_t flags = spin_lock_irqsave(&g_cxd32xx_lock);
+  irqstate_t flags = spin_lock_irqsave(NULL);
 
   if (uartbase == CXD56_UART2_BASE)
     {
@@ -477,7 +473,7 @@ void cxd56_setbaud(uintptr_t uartbase, uint32_t basefreq, uint32_t baud)
     }
   else
     {
-      spin_unlock_irqrestore(&g_cxd32xx_lock, flags);
+      spin_unlock_irqrestore(NULL, flags);
       return;
     }
 
@@ -504,7 +500,7 @@ void cxd56_setbaud(uintptr_t uartbase, uint32_t basefreq, uint32_t baud)
   putreg32(lcr_h, uartbase + CXD56_UART_LCR_H);
 
 finish:
-  spin_unlock_irqrestore(&g_cxd32xx_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************

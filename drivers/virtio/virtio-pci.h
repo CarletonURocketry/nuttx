@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/virtio/virtio-pci.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -31,7 +29,6 @@
 
 #ifdef CONFIG_DRIVERS_VIRTIO_PCI
 
-#include <nuttx/arch.h>
 #include <nuttx/pci/pci.h>
 #include <nuttx/virtio/virtio.h>
 #include <nuttx/wdog.h>
@@ -78,7 +75,7 @@ struct virtio_pci_ops_s
 
 struct virtio_pci_device_s
 {
-  struct virtio_device               vdev;    /* Virtio device */
+  struct virtio_device               vdev;    /* Virtio deivce */
   FAR struct pci_device_s           *dev;     /* PCI device */
   FAR const struct virtio_pci_ops_s *ops;
   metal_phys_addr_t                  shm_phy;

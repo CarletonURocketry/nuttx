@@ -1,9 +1,11 @@
 /****************************************************************************
  * drivers/lcd/ra8875.h
+ * Definitions for the RAiO Technologies RA8875 LCD controller
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2015 Intuitive Aerial AB. All rights reserved.
- * SPDX-FileContributor: Marten Svanfeldt <marten@intuitiveaerial.com>
+ *   Copyright (C) 2015 Intuitive Aerial AB. All rights reserved.
+ *   Author: Marten Svanfeldt <marten@intuitiveaerial.com>
+ *
+ * References: RA8875, Rev 1.6, Apr 2013, RAiO Technologies Inc
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

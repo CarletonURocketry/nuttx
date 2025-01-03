@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/net/ksz9477_reg.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -136,12 +134,13 @@
  * Public Types
  ****************************************************************************/
 
-begin_packed_struct struct ksz9477_transfer_s
+struct ksz9477_transfer_s
 {
   uint16_t len;
   uint16_t reg;
   uint32_t data;
-} end_packed_struct;
+}
+__attribute__((packed));
 
 #ifndef __ASSEMBLY__
 

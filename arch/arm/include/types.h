@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/include/types.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -112,7 +110,7 @@ typedef unsigned int            _size_t;
  */
 
 #ifdef __thumb2__
-#if defined(CONFIG_ARCH_ARMV6M) || defined(CONFIG_ARCH_ARMV7M) || defined(CONFIG_ARCH_ARMV8M)
+#if defined(CONFIG_ARMV7M_USEBASEPRI) || defined(CONFIG_ARCH_ARMV6M) || defined(CONFIG_ARMV8M_USEBASEPRI)
 typedef unsigned char           irqstate_t;
 #else
 typedef unsigned short          irqstate_t;

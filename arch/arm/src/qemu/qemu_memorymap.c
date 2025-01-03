@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/qemu/qemu_memorymap.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -58,10 +56,6 @@ static const struct section_mapping_s g_section_mapping[] =
   {
     VIRT_PCIE_PSECTION, VIRT_PCIE_VSECTION,
     MMU_IOFLAGS, _NSECTIONS(VIRT_PCIE_SECSIZE)
-  },
-  {
-    VIRT_DDR_PSECTION, VIRT_DDR_VSECTION,
-    MMU_MEMFLAGS, _NSECTIONS(VIRT_DDR_SECSIZE)
   },
 };
 

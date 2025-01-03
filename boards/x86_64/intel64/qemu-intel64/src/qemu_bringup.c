@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/x86_64/intel64/qemu-intel64/src/qemu_bringup.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -40,10 +38,6 @@
 
 #ifdef CONFIG_PCI
 #  include <nuttx/pci/pci.h>
-#endif
-
-#ifdef CONFIG_VIDEO_FB
-#  include <nuttx/video/fb.h>
 #endif
 
 #include "qemu_intel64.h"
@@ -98,16 +92,6 @@ int qemu_bringup(void)
   if (os)
     {
       oneshot_register("/dev/oneshot", os);
-    }
-#endif
-
-#ifdef CONFIG_VIDEO_FB
-  /* Initialize and register the framebuffer driver */
-
-  ret = fb_register(0, 0);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: fb_register() failed: %d\n", ret);
     }
 #endif
 

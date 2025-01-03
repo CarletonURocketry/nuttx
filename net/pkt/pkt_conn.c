@@ -42,7 +42,6 @@
 
 #include "devif/devif.h"
 #include "pkt/pkt.h"
-#include "utils/utils.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -53,19 +52,19 @@
    (addr1[2] == addr2[2]) && (addr1[3] == addr2[3]) && \
    (addr1[4] == addr2[4]) && (addr1[5] == addr2[5]))
 
-#ifndef CONFIG_NET_PKT_MAX_CONNS
-#  define CONFIG_NET_PKT_MAX_CONNS 0
-#endif
-
 /****************************************************************************
  * Private Data
  ****************************************************************************/
 
 /* The array containing all packet socket connections */
 
-NET_BUFPOOL_DECLARE(g_pkt_connections, sizeof(struct pkt_conn_s),
-                    CONFIG_NET_PKT_PREALLOC_CONNS,
-                    CONFIG_NET_PKT_ALLOC_CONNS, CONFIG_NET_PKT_MAX_CONNS);
+#if CONFIG_NET_PKT_PREALLOC_CONNS > 0
+static struct pkt_conn_s g_pkt_connections[CONFIG_NET_PKT_PREALLOC_CONNS];
+#endif
+
+/* A list of all free packet socket connections */
+
+static dq_queue_t g_free_pkt_connections;
 static mutex_t g_free_lock = NXMUTEX_INITIALIZER;
 
 /* A list of all allocated packet socket connections */
@@ -87,7 +86,14 @@ static dq_queue_t g_active_pkt_connections;
 
 void pkt_initialize(void)
 {
-  NET_BUFPOOL_INIT(g_pkt_connections);
+#if CONFIG_NET_PKT_PREALLOC_CONNS > 0
+  int i;
+
+  for (i = 0; i < CONFIG_NET_PKT_PREALLOC_CONNS; i++)
+    {
+      dq_addlast(&g_pkt_connections[i].sconn.node, &g_free_pkt_connections);
+    }
+#endif
 }
 
 /****************************************************************************
@@ -102,12 +108,37 @@ void pkt_initialize(void)
 FAR struct pkt_conn_s *pkt_alloc(void)
 {
   FAR struct pkt_conn_s *conn;
+#if CONFIG_NET_PKT_ALLOC_CONNS > 0
+  int i;
+#endif
 
   /* The free list is protected by a mutex. */
 
   nxmutex_lock(&g_free_lock);
+#if CONFIG_NET_PKT_ALLOC_CONNS > 0
+  if (dq_peek(&g_free_pkt_connections) == NULL)
+    {
+#if CONFIG_NET_PKT_MAX_CONNS > 0
+      if (dq_count(&g_active_pkt_connections) +
+          CONFIG_NET_PKT_ALLOC_CONNS > CONFIG_NET_PKT_MAX_CONNS)
+        {
+          nxmutex_unlock(&g_free_lock);
+          return NULL;
+        }
+#endif
 
-  conn = NET_BUFPOOL_TRYALLOC(g_pkt_connections);
+      conn = kmm_zalloc(sizeof(*conn) * CONFIG_NET_PKT_ALLOC_CONNS);
+      if (conn != NULL)
+        {
+          for (i = 0; i < CONFIG_NET_PKT_ALLOC_CONNS; i++)
+            {
+              dq_addlast(&conn[i].sconn.node, &g_free_pkt_connections);
+            }
+        }
+    }
+#endif
+
+  conn = (FAR struct pkt_conn_s *)dq_remfirst(&g_free_pkt_connections);
   if (conn)
     {
       /* Enqueue the connection into the active list */
@@ -140,9 +171,22 @@ void pkt_free(FAR struct pkt_conn_s *conn)
 
   dq_rem(&conn->sconn.node, &g_active_pkt_connections);
 
-  /* Free the connection. */
+  /* If this is a preallocated or a batch allocated connection store it in
+   * the free connections list. Else free it.
+   */
 
-  NET_BUFPOOL_FREE(g_pkt_connections, conn);
+#if CONFIG_NET_PKT_ALLOC_CONNS == 1
+  if (conn < g_pkt_connections || conn >= (g_pkt_connections +
+      CONFIG_NET_PKT_PREALLOC_CONNS))
+    {
+      kmm_free(conn);
+    }
+  else
+#endif
+    {
+      memset(conn, 0, sizeof(*conn));
+      dq_addlast(&conn->sconn.node, &g_free_pkt_connections);
+    }
 
   nxmutex_unlock(&g_free_lock);
 }

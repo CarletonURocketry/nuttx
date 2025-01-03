@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/note/notesnap_driver.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -50,8 +48,8 @@ struct notesnap_s
 {
   struct note_driver_s driver;
   struct notifier_block nb;
-  atomic_t index;
-  atomic_t dumping;
+  atomic_int index;
+  atomic_bool dumping;
   struct notesnap_chunk_s buffer[CONFIG_DRIVERS_NOTESNAP_NBUFFERS];
 };
 
@@ -86,8 +84,8 @@ static void notesnap_cpu_resumed(FAR struct note_driver_s *drv,
 #  endif
 #endif
 #ifdef CONFIG_SCHED_INSTRUMENTATION_PREEMPTION
-static void notesnap_preemption(FAR struct note_driver_s *drv,
-                                FAR struct tcb_s *tcb, bool locked);
+static void notesnap_premption(FAR struct note_driver_s *drv,
+                               FAR struct tcb_s *tcb, bool locked);
 #endif
 #ifdef CONFIG_SCHED_INSTRUMENTATION_CSECTION
 static void notesnap_csection(FAR struct note_driver_s *drv,
@@ -133,7 +131,7 @@ static const struct note_driver_ops_s g_notesnap_ops =
 #  endif
 #endif
 #ifdef CONFIG_SCHED_INSTRUMENTATION_PREEMPTION
-  notesnap_preemption,
+  notesnap_premption,
 #endif
 #ifdef CONFIG_SCHED_INSTRUMENTATION_CSECTION
   notesnap_csection,
@@ -212,7 +210,7 @@ static inline void notesnap_common(FAR struct note_driver_s *drv,
   FAR struct notesnap_chunk_s *note;
   size_t index;
 
-  if (atomic_read(&snap->dumping))
+  if (atomic_load(&snap->dumping))
     {
       return;
     }
@@ -302,8 +300,8 @@ static void notesnap_cpu_resumed(FAR struct note_driver_s *drv,
 #endif
 
 #ifdef CONFIG_SCHED_INSTRUMENTATION_PREEMPTION
-static void notesnap_preemption(FAR struct note_driver_s *drv,
-                                FAR struct tcb_s *tcb, bool locked)
+static void notesnap_premption(FAR struct note_driver_s *drv,
+                               FAR struct tcb_s *tcb, bool locked)
 {
   notesnap_common(drv, tcb, locked ? NOTE_PREEMPT_LOCK :
                   NOTE_PREEMPT_UNLOCK, 0);
@@ -388,7 +386,7 @@ void notesnap_dump_with_stream(FAR struct lib_outstream_s *stream)
 
   /* Stop recording while dumping */
 
-  atomic_set(&g_notesnap.dumping, true);
+  atomic_store(&g_notesnap.dumping, true);
 
   for (i = 0; i < CONFIG_DRIVERS_NOTESNAP_NBUFFERS; i++)
     {
@@ -411,7 +409,7 @@ void notesnap_dump_with_stream(FAR struct lib_outstream_s *stream)
                   note->pid, g_notesnap_type[note->type], note->args);
     }
 
-  atomic_set(&g_notesnap.dumping, false);
+  atomic_store(&g_notesnap.dumping, false);
 }
 
 /****************************************************************************

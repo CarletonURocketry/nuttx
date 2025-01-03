@@ -87,8 +87,6 @@ int pthread_barrier_init(FAR pthread_barrier_t *barrier,
     {
       sem_init(&barrier->sem, 0, 0);
       barrier->count = count;
-      barrier->wait_count = 0;
-      nxmutex_init(&barrier->mutex);
     }
 
   return ret;

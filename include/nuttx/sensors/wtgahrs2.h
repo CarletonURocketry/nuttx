@@ -54,7 +54,6 @@ extern "C"
  * Returned Value:
  *   OK if the driver was successfully initialize; A negated errno value is
  *   returned on any failure.
- *
  ****************************************************************************/
 
 int wtgahrs2_initialize(FAR const char *path, int devno);

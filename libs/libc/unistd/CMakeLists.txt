@@ -26,7 +26,6 @@ set(SRCS
     lib_swab.c
     lib_pathconf.c
     lib_sysconf.c
-    lib_getcwd.c
     lib_getentropy.c
     lib_getopt_common.c
     lib_getopt.c
@@ -65,10 +64,7 @@ set(SRCS
     lib_getpgrp.c
     lib_getpgid.c
     lib_lockf.c
-    lib_flock.c
-    lib_getpass.c
-    lib_chdir.c
-    lib_fchdir.c)
+    lib_flock.c)
 
 if(NOT CONFIG_SCHED_USER_IDENTITY)
   list(
@@ -85,7 +81,7 @@ if(NOT CONFIG_SCHED_USER_IDENTITY)
 endif()
 
 if(NOT CONFIG_DISABLE_ENVIRON)
-  list(APPEND SRCS lib_restoredir.c)
+  list(APPEND SRCS lib_chdir.c lib_fchdir.c lib_getcwd.c lib_restoredir.c)
 endif()
 
 if(CONFIG_LIBC_EXECFUNCS)
@@ -98,10 +94,6 @@ endif()
 
 if(CONFIG_ARCH_HAVE_FORK)
   list(APPEND SRCS lib_fork.c)
-endif()
-
-if(CONFIG_CRYPTO)
-  list(APPEND SRCS lib_crypt.c lib_crypt_r.c)
 endif()
 
 target_sources(c PRIVATE ${SRCS})

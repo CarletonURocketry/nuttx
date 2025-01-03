@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_boot.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -139,11 +137,6 @@ void arm64_boot_el2_init(void)
 
   reg = read_sysreg(hcr_el2);
   reg |= HCR_RW_BIT;      /* EL1 Execution state is AArch64 */
-
-#ifdef CONFIG_ARM64_MTE
-  reg |= HCR_ATA_BIT;
-#endif
-
   write_sysreg(reg, hcr_el2);
 
   reg = 0U;                   /* RES0 */

@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/xtensa/src/common/xtensa_irqdispatch.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -46,8 +44,7 @@
 
 uint32_t *xtensa_irq_dispatch(int irq, uint32_t *regs)
 {
-  struct tcb_s **running_task = &g_running_tasks[this_cpu()];
-  struct tcb_s *tcb;
+  struct tcb_s *tcb = this_task();
 
 #ifdef CONFIG_SUPPRESS_INTERRUPTS
   board_autoled_on(LED_INIRQ);
@@ -59,19 +56,19 @@ uint32_t *xtensa_irq_dispatch(int irq, uint32_t *regs)
 
   /* Nested interrupts are not supported */
 
-  DEBUGASSERT(!up_interrupt_context());
+  DEBUGASSERT(up_current_regs() == NULL);
 
-  /* Set irq flag */
-
-  up_set_interrupt_context(true);
-
-  /* This judgment proves that (*running_task)->xcp.regs
-   * is invalid, and we can safely overwrite it.
+  /* Current regs non-zero indicates that we are processing an interrupt;
+   * current_regs is also used to manage interrupt level context switches.
    */
 
-  if (!(XTENSA_IRQ_SYSCALL == irq && regs[REG_A2] == SYS_restore_context))
+  up_set_current_regs(regs);
+
+  if (irq != XTENSA_IRQ_SWINT)
     {
-      (*running_task)->xcp.regs = regs;
+      /* we are not trigger by syscall */
+
+      tcb->xcp.regs = regs;
     }
 
   /* Deliver the IRQ */
@@ -83,7 +80,7 @@ uint32_t *xtensa_irq_dispatch(int irq, uint32_t *regs)
    * current_regs will have a different value than it did on entry.
    */
 
-  if (*running_task != tcb)
+  if (regs != tcb->xcp.regs)
     {
 #ifdef CONFIG_ARCH_ADDRENV
       /* Make sure that the address environment for the previously
@@ -92,27 +89,30 @@ uint32_t *xtensa_irq_dispatch(int irq, uint32_t *regs)
        * thread at the head of the ready-to-run list.
        */
 
-      addrenv_switch(tcb);
+      addrenv_switch(NULL);
 #endif
 
       /* Update scheduler parameters */
 
-      nxsched_suspend_scheduler(*running_task);
-      nxsched_resume_scheduler(tcb);
+      nxsched_suspend_scheduler(g_running_tasks[this_cpu()]);
+      nxsched_resume_scheduler(this_task());
 
       /* Record the new "running" task when context switch occurred.
        * g_running_tasks[] is only used by assertion logic for reporting
        * crashes.
        */
 
-      *running_task = tcb;
+      g_running_tasks[this_cpu()] = tcb;
+      regs = tcb->xcp.regs;
     }
 
-  /* Set irq flag */
+  /* Set current_regs to NULL to indicate that we are no longer in an
+   * interrupt handler.
+   */
 
-  up_set_interrupt_context(false);
+  up_set_current_regs(NULL);
 #endif
 
   board_autoled_off(LED_INIRQ);
-  return tcb->xcp.regs;
+  return regs;
 }

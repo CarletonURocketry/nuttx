@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/video/v4l2_core.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -67,8 +65,6 @@ static const struct file_operations g_v4l2_fops =
   v4l2_mmap,               /* mmap */
   NULL,                    /* truncate */
   v4l2_poll,               /* poll */
-  NULL,                    /* readv */
-  NULL,                    /* writev */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   v4l2_unlink,             /* unlink */
 #endif

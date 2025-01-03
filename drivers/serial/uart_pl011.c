@@ -1,8 +1,6 @@
 /***************************************************************************
  * drivers/serial/uart_pl011.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -228,7 +226,6 @@ struct pl011_uart_port_s
   struct pl011_data data;
   struct pl011_config config;
   unsigned int irq_num;
-  spinlock_t lock;
 };
 
 static int pl011_setup(FAR struct uart_dev_s *dev);
@@ -308,7 +305,6 @@ static struct pl011_uart_port_s g_uart0priv =
     },
 
     .irq_num    = CONFIG_UART0_IRQ,
-    .lock       = SP_UNLOCKED,
 };
 
 /* I/O buffers */
@@ -352,7 +348,6 @@ static struct pl011_uart_port_s g_uart1priv =
     },
 
     .irq_num    = CONFIG_UART1_IRQ,
-    .lock       = SP_UNLOCKED,
 };
 
 /* I/O buffers */
@@ -396,7 +391,6 @@ static struct pl011_uart_port_s g_uart2priv =
     },
 
     .irq_num    = CONFIG_UART2_IRQ,
-    .lock       = SP_UNLOCKED,
 };
 
 /* I/O buffers */
@@ -440,7 +434,6 @@ static struct pl011_uart_port_s g_uart3priv =
     },
 
     .irq_num    = CONFIG_UART3_IRQ,
-    .lock       = SP_UNLOCKED,
 };
 
 /* I/O buffers */
@@ -675,13 +668,12 @@ static void pl011_send(FAR struct uart_dev_s *dev, int ch)
 
 static void pl011_putc(struct uart_dev_s *dev, int ch)
 {
-  FAR struct pl011_uart_port_s *sport = dev->priv;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&sport->lock);
+  flags = spin_lock_irqsave(NULL);
   while (!pl011_txempty(dev));
   pl011_send(dev, ch);
-  spin_unlock_irqrestore(&sport->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /***************************************************************************
@@ -743,20 +735,24 @@ static void pl011_txint(FAR struct uart_dev_s *dev, bool enable)
   FAR struct pl011_uart_port_s *sport = dev->priv;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&sport->lock);
+  flags = enter_critical_section();
 
   if (enable)
     {
       pl011_irq_tx_enable(sport);
-      spin_unlock_irqrestore(&sport->lock, flags);
+
+      /* Fake a TX interrupt here by just calling uart_xmitchars() with
+       * interrupts disabled (note this may recurse).
+       */
 
       uart_xmitchars(dev);
     }
   else
     {
       pl011_irq_tx_disable(sport);
-      spin_unlock_irqrestore(&sport->lock, flags);
     }
+
+  leave_critical_section(flags);
 }
 
 /***************************************************************************
@@ -1065,11 +1061,22 @@ void pl011_serialinit(void)
  ***************************************************************************/
 
 #ifdef HAVE_PL011_CONSOLE
-void up_putc(int ch)
+int up_putc(int ch)
 {
   FAR struct uart_dev_s *dev = &CONSOLE_DEV;
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      pl011_putc(dev, '\r');
+    }
+
   pl011_putc(dev, ch);
+
+  return ch;
 }
 #endif
 

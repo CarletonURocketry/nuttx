@@ -1,9 +1,9 @@
 /****************************************************************************
  * crypto/podd.h
- *
- * SPDX-License-Identifier: SSLeay-standalone
- * SPDX-FileCopyrightText: Copyright (C) 1995 Eric Young (eay@mincom.oz.au)
- * SPDX-FileCopyrightText: Eric Young
+ * $OpenBSD: podd.h,v 1.1 2000/02/28 23:13:05 deraadt Exp $
+ * lib/des/podd.h
+ * Copyright (C) 1995 Eric Young (eay@mincom.oz.au)
+ * All rights reserved.
  *
  * This file is part of an SSL implementation written
  * by Eric Young (eay@mincom.oz.au).

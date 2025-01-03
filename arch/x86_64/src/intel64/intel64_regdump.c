@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/x86_64/src/intel64/intel64_regdump.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -30,7 +28,6 @@
 #include <debug.h>
 #include <nuttx/irq.h>
 
-#include "sched/sched.h"
 #include "x86_64_internal.h"
 
 /****************************************************************************
@@ -114,7 +111,7 @@ void backtrace(uint64_t rbp)
 
 void up_dump_register(void *dumpregs)
 {
-  volatile uint64_t *regs = dumpregs ? dumpregs : running_regs();
+  volatile uint64_t *regs = dumpregs ? dumpregs : up_current_regs();
   uint64_t mxcsr;
   uint64_t cr2;
 

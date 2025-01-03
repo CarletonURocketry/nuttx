@@ -64,25 +64,15 @@
 
 int mkdirat(int dirfd, FAR const char *path, mode_t mode)
 {
-  FAR char *fullpath;
+  char fullpath[PATH_MAX];
   int ret;
 
-  fullpath = lib_get_pathbuffer();
-  if (fullpath == NULL)
-    {
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
-  ret = lib_getfullpath(dirfd, path, fullpath, PATH_MAX);
+  ret = lib_getfullpath(dirfd, path, fullpath, sizeof(fullpath));
   if (ret < 0)
     {
-      lib_put_pathbuffer(fullpath);
       set_errno(-ret);
       return ERROR;
     }
 
-  ret = mkdir(fullpath, mode);
-  lib_put_pathbuffer(fullpath);
-  return ret;
+  return mkdir(fullpath, mode);
 }

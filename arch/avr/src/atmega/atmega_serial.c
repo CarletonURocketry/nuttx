@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/avr/src/atmega/atmega_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -891,7 +889,7 @@ void avr_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
   uint8_t imr;
@@ -902,6 +900,15 @@ void up_putc(int ch)
   usart1_disableusartint(&imr);
 #endif
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      avr_lowputc('\r');
+    }
+
   avr_lowputc(ch);
 
 #if defined(CONFIG_USART0_SERIAL_CONSOLE)
@@ -910,6 +917,8 @@ void up_putc(int ch)
   usart1_restoreusartint(imr);
 #endif
 #endif
+
+  return ch;
 }
 
 #else /* USE_SERIALDRIVER */
@@ -922,11 +931,21 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      avr_lowputc('\r');
+    }
+
   avr_lowputc(ch);
 #endif
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

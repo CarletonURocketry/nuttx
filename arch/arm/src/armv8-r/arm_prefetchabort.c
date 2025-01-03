@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv8-r/arm_prefetchabort.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -51,10 +49,11 @@
 
 uint32_t *arm_prefetchabort(uint32_t *regs, uint32_t ifar, uint32_t ifsr)
 {
-  struct tcb_s *tcb = this_task();
+  /* Save the saved processor context in current_regs where it can be
+   * accessed for register dumps and possibly context switching.
+   */
 
-  tcb->xcp.regs = regs;
-  up_set_interrupt_context(true);
+  up_set_current_regs(regs);
 
   /* Crash -- possibly showing diagnostic debug information. */
 

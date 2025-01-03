@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/include/syscall.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -43,8 +41,7 @@
 
 #define SYS_syscall 0x00
 
-#if defined(__thumb__) || defined(__thumb2__) || \
-    defined(__THUMB_AWARE__) || defined(__THUMB2_AWARE__)
+#if defined(__thumb__) || defined(__thumb2__)
 #  define SYS_smhcall 0xab
 #else
 #  define SYS_smhcall 0x123456

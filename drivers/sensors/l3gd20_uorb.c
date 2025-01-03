@@ -1,7 +1,6 @@
 /****************************************************************************
  * drivers/sensors/l3gd20_uorb.c
- *
- * SPDX-License-Identifier: Apache-2.0
+ * Character driver for the ST L3GD20 3-Axis gyroscope.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -33,7 +32,6 @@
 #include <string.h>
 #include <math.h>
 
-#include <nuttx/arch.h>
 #include <nuttx/nuttx.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/wqueue.h>

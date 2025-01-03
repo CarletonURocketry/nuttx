@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/samv7/sam_lowputc.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -160,14 +158,6 @@
 #endif /* HAVE_SERIAL_CONSOLE */
 
 /****************************************************************************
- * Private Data
- ****************************************************************************/
-
-#ifdef HAVE_SERIAL_CONSOLE
-static spinlock_t g_sam_lowputc_lock = SP_UNLOCKED;
-#endif
-
-/****************************************************************************
  * Public Functions
  ****************************************************************************/
 
@@ -184,17 +174,30 @@ void arm_lowputc(char ch)
 #ifdef HAVE_SERIAL_CONSOLE
   irqstate_t flags;
 
-  /* Wait for the transmitter to be available */
+  for (; ; )
+    {
+      /* Wait for the transmitter to be available */
 
-  flags = spin_lock_irqsave(&g_sam_lowputc_lock);
-  while ((getreg32(SAM_CONSOLE_BASE + SAM_UART_SR_OFFSET) &
-    UART_INT_TXEMPTY) == 0);
+      while ((getreg32(SAM_CONSOLE_BASE + SAM_UART_SR_OFFSET) &
+        UART_INT_TXEMPTY) == 0);
 
-  /* Send the character */
+      /* Disable interrupts so that the test and the transmission are
+       * atomic.
+       */
 
-  putreg32((uint32_t)ch, SAM_CONSOLE_BASE + SAM_UART_THR_OFFSET);
+      flags = spin_lock_irqsave(NULL);
+      if ((getreg32(SAM_CONSOLE_BASE + SAM_UART_SR_OFFSET) &
+        UART_INT_TXEMPTY) != 0)
+        {
+          /* Send the character */
 
-  spin_unlock_irqrestore(&g_sam_lowputc_lock, flags);
+          putreg32((uint32_t)ch, SAM_CONSOLE_BASE + SAM_UART_THR_OFFSET);
+          spin_unlock_irqrestore(NULL, flags);
+          return;
+        }
+
+      spin_unlock_irqrestore(NULL, flags);
+    }
 #endif
 }
 
@@ -206,11 +209,21 @@ void arm_lowputc(char ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      arm_lowputc('\r');
+    }
+
   arm_lowputc(ch);
 #endif
+  return ch;
 }
 
 /****************************************************************************

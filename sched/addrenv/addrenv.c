@@ -30,7 +30,6 @@
 #include <debug.h>
 
 #include <nuttx/addrenv.h>
-#include <nuttx/atomic.h>
 #include <nuttx/irq.h>
 #include <nuttx/sched.h>
 #include <nuttx/wqueue.h>
@@ -129,6 +128,16 @@ int addrenv_switch(FAR struct tcb_s *tcb)
   int cpu;
   int ret;
 
+  /* NULL for the tcb means to use the TCB of the task at the head of the
+   * ready to run list.
+   */
+
+  if (!tcb)
+    {
+      tcb = this_task();
+    }
+
+  DEBUGASSERT(tcb);
   next = tcb->addrenv_curr;
 
   /* Does the group have an address environment? */
@@ -339,9 +348,6 @@ int addrenv_leave(FAR struct tcb_s *tcb)
  *   0 (OK) is returned on success and a negated errno is returned on
  *   failure.
  *
- * Note:
- *   This API is not safe to use from interrupt.
- *
  ****************************************************************************/
 
 int addrenv_select(FAR struct addrenv_s *addrenv,
@@ -394,7 +400,9 @@ int addrenv_restore(FAR struct addrenv_s *addrenv)
 
 void addrenv_take(FAR struct addrenv_s *addrenv)
 {
-  atomic_fetch_add(&addrenv->refs, 1);
+  irqstate_t flags = enter_critical_section();
+  addrenv->refs++;
+  leave_critical_section(flags);
 }
 
 /****************************************************************************
@@ -414,7 +422,14 @@ void addrenv_take(FAR struct addrenv_s *addrenv)
 
 int addrenv_give(FAR struct addrenv_s *addrenv)
 {
-  return atomic_fetch_sub(&addrenv->refs, 1) - 1;
+  irqstate_t flags;
+  int refs;
+
+  flags = enter_critical_section();
+  refs = --addrenv->refs;
+  leave_critical_section(flags);
+
+  return refs;
 }
 
 /****************************************************************************

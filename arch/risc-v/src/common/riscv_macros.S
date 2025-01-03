@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/common/riscv_macros.S
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -351,7 +349,7 @@
  * Name: riscv_mhartid
  *
  * Description:
- *   Context aware way to query hart id (physical core ID)
+ *   Context aware way to query hart id
  *
  * Returned Value:
  *   Hart id
@@ -364,6 +362,9 @@
   REGLOAD \out, RISCV_PERCPU_HARTID(\out)
 #else
   csrr    \out, CSR_MHARTID
+#  if CONFIG_ARCH_RV_HARTID_BASE > 0
+  add    \out, \out, - CONFIG_ARCH_RV_HARTID_BASE
+#  endif
 #endif
 .endm
 

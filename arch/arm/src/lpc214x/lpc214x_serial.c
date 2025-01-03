@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/lpc214x/lpc214x_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -785,7 +783,7 @@ void arm_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
   struct up_dev_s *priv = (struct up_dev_s *)CONSOLE_DEV.priv;
   uint8_t ier;
@@ -794,8 +792,19 @@ void up_putc(int ch)
   up_waittxready(priv);
   up_serialout(priv, LPC214X_UART_THR_OFFSET, (uint8_t)ch);
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      up_waittxready(priv);
+      up_serialout(priv, LPC214X_UART_THR_OFFSET, '\r');
+    }
+
   up_waittxready(priv);
   up_restoreuartint(priv, ier);
+  return ch;
 }
 
 #else /* USE_SERIALDRIVER */
@@ -808,9 +817,19 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      arm_lowputc('\r');
+    }
+
   arm_lowputc(ch);
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

@@ -42,18 +42,9 @@
 #include <nuttx/net/bluetooth.h>
 
 #include "devif/devif.h"
-#include "utils/utils.h"
 #include "bluetooth/bluetooth.h"
 
 #ifdef CONFIG_NET_BLUETOOTH
-
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-
-#ifndef CONFIG_NET_BLUETOOTH_MAX_CONNS
-#  define CONFIG_NET_BLUETOOTH_MAX_CONNS 0
-#endif
 
 /****************************************************************************
  * Private Data
@@ -63,10 +54,14 @@
  * network lock.
  */
 
-NET_BUFPOOL_DECLARE(g_bluetooth_connections, sizeof(struct bluetooth_conn_s),
-                    CONFIG_NET_BLUETOOTH_PREALLOC_CONNS,
-                    CONFIG_NET_BLUETOOTH_ALLOC_CONNS,
-                    CONFIG_NET_BLUETOOTH_MAX_CONNS);
+#if CONFIG_NET_BLUETOOTH_PREALLOC_CONNS > 0
+static struct bluetooth_conn_s
+  g_bluetooth_connections[CONFIG_NET_BLUETOOTH_PREALLOC_CONNS];
+#endif
+
+/* A list of all free packet socket connections */
+
+static dq_queue_t g_free_bluetooth_connections;
 
 /* A list of all allocated packet socket connections */
 
@@ -95,7 +90,17 @@ static const bt_addr_t g_any_addr =
 
 void bluetooth_conn_initialize(void)
 {
-  NET_BUFPOOL_INIT(g_bluetooth_connections);
+#if CONFIG_NET_BLUETOOTH_PREALLOC_CONNS > 0
+  int i;
+
+  for (i = 0; i < CONFIG_NET_BLUETOOTH_PREALLOC_CONNS; i++)
+    {
+      /* Link each pre-allocated connection structure into the free list. */
+
+      dq_addlast(&g_bluetooth_connections[i].bc_conn.node,
+                 &g_free_bluetooth_connections);
+    }
+#endif
 }
 
 /****************************************************************************
@@ -110,12 +115,39 @@ void bluetooth_conn_initialize(void)
 FAR struct bluetooth_conn_s *bluetooth_conn_alloc(void)
 {
   FAR struct bluetooth_conn_s *conn;
+#if CONFIG_NET_BLUETOOTH_ALLOC_CONNS > 0
+  int i;
+#endif
 
   /* The free list is protected by the network lock */
 
   net_lock();
+#if CONFIG_NET_BLUETOOTH_ALLOC_CONNS > 0
+  if (dq_peek(&g_active_bluetooth_connections) == NULL)
+    {
+#if CONFIG_NET_BLUETOOTH_MAX_CONNS > 0
+      if (dq_count(&g_active_bluetooth_connections) +
+          CONFIG_NET_BLUETOOTH_ALLOC_CONNS > CONFIG_NET_BLUETOOTH_MAX_CONNS)
+        {
+          net_unlock();
+          return NULL;
+        }
+#endif
 
-  conn = NET_BUFPOOL_TRYALLOC(g_bluetooth_connections);
+      conn = kmm_zalloc(sizeof(*conn) * CONFIG_NET_BLUETOOTH_ALLOC_CONNS);
+      if (conn != NULL)
+        {
+          for (i = 0; i < CONFIG_NET_BLUETOOTH_ALLOC_CONNS; i++)
+            {
+              dq_addlast(&conn[i].bc_conn.node,
+                         &g_active_bluetooth_connections);
+            }
+        }
+    }
+#endif
+
+  conn = (FAR struct bluetooth_conn_s *)
+         dq_remfirst(&g_free_bluetooth_connections);
   if (conn)
     {
       /* Mark as unbound */
@@ -175,9 +207,22 @@ void bluetooth_conn_free(FAR struct bluetooth_conn_s *conn)
       bluetooth_container_free(container);
     }
 
-  /* Free the connection structure */
+  /* If this is a preallocated or a batch allocated connection store it in
+   * the free connections list. Else free it.
+   */
 
-  NET_BUFPOOL_FREE(g_bluetooth_connections, conn);
+#if CONFIG_NET_BLUETOOTH_ALLOC_CONNS == 1
+  if (conn < g_bluetooth_connections || conn >= (g_bluetooth_connections +
+      CONFIG_NET_BLUETOOTH_PREALLOC_CONNS))
+    {
+      kmm_free(conn);
+    }
+  else
+#endif
+    {
+      memset(conn, 0, sizeof(*conn));
+      dq_addlast(&conn->bc_conn.node, &g_free_bluetooth_connections);
+    }
 
   net_unlock();
 }

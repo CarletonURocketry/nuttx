@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/common/arm_registerdump.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -59,7 +57,7 @@ uintptr_t up_getusrsp(void *regs)
 
 void up_dump_register(void *dumpregs)
 {
-  volatile uint32_t *regs = dumpregs ? dumpregs : running_regs();
+  volatile uint32_t *regs = dumpregs ? dumpregs : up_current_regs();
 
   /* Dump the interrupt registers */
 

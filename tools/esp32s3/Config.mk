@@ -64,8 +64,6 @@ ESPTOOL_FLASH_OPTS := -fs $(FLASH_SIZE) -fm $(FLASH_MODE) -ff $(FLASH_FREQ)
 
 # Configure the variables according to build environment
 
-ESPTOOL_MIN_VERSION := 4.8.0
-
 ifdef ESPTOOL_BINDIR
 	ifeq ($(CONFIG_ESP32S3_APP_FORMAT_LEGACY),y)
 		BL_OFFSET       := 0x0
@@ -114,21 +112,12 @@ endif
 ESPTOOL_BINS += $(FLASH_APP)
 
 ifeq ($(CONFIG_BUILD_PROTECTED),y)
-	# Check the operating system
-
-	ifeq ($(shell uname -s), Darwin)
-		# macOS
-		ESPTOOL_BINS += $(shell printf "%\#x\n" $$(( $(CONFIG_ESP32S3_KERNEL_OFFSET) + $(CONFIG_ESP32S3_KERNEL_IMAGE_SIZE) ))) nuttx_user.bin
-	else
-		# Linux and other systems
-		ESPTOOL_BINS += $(shell printf "%#x\n" $$(( $(CONFIG_ESP32S3_KERNEL_OFFSET) + $(CONFIG_ESP32S3_KERNEL_IMAGE_SIZE) ))) nuttx_user.bin
-	endif
+	ESPTOOL_BINS += $(shell printf "%#x\n" $$(( $(CONFIG_ESP32S3_KERNEL_OFFSET) + $(CONFIG_ESP32S3_KERNEL_IMAGE_SIZE) ))) nuttx_user.bin
 endif
 
 # MERGEBIN -- Merge raw binary files into a single file
 
 define MERGEBIN
-	@python3 tools/espressif/check_esptool.py -v $(ESPTOOL_MIN_VERSION)
 	$(Q) if [ -z $(ESPTOOL_BINDIR) ]; then \
 		echo "MERGEBIN error: Missing argument for binary files directory."; \
 		echo "USAGE: make ESPTOOL_BINDIR=<dir>"; \
@@ -154,7 +143,13 @@ endef
 ifeq ($(CONFIG_ESP32S3_APP_FORMAT_LEGACY),y)
 define MKIMAGE
 	$(Q) echo "MKIMAGE: ESP32-S3 binary"
-	@python3 tools/espressif/check_esptool.py -v $(ESPTOOL_MIN_VERSION)
+	$(Q) if ! esptool.py version 1>/dev/null 2>&1; then \
+		echo ""; \
+		echo "esptool.py not found.  Please run: \"pip install esptool==4.8.dev4\""; \
+		echo ""; \
+		echo "Run make again to create the nuttx.bin image."; \
+		exit 1; \
+	fi
 	$(Q) if [ -z $(FLASH_SIZE) ]; then \
 		echo "Missing Flash memory size configuration for the ESP32-S3 chip."; \
 		exit 1; \
@@ -180,7 +175,13 @@ endef
 else
 define MKIMAGE
 	$(Q) echo "MKIMAGE: ESP32-S3 binary"
-	@python3 tools/espressif/check_esptool.py -v $(ESPTOOL_MIN_VERSION)
+	$(Q) if ! esptool.py version 1>/dev/null 2>&1; then \
+		echo ""; \
+		echo "esptool.py not found.  Please run: \"pip install esptool==4.8.dev4\""; \
+		echo ""; \
+		echo "Run make again to create the nuttx.bin image."; \
+		exit 1; \
+	fi
 	$(Q) if [ -z $(FLASH_SIZE) ]; then \
 		echo "Missing Flash memory size configuration."; \
 		exit 1; \

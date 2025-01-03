@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/common/espressif/esp_i2c.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -53,7 +51,6 @@
  * Public Function Prototypes
  ****************************************************************************/
 
-#ifdef CONFIG_ESPRESSIF_I2C_PERIPH
 /****************************************************************************
  * Name: esp_i2cbus_initialize
  *
@@ -89,7 +86,6 @@ struct i2c_master_s *esp_i2cbus_initialize(int port);
  ****************************************************************************/
 
 int esp_i2cbus_uninitialize(struct i2c_master_s *dev);
-#endif /* CONFIG_ESPRESSIF_I2C_PERIPH */
 
 #endif /* __ASSEMBLY__ */
 #endif /* __ARCH_RISCV_SRC_COMMON_ESPRESSIF_ESP_I2C_H */

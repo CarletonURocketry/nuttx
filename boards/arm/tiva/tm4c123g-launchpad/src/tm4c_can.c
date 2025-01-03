@@ -1,10 +1,11 @@
 /****************************************************************************
  * boards/arm/tiva/tm4c123g-launchpad/src/tm4c_can.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2016 Gregory Nutt. All rights reserved.
- * SPDX-FileCopyrightText: 2020 Matthew Trescott
- * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
+ *   Copyright (C) 2016 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2020 Matthew Trescott
+ *   Author: Gregory Nutt <gnutt@nuttx.org>
+ *
+ * Based heavily on stm32_can.c from the boards directory.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

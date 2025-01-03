@@ -1,7 +1,6 @@
 /****************************************************************************
  * boards/arm/nrf52/nrf52840-dk/src/nrf52_sx127x.c
- *
- * SPDX-License-Identifier: Apache-2.0
+ * This logic is specific for the RFM98 modules (433MHz)
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

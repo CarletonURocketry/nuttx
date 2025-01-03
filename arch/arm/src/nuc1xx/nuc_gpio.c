@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/nuc1xx/nuc_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -31,7 +29,6 @@
 #include <debug.h>
 
 #include <nuttx/irq.h>
-#include <nuttx/spinlock.h>
 #include <arch/nuc1xx/chip.h>
 
 #include "arm_internal.h"
@@ -43,12 +40,6 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
-
-static spinlock_t g_configgpio_lock = SP_UNLOCKED;
 
 /****************************************************************************
  * Private Functions
@@ -247,7 +238,7 @@ void nuc_gpiowrite(gpio_cfgset_t pinset, bool value)
 
   /* Disable interrupts -- the following operations must be atomic */
 
-  flags = spin_lock_irqsave(&g_configgpio_lock);
+  flags = enter_critical_section();
 
   /* Allow writing only to the selected pin in the DOUT register */
 
@@ -256,7 +247,7 @@ void nuc_gpiowrite(gpio_cfgset_t pinset, bool value)
   /* Set the pin to the selected value and re-enable interrupts */
 
   putreg32(((uint32_t)value << pin), base + NUC_GPIO_DOUT_OFFSET);
-  spin_unlock_irqrestore(&g_configgpio_lock, flags);
+  leave_critical_section(flags);
 #endif
 }
 

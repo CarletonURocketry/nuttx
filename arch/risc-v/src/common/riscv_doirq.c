@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/common/riscv_doirq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -61,7 +59,6 @@
 uintreg_t *riscv_doirq(int irq, uintreg_t *regs)
 {
   struct tcb_s **running_task = &g_running_tasks[this_cpu()];
-  bool restore_context = false;
   struct tcb_s *tcb = this_task();
 
   board_autoled_on(LED_INIRQ);
@@ -74,36 +71,35 @@ uintreg_t *riscv_doirq(int irq, uintreg_t *regs)
   if (irq >= RISCV_IRQ_ECALLU && irq <= RISCV_IRQ_ECALLM)
     {
       regs[REG_EPC] += 4;
-      if (regs[REG_A0] != SYS_restore_context)
-        {
-          (*running_task)->xcp.regs = regs;
-        }
-      else
-        {
-          restore_context = true;
-        }
     }
-  else
+
+  if (*running_task != NULL)
     {
       (*running_task)->xcp.regs = regs;
     }
 
-  /* Nested interrupts are not supported */
+  /* Current regs non-zero indicates that we are processing an interrupt;
+   * current_regs is also used to manage interrupt level context switches.
+   *
+   * Nested interrupts are not supported
+   */
 
-  DEBUGASSERT(!up_interrupt_context());
-
-  /* Set irq flag */
-
-  up_set_interrupt_context(true);
+  DEBUGASSERT(up_current_regs() == NULL);
+  up_set_current_regs(regs);
 
   /* Deliver the IRQ */
 
   irq_dispatch(irq, regs);
   tcb = this_task();
 
-  /* Check for a context switch. */
+  /* Check for a context switch.  If a context switch occurred, then
+   * current_regs will have a different value than it did on entry.  If an
+   * interrupt level context switch has occurred, then restore the floating
+   * point state and the establish the correct address environment before
+   * returning from the interrupt.
+   */
 
-  if (*running_task != tcb || restore_context)
+  if ((*running_task) != tcb)
     {
 #ifdef CONFIG_ARCH_ADDRENV
       /* Make sure that the address environment for the previously
@@ -112,16 +108,12 @@ uintreg_t *riscv_doirq(int irq, uintreg_t *regs)
        * thread at the head of the ready-to-run list.
        */
 
-      addrenv_switch(tcb);
+      addrenv_switch(NULL);
 #endif
 
       /* Update scheduler parameters */
 
-      if (!restore_context)
-        {
-          nxsched_suspend_scheduler(*running_task);
-        }
-
+      nxsched_suspend_scheduler(g_running_tasks[this_cpu()]);
       nxsched_resume_scheduler(tcb);
 
       /* Record the new "running" task when context switch occurred.
@@ -132,9 +124,11 @@ uintreg_t *riscv_doirq(int irq, uintreg_t *regs)
       *running_task = tcb;
     }
 
-  /* Set irq flag */
+  /* Set current_regs to NULL to indicate that we are no longer in an
+   * interrupt handler.
+   */
 
-  up_set_interrupt_context(false);
+  up_set_current_regs(NULL);
 
 #endif
   board_autoled_off(LED_INIRQ);

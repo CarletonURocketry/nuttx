@@ -87,7 +87,7 @@ find_program(KCONFIGLIB olddefconfig)
 if(NOT KCONFIGLIB)
   message(
     FATAL_ERROR "Kconfig environment depends on kconfiglib, Please install:
-  $ sudo apt install python3-kconfiglib")
+  $ pip install kconfiglib")
 endif()
 
 # BOARD CONFIG can be set to directory path, or <board-name>[/:]<config-name>
@@ -337,19 +337,13 @@ if(NOT EXISTS ${CMAKE_BINARY_DIR}/.config OR NOT "${NUTTX_DEFCONFIG}" STREQUAL
       CACHE INTERNAL "Saved defconfig path" FORCE)
 
   # Print configuration choices
-  message(STATUS "  CMake:  ${CMAKE_VERSION}")
+  message(STATUS "  CMake   ${CMAKE_VERSION}")
   if(CMAKE_GENERATOR MATCHES "Ninja")
     execute_process(
       COMMAND ninja --version
       OUTPUT_VARIABLE ninja_version
       OUTPUT_STRIP_TRAILING_WHITESPACE)
-    message(STATUS "  Ninja:  ${ninja_version}")
-
-    # Ninja generator does not yet know how to build archives in pieces, so
-    # response files must be used to deal with very long linker command lines.
-    set(CMAKE_NINJA_FORCE_RESPONSE_FILE
-        1
-        CACHE INTERNAL "")
+    message(STATUS "  Ninja   ${ninja_version}")
   endif()
   message(STATUS "  Board:  ${NUTTX_BOARD}")
   message(STATUS "  Config: ${NUTTX_CONFIG}")
@@ -365,10 +359,6 @@ nuttx_export_kconfig(${CMAKE_BINARY_DIR}/.config)
 include(nuttx_generate_headers)
 include(nuttx_generate_outputs)
 include(nuttx_add_library)
-
-# add NuttX CMake extenstion after nuttx_add_library
-include(nuttx_extensions)
-
 include(nuttx_add_application)
 include(nuttx_add_romfs)
 include(nuttx_add_symtab)
@@ -401,13 +391,13 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/arch/${CONFIG_ARCH}/src/cmake)
 set(CMAKE_TOOLCHAIN_FILE
     "${CMAKE_SOURCE_DIR}/arch/${CONFIG_ARCH}/src/cmake/Toolchain.cmake")
 
+# include common toolchain setting
+include(nuttx_toolchain)
+
 # Define project #############################################################
 # This triggers configuration
 
 project(NuttX LANGUAGES C CXX ASM)
-
-# include common toolchain setting
-include(nuttx_toolchain)
 
 if(WIN32)
   enable_language(ASM_MASM)
@@ -433,7 +423,6 @@ add_executable(nuttx)
 add_custom_target(nuttx_post)
 if(CONFIG_BUILD_PROTECTED)
   add_executable(nuttx_user)
-  add_dependencies(nuttx_post nuttx_user)
   nuttx_add_library_internal(nuttx_user)
 endif()
 
@@ -583,23 +572,18 @@ if(NOT CONFIG_BUILD_KERNEL)
 
 endif()
 
-# after we traverse all build directories unify all target dependencies and all
-# romfs target
-process_all_target_dependencies()
-process_all_directory_romfs()
-
 # Link step ##################################################################
 
 # Get linker script to use
 get_property(ldscript GLOBAL PROPERTY LD_SCRIPT)
 
 # Pre-compile linker script
-if(NOT CONFIG_ARCH_SIM AND NOT CONFIG_ARCH_TOOLCHAIN_TASKING)
+if(NOT CONFIG_ARCH_SIM)
   get_filename_component(LD_SCRIPT_NAME ${ldscript} NAME)
   set(LD_SCRIPT_TMP "${CMAKE_BINARY_DIR}/${LD_SCRIPT_NAME}.tmp")
 
-  nuttx_generate_preprocess_target(SOURCE_FILE ${ldscript} TARGET_FILE
-                                   ${LD_SCRIPT_TMP})
+  nuttx_generate_preproces_target(SOURCE_FILE ${ldscript} TARGET_FILE
+                                  ${LD_SCRIPT_TMP})
 
   add_custom_target(ldscript_tmp DEPENDS ${LD_SCRIPT_TMP})
   add_dependencies(nuttx ldscript_tmp)
@@ -638,8 +622,6 @@ if(NOT CONFIG_ARCH_SIM)
   # TODO: nostart/nodefault not applicable to nuttx toolchain
   if(CONFIG_ARCH_TOOLCHAIN_TASKING)
     target_link_libraries(nuttx PRIVATE --lsl-file=${ldscript} ${nuttx_libs})
-    # Remove executable suffix
-    set(CMAKE_EXECUTABLE_SUFFIX "")
   else()
     target_link_libraries(
       nuttx
@@ -748,21 +730,6 @@ if(CONFIG_ARCH_SIM)
   file(APPEND ${CMAKE_BINARY_DIR}/nuttx.manifest "nuttx\n")
 endif()
 
-# Generate system map using the compiler toolchain. Conventionally, the tool
-# which dump symbols are called nm, though, some compiler toolchain may have a
-# different name.
-if(NOT CMAKE_HOST_WIN32)
-  add_custom_command(
-    OUTPUT System.map
-    COMMAND
-      ${CMAKE_NM} nuttx | grep -v
-      '\(compiled\)\|\(\${CMAKE_C_OUTPUT_EXTENSION}$$\)\|\( [aUw] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'
-      | sort > System.map
-    DEPENDS nuttx)
-  add_custom_target(systemmap ALL DEPENDS System.map)
-  add_dependencies(nuttx_post systemmap)
-endif()
-
 # Userspace portion ##########################################################
 
 if(CONFIG_BUILD_PROTECTED)
@@ -778,8 +745,8 @@ if(CONFIG_BUILD_PROTECTED)
   # Pre-compile linker script
   get_filename_component(LD_SCRIPT_USER_NAME ${user_ldscript} NAME)
   set(LD_SCRIPT_USER_TMP "${CMAKE_BINARY_DIR}/${LD_SCRIPT_USER_NAME}.tmp")
-  nuttx_generate_preprocess_target(SOURCE_FILE ${user_ldscript} TARGET_FILE
-                                   ${LD_SCRIPT_USER_TMP})
+  nuttx_generate_preproces_target(SOURCE_FILE ${user_ldscript} TARGET_FILE
+                                  ${LD_SCRIPT_USER_TMP})
   add_custom_target(user_ldscript_tmp DEPENDS ${LD_SCRIPT_USER_TMP})
   add_dependencies(nuttx_user user_ldscript_tmp)
   set(user_ldscript ${LD_SCRIPT_USER_TMP})
@@ -831,7 +798,6 @@ if(CONFIG_BUILD_PROTECTED)
     COMMAND ${CMAKE_NM} nuttx_user > User.map
     DEPENDS nuttx_user)
   add_custom_target(usermap ALL DEPENDS User.map)
-  add_dependencies(nuttx_post usermap)
 
   # generate binary outputs in different formats (.bin, .hex, etc)
   nuttx_generate_outputs(nuttx_user)

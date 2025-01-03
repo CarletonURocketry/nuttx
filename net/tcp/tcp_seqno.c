@@ -48,7 +48,6 @@
 #include <crypto/md5.h>
 #include <debug.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 #include <nuttx/clock.h>
 #include <nuttx/net/netconfig.h>
@@ -56,6 +55,7 @@
 
 #include "devif/devif.h"
 #include "tcp/tcp.h"
+#include "utils/utils.h"
 
 /****************************************************************************
  * Private Data
@@ -97,7 +97,7 @@ static uint32_t tcp_isn_rfc6528(FAR struct tcp_conn_s *conn)
 
   if (g_tcp_isnkey[0] == 0)
     {
-      arc4random_buf(g_tcp_isnkey, sizeof(g_tcp_isnkey));
+      net_getrandom(g_tcp_isnkey, sizeof(g_tcp_isnkey));
     }
 
   /* M is the 4 microsecond timer */
@@ -216,7 +216,7 @@ void tcp_initsequence(FAR struct tcp_conn_s *conn)
     {
       /* Get a random TCP sequence number */
 
-      arc4random_buf(&g_tcpsequence, sizeof(uint32_t));
+      net_getrandom(&g_tcpsequence, sizeof(uint32_t));
 
       /* Use about half of allowed values */
 

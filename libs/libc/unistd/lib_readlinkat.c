@@ -70,27 +70,17 @@
 ssize_t readlinkat(int dirfd, FAR const char *path, FAR char *buf,
                    size_t bufsize)
 {
-  FAR char *fullpath;
+  char fullpath[PATH_MAX];
   int ret;
 
-  fullpath = lib_get_pathbuffer();
-  if (fullpath == NULL)
-    {
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
-  ret = lib_getfullpath(dirfd, path, fullpath, PATH_MAX);
+  ret = lib_getfullpath(dirfd, path, fullpath, sizeof(fullpath));
   if (ret < 0)
     {
-      lib_put_pathbuffer(fullpath);
       set_errno(-ret);
       return ERROR;
     }
 
-  ret = readlink(fullpath, buf, bufsize);
-  lib_put_pathbuffer(fullpath);
-  return ret;
+  return readlink(fullpath, buf, bufsize);
 }
 
 #endif /* CONFIG_PSEUDOFS_SOFTLINKS */

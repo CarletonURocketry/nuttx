@@ -59,22 +59,26 @@ static int rawsistream_getc(FAR struct lib_sistream_s *self)
       self->nget++;
       return ch;
     }
-  else
-    {
-      return _NX_GETERRVAL(nread);
-    }
+
+  /* Return EOF on any failure to read from the incoming byte stream. The
+   * only expected error is EINTR meaning that the read was interrupted
+   * by a signal.  A Zero return value would indicated an end-of-file
+   * confition.
+   */
+
+  return EOF;
 }
 
 /****************************************************************************
  * Name: rawsistream_gets
  ****************************************************************************/
 
-static ssize_t rawsistream_gets(FAR struct lib_instream_s *self,
-                                FAR void *buffer, size_t len)
+static int rawsistream_gets(FAR struct lib_instream_s *self,
+                            FAR void *buffer, int len)
 {
   FAR struct lib_rawsistream_s *stream =
                                        (FAR struct lib_rawsistream_s *)self;
-  ssize_t nread;
+  int nread;
 
   DEBUGASSERT(self && stream->fd >= 0);
 
@@ -104,13 +108,7 @@ static off_t rawsistream_seek(FAR struct lib_sistream_s *self, off_t offset,
                                        (FAR struct lib_rawsistream_s *)self;
 
   DEBUGASSERT(self);
-  offset = _NX_SEEK(stream->fd, offset, whence);
-  if (offset < 0)
-    {
-      offset = _NX_GETERRVAL(offset);
-    }
-
-  return offset;
+  return _NX_SEEK(stream->fd, offset, whence);
 }
 
 /****************************************************************************

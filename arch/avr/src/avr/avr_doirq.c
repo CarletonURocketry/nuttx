@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/avr/src/avr/avr_doirq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -59,10 +57,6 @@
 
 uint8_t *avr_doirq(uint8_t irq, uint8_t *regs)
 {
-  struct tcb_s **running_task = &g_running_tasks[this_cpu()];
-
-  avr_copystate((*running_task)->xcp.regs, regs);
-
   board_autoled_on(LED_INIRQ);
 #ifdef CONFIG_SUPPRESS_INTERRUPTS
   PANIC();
@@ -101,7 +95,7 @@ uint8_t *avr_doirq(uint8_t irq, uint8_t *regs)
        * crashes.
        */
 
-      *running_task = this_task();
+      g_running_tasks[this_cpu()] = this_task();
     }
 
   regs = up_current_regs();   /* Cast removes volatile attribute */

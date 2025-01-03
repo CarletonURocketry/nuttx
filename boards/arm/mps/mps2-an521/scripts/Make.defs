@@ -1,8 +1,6 @@
 ############################################################################
 # boards/arm/mps/mps2-an521/scripts/Make.defs
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.  The
@@ -34,8 +32,8 @@ CXXFLAGS := $(ARCHCXXFLAGS) $(ARCHOPTIMIZATION) $(ARCHCPUFLAGS) $(ARCHXXINCLUDES
 CXXPICFLAGS = $(ARCHPICFLAGS) $(CXXFLAGS)
 CPPFLAGS := $(ARCHINCLUDES) $(ARCHDEFINES)
 
-CFLAGS   += $(EXTRAFLAGS)
-CPPFLAGS += $(EXTRAFLAGS)
+CFLAGS   += $(EXTRAFLAGS) -pipe
+CPPFLAGS += $(EXTRAFLAGS) -pipe
 
 AFLAGS := $(CFLAGS) -D__ASSEMBLY__
 

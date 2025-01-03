@@ -39,10 +39,7 @@
 #include <nuttx/cache.h>
 #include <nuttx/atexit.h>
 #include <nuttx/fs/fs.h>
-
-#ifdef CONFIG_PTHREAD_ATFORK
-#  include <nuttx/list.h>
-#endif
+#include <nuttx/list.h>
 
 #include <sys/types.h>
 

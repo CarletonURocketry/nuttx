@@ -51,10 +51,6 @@
 
 #define SEM_FAILED                NULL
 
-#ifndef CONFIG_SEM_PREALLOCHOLDERS
-#  define CONFIG_SEM_PREALLOCHOLDERS 0
-#endif
-
 /****************************************************************************
  * Public Type Declarations
  ****************************************************************************/
@@ -73,7 +69,7 @@ struct semholder_s
   FAR struct semholder_s *tlink;  /* List of task held semaphores          */
   FAR struct sem_s *sem;          /* Ths corresponding semaphore           */
   FAR struct tcb_s *htcb;         /* Ths corresponding TCB                 */
-  int32_t counts;                 /* Number of counts owned by this holder */
+  int16_t counts;                 /* Number of counts owned by this holder */
 };
 
 #if CONFIG_SEM_PREALLOCHOLDERS > 0
@@ -104,7 +100,7 @@ struct semholder_s
 
 struct sem_s
 {
-  volatile int32_t semcount;     /* >0 -> Num counts available */
+  volatile int16_t semcount;     /* >0 -> Num counts available */
                                  /* <0 -> Num tasks waiting for semaphore */
 
   /* If priority inheritance is enabled, then we have to keep track of which

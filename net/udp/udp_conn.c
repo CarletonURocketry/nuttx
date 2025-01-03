@@ -75,22 +75,18 @@
 #include "utils/utils.h"
 
 /****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-
-#ifndef CONFIG_NET_UDP_MAX_CONNS
-#  define CONFIG_NET_UDP_MAX_CONNS 0
-#endif
-
-/****************************************************************************
  * Private Data
  ****************************************************************************/
 
 /* The array containing all UDP connections. */
 
-NET_BUFPOOL_DECLARE(g_udp_connections, sizeof(struct udp_conn_s),
-                    CONFIG_NET_UDP_PREALLOC_CONNS,
-                    CONFIG_NET_UDP_ALLOC_CONNS, CONFIG_NET_UDP_MAX_CONNS);
+#if CONFIG_NET_UDP_PREALLOC_CONNS > 0
+static struct udp_conn_s g_udp_connections[CONFIG_NET_UDP_PREALLOC_CONNS];
+#endif
+
+/* A list of all free UDP connections */
+
+static dq_queue_t g_free_udp_connections;
 static mutex_t g_free_lock = NXMUTEX_INITIALIZER;
 
 /* A list of all allocated UDP connections */
@@ -465,6 +461,54 @@ udp_ipv6_active(FAR struct net_driver_s *dev, FAR struct udp_conn_s *conn,
 #endif /* CONFIG_NET_IPv6 */
 
 /****************************************************************************
+ * Name: udp_alloc_conn
+ *
+ * Description:
+ *   Allocate a uninitialized UDP connection structure.
+ *
+ ****************************************************************************/
+
+#if CONFIG_NET_UDP_ALLOC_CONNS > 0
+static FAR struct udp_conn_s *udp_alloc_conn(void)
+{
+  FAR struct udp_conn_s *conn;
+  int i;
+
+  /* Return the entry from the head of the free list */
+
+  if (dq_peek(&g_free_udp_connections) == NULL)
+    {
+#if CONFIG_NET_UDP_MAX_CONNS > 0
+      if (dq_count(&g_active_udp_connections) +
+          CONFIG_NET_UDP_ALLOC_CONNS > CONFIG_NET_UDP_MAX_CONNS)
+        {
+          return NULL;
+        }
+#endif
+
+      conn = kmm_zalloc(sizeof(struct udp_conn_s) *
+                        CONFIG_NET_UDP_ALLOC_CONNS);
+      if (conn == NULL)
+        {
+          return conn;
+        }
+
+      /* Now initialize each connection structure */
+
+      for (i = 0; i < CONFIG_NET_UDP_ALLOC_CONNS; i++)
+        {
+          /* Mark the connection closed and move it to the free list */
+
+          conn[i].lport = 0;
+          dq_addlast(&conn[i].sconn.node, &g_free_udp_connections);
+        }
+    }
+
+  return (FAR struct udp_conn_s *)dq_remfirst(&g_free_udp_connections);
+}
+#endif
+
+/****************************************************************************
  * Public Functions
  ****************************************************************************/
 
@@ -549,7 +593,17 @@ errout:
 
 void udp_initialize(void)
 {
-  NET_BUFPOOL_INIT(g_udp_connections);
+#if CONFIG_NET_UDP_PREALLOC_CONNS > 0
+  int i;
+
+  for (i = 0; i < CONFIG_NET_UDP_PREALLOC_CONNS; i++)
+    {
+      /* Mark the connection closed and move it to the free list */
+
+      g_udp_connections[i].lport = 0;
+      dq_addlast(&g_udp_connections[i].sconn.node, &g_free_udp_connections);
+    }
+#endif
 }
 
 /****************************************************************************
@@ -569,7 +623,14 @@ FAR struct udp_conn_s *udp_alloc(uint8_t domain)
 
   nxmutex_lock(&g_free_lock);
 
-  conn = NET_BUFPOOL_TRYALLOC(g_udp_connections);
+  conn = (FAR struct udp_conn_s *)dq_remfirst(&g_free_udp_connections);
+
+#if CONFIG_NET_UDP_ALLOC_CONNS > 0
+  if (conn == NULL)
+    {
+      conn = udp_alloc_conn();
+    }
+#endif
 
   if (conn)
     {
@@ -651,9 +712,23 @@ void udp_free(FAR struct udp_conn_s *conn)
 
 #endif
 
-  /* Free the connection. */
+  /* Free the connection.
+   * If this is a preallocated or a batch allocated connection store it in
+   * the free connections list. Else free it.
+   */
 
-  NET_BUFPOOL_FREE(g_udp_connections, conn);
+#if CONFIG_NET_UDP_ALLOC_CONNS == 1
+  if (conn < g_udp_connections || conn >= (g_udp_connections +
+      CONFIG_NET_UDP_PREALLOC_CONNS))
+    {
+      kmm_free(conn);
+    }
+  else
+#endif
+    {
+      memset(conn, 0, sizeof(*conn));
+      dq_addlast(&conn->sconn.node, &g_free_udp_connections);
+    }
 
   nxmutex_unlock(&g_free_lock);
 }

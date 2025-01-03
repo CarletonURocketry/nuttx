@@ -31,7 +31,6 @@
 
 #include <nuttx/compiler.h>
 #include <nuttx/clock.h>
-#include <nuttx/irq.h>
 #include <stdint.h>
 
 /****************************************************************************

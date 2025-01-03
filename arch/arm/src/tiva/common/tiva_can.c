@@ -1,7 +1,6 @@
 /****************************************************************************
  * arch/arm/src/tiva/common/tiva_can.c
- *
- * SPDX-License-Identifier: Apache-2.0
+ * Classic (character-device) lower-half driver for the Tiva CAN modules.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

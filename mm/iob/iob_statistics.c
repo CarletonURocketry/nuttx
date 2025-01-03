@@ -56,7 +56,7 @@ void iob_getstats(FAR struct iob_stats_s *stats)
 {
   stats->ntotal = CONFIG_IOB_NBUFFERS;
 
-  stats->nfree = g_iob_count;
+  nxsem_get_value(&g_iob_sem, &stats->nfree);
   if (stats->nfree < 0)
     {
       stats->nwait = -stats->nfree;
@@ -68,8 +68,12 @@ void iob_getstats(FAR struct iob_stats_s *stats)
     }
 
 #if CONFIG_IOB_THROTTLE > 0
-  stats->nthrottle = (g_iob_count - CONFIG_IOB_THROTTLE);
+  nxsem_get_value(&g_throttle_sem, &stats->nthrottle);
   if (stats->nthrottle < 0)
+    {
+      stats->nthrottle = -stats->nthrottle;
+    }
+  else
 #endif
     {
       stats->nthrottle = 0;

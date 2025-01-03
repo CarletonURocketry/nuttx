@@ -25,7 +25,6 @@
  ****************************************************************************/
 
 #include <assert.h>
-#include <errno.h>
 #include <string.h>
 
 #include "libc.h"
@@ -42,7 +41,7 @@ static int meminstream_getc(FAR struct lib_instream_s *self)
 {
   FAR struct lib_meminstream_s *stream =
                                        (FAR struct lib_meminstream_s *)self;
-  int ret = -EINVAL;
+  int ret;
 
   DEBUGASSERT(self);
 
@@ -53,6 +52,10 @@ static int meminstream_getc(FAR struct lib_instream_s *self)
       ret = stream->buffer[self->nget];
       self->nget++;
     }
+  else
+    {
+      ret = EOF;
+    }
 
   return ret;
 }
@@ -61,12 +64,12 @@ static int meminstream_getc(FAR struct lib_instream_s *self)
  * Name: meminstream_gets
  ****************************************************************************/
 
-static ssize_t meminstream_gets(FAR struct lib_instream_s *self,
-                                FAR void *buffer, size_t len)
+static int meminstream_gets(FAR struct lib_instream_s *self,
+                            FAR void *buffer, int len)
 {
   FAR struct lib_meminstream_s *stream =
                                        (FAR struct lib_meminstream_s *)self;
-  ssize_t ret = -EINVAL;
+  int ret;
 
   DEBUGASSERT(self);
 
@@ -78,6 +81,10 @@ static ssize_t meminstream_gets(FAR struct lib_instream_s *self,
             stream->buflen - self->nget : len;
       self->nget += ret;
       memcpy(buffer, stream->buffer, ret);
+    }
+  else
+    {
+      ret = EOF;
     }
 
   return ret;
@@ -105,7 +112,7 @@ static ssize_t meminstream_gets(FAR struct lib_instream_s *self,
  ****************************************************************************/
 
 void lib_meminstream(FAR struct lib_meminstream_s *stream,
-                     FAR const char *bufstart, size_t buflen)
+                     FAR const char *bufstart, int buflen)
 {
   stream->common.getc = meminstream_getc;
   stream->common.gets = meminstream_gets;

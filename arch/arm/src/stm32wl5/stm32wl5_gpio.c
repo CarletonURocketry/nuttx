@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/stm32wl5/stm32wl5_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -34,7 +32,6 @@
 
 #include <arch/irq.h>
 #include <arch/stm32wl5/chip.h>
-#include <nuttx/spinlock.h>
 
 #include "arm_internal.h"
 
@@ -42,12 +39,6 @@
 #include "stm32wl5_gpio.h"
 
 #include "hardware/stm32wl5_syscfg.h"
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
-
-static spinlock_t g_configgpio_lock = SP_UNLOCKED;
 
 /****************************************************************************
  * Public Data
@@ -175,7 +166,7 @@ int stm32wl5_configgpio(uint32_t cfgset)
    * exclusive access to all of the GPIO configuration registers.
    */
 
-  flags = spin_lock_irqsave(&g_configgpio_lock);
+  flags = enter_critical_section();
 
   /* Now apply the configuration to the mode register */
 
@@ -312,7 +303,7 @@ int stm32wl5_configgpio(uint32_t cfgset)
       putreg32(regval, regaddr);
     }
 
-  spin_unlock_irqrestore(&g_configgpio_lock, flags);
+  leave_critical_section(flags);
   return OK;
 }
 

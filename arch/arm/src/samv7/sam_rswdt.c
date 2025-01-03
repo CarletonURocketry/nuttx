@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/samv7/sam_rswdt.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -27,7 +25,6 @@
 #include <nuttx/config.h>
 #include <nuttx/arch.h>
 
-#include <inttypes.h>
 #include <stdint.h>
 #include <assert.h>
 #include <errno.h>
@@ -414,9 +411,9 @@ static int sam_getstatus(struct watchdog_lowerhalf_s *lower,
   status->timeleft = 0;
 
   wdinfo("Status     :\n");
-  wdinfo("  flags    : %08" PRIx32 "\n", status->flags);
-  wdinfo("  timeout  : %" PRIu32 "\n", status->timeout);
-  wdinfo("  timeleft : %" PRIu32 "\n", status->timeleft);
+  wdinfo("  flags    : %08x\n", status->flags);
+  wdinfo("  timeout  : %d\n", status->timeout);
+  wdinfo("  timeleft : %d\n", status->timeleft);
   return OK;
 }
 
@@ -444,13 +441,13 @@ static int sam_settimeout(struct watchdog_lowerhalf_s *lower,
   uint32_t regval;
 
   DEBUGASSERT(priv);
-  wdinfo("Entry: timeout=%" PRIu32 "\n", timeout);
+  wdinfo("Entry: timeout=%d\n", timeout);
 
   /* Can this timeout be represented? */
 
   if (timeout < RSWDT_MINTIMEOUT || timeout >= RSWDT_MAXTIMEOUT)
     {
-      wderr("ERROR: Cannot represent timeout: %d < %" PRIu32 " > %d\n",
+      wderr("ERROR: Cannot represent timeout: %d < %d > %d\n",
             RSWDT_MINTIMEOUT, timeout, RSWDT_MAXTIMEOUT);
       return -ERANGE;
     }
@@ -483,7 +480,7 @@ static int sam_settimeout(struct watchdog_lowerhalf_s *lower,
 
   priv->reload = reload;
 
-  wdinfo("reload=%" PRIu32 " timeout: %" PRIu32 "->%" PRIu32 "\n",
+  wdinfo("reload=%d timeout: %d->%d\n",
          reload, timeout, priv->timeout);
 
   /* Set the RSWDT_MR according to calculated value
@@ -528,7 +525,7 @@ static int sam_settimeout(struct watchdog_lowerhalf_s *lower,
 
   priv->started = true;
 
-  wdinfo("Setup: CR: %08" PRIx32 " MR: %08" PRIx32 " SR: %08" PRIx32 "\n",
+  wdinfo("Setup: CR: %08x MR: %08x SR: %08x\n",
          sam_getreg(SAM_RSWDT_CR), sam_getreg(SAM_RSWDT_MR),
          sam_getreg(SAM_RSWDT_SR));
 
@@ -654,7 +651,7 @@ int sam_rswdt_initialize(void)
 {
   struct sam_lowerhalf_s *priv = &g_wdtdev;
 
-  wdinfo("Entry: CR: %08" PRIx32 " MR: %08" PRIx32 " SR: %08" PRIx32 "\n",
+  wdinfo("Entry: CR: %08x MR: %08x SR: %08x\n",
          sam_getreg(SAM_RSWDT_CR), sam_getreg(SAM_RSWDT_MR),
          sam_getreg(SAM_RSWDT_SR));
 

@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/arm/arm_checkmapping.c
- *
- * SPDX-License-Identifier: Apache-2.0
+ * Check if the current task's fault address has been mapped into the virtual
+ * address space.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

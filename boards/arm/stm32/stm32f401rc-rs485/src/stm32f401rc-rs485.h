@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/arm/stm32/stm32f401rc-rs485/src/stm32f401rc-rs485.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -125,10 +123,6 @@
     (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_2MHz | \
      GPIO_OUTPUT_SET | GPIO_PORTB | GPIO_PIN5)
 #endif
-
-/* WS2812 LEDs SPI */
-
-#define WS2812_SPI 1
 
 /* PWM
  *

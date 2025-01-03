@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/max326xx/max32660/max32660_wdt.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -85,7 +83,6 @@ struct max326_wdt_lowerhalf_s
   uint8_t exp;                      /* log12(Reset time period) */
   xcpt_t handler;                   /* User interrupt handler */
   clock_t lastping;                 /* Time of last WDT reset */
-  spinlock_t lock;                  /* Spinlock */
 };
 
 /****************************************************************************
@@ -363,7 +360,7 @@ static int max326_start(struct watchdog_lowerhalf_s *lower)
 
   /* Perform the reset sequence */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   max326_wdog_reset(priv);
 
   /* Enable reset or interrupt */
@@ -376,7 +373,7 @@ static int max326_start(struct watchdog_lowerhalf_s *lower)
   ctrl |= WDT0_CTRL_WDTEN;
   putreg32(ctrl, MAX326_WDT0_CTRL);
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   return OK;
 }
 
@@ -397,8 +394,6 @@ static int max326_start(struct watchdog_lowerhalf_s *lower)
 
 static int max326_stop(struct watchdog_lowerhalf_s *lower)
 {
-  struct max326_wdt_lowerhalf_s *priv =
-    (struct max326_wdt_lowerhalf_s *)lower;
   irqstate_t flags;
   uint32_t ctrl;
 
@@ -410,14 +405,14 @@ static int max326_stop(struct watchdog_lowerhalf_s *lower)
 
   /* Disable the watchdog timer, reset, and interrupts */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   ctrl  = getreg32(MAX326_WDT0_CTRL);
   ctrl &= ~(WDT0_CTRL_WDTEN | WDT0_CTRL_INTEN | WDT0_CTRL_RSTEN);
 
   up_disable_irq(MAX326_IRQ_WDT0);
   irq_detach(MAX326_IRQ_WDT0);
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   return OK;
 }
 
@@ -448,9 +443,9 @@ static int max326_keepalive(struct watchdog_lowerhalf_s *lower)
 
   /* Reset WDT timer */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   max326_wdog_reset(priv);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   return OK;
 }
@@ -506,9 +501,9 @@ static int max326_getstatus(struct watchdog_lowerhalf_s *lower,
   status->timeleft = max326_time_left(priv);
 
   wdinfo("Status     :\n");
-  wdinfo("  flags    : %08lx\n", status->flags);
-  wdinfo("  timeout  : %ld\n",   status->timeout);
-  wdinfo("  timeleft : %ld\n",   status->timeleft);
+  wdinfo("  flags    : %08x\n", status->flags);
+  wdinfo("  timeout  : %d\n",   status->timeout);
+  wdinfo("  timeleft : %d\n",   status->timeleft);
   return OK;
 }
 
@@ -542,7 +537,7 @@ static int max326_settimeout(struct watchdog_lowerhalf_s *lower,
 
   /* Reset WDT timer */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   max326_wdog_reset(priv);
 
   /* Convert the timeout value in milliseconds to time exponent used by the
@@ -564,7 +559,7 @@ static int max326_settimeout(struct watchdog_lowerhalf_s *lower,
   ctrl |= (WDT0_CTRL_INTPERIOD(exp) | WDT0_CTRL_RSTPERIOD(exp));
   putreg32(ctrl, MAX326_WDT0_CTRL);
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   return OK;
 }
 
@@ -592,12 +587,12 @@ static xcpt_t max326_capture(struct watchdog_lowerhalf_s *lower,
   irqstate_t flags;
   xcpt_t oldhandler;
 
-  DEBUGASSERT(priv != NULL);
+  DEBUGASSERT(priv != NULL)
   wdinfo("Handler=%p\n", handler);
 
   /* Get the old handler */
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   oldhandler = priv->handler;
 
   /* Save the new handler */
@@ -618,7 +613,7 @@ static xcpt_t max326_capture(struct watchdog_lowerhalf_s *lower,
       max326_int_enable(priv);
     }
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   return oldhandler;
 }
 
@@ -672,12 +667,12 @@ int max326_wdt_initialize(const char *devpath)
   struct max326_wdt_lowerhalf_s *priv = &g_wdtdev;
   void *handle;
 
-  wdinfo("Entry: devpath=%s, \n", devpath);
+  wdinfo("Entry: devpath=%s, mode_sleep=%d, mode_halt=%d\n",
+         devpath, mode_sleep, mode_halt);
 
   /* Initialize the driver state structure. */
 
   priv->ops = &g_wdtops;
-  spin_lock_init(&priv->lock);
 
   /* Register the watchdog driver as /dev/watchdog0 */
 

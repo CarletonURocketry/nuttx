@@ -13,5 +13,4 @@ to NuttX codebase (from small bugfixes to large new features) and documentation
    making-changes.rst
    coding_style.rst
    documentation.rst
-   releases.rst
 

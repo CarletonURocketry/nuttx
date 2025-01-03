@@ -74,12 +74,6 @@
 
 static bool spiram_inited = false;
 
-#ifdef CONFIG_SMP
-static int pause_cpu_handler(void *cookie);
-static struct smp_call_data_s g_call_data =
-SMP_CALL_INITIALIZER(pause_cpu_handler, NULL);
-#endif
-
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
@@ -91,7 +85,7 @@ SMP_CALL_INITIALIZER(pause_cpu_handler, NULL);
 #ifdef CONFIG_SMP
 static volatile bool g_cpu_wait = true;
 static volatile bool g_cpu_pause = false;
-static int pause_cpu_handler(void *cookie)
+static int pause_cpu_handler(FAR void *cookie)
 {
   g_cpu_pause = true;
   while (g_cpu_wait);
@@ -211,7 +205,7 @@ unsigned int IRAM_ATTR cache_sram_mmu_set(int cpu_no, int pid,
       cpu_to_stop = this_cpu() == 1 ? 0 : 1;
       g_cpu_wait  = true;
       g_cpu_pause = false;
-      nxsched_smp_call_single_async(cpu_to_stop, &g_call_data);
+      nxsched_smp_call_single(cpu_to_stop, pause_cpu_handler, NULL, false);
       while (!g_cpu_pause);
     }
 
@@ -280,62 +274,6 @@ void IRAM_ATTR esp_spiram_init_cache(void)
   putreg32(regval, DPORT_APP_CACHE_CTRL1_REG);
   cache_sram_mmu_set(1, 0, SOC_EXTRAM_DATA_LOW, 0, 32, 128);
 #endif
-}
-
-/* Simple RAM test. Writes a word every 32 bytes. Takes about a second
- * to complete for 4MiB. Returns OK when RAM seems OK, ERROR when test
- * fails. WARNING: Do not run this before the 2nd cpu has been initialized
- * (in a two-core system) or after the heap allocator has taken ownership
- * of the memory.
- */
-
-int esp_spiram_test(void)
-{
-  volatile int *spiram = (volatile int *)PRO_DRAM1_START_ADDR;
-
-  /* Set size value to 4 MB which is related to psize argument on
-   * cache_sram_mmu_set() calls. In this SoC, psize is 32 Mbit.
-   */
-
-  size_t s = 4 * 1024 * 1024;
-  size_t p;
-  int errct = 0;
-  int initial_err = -1;
-
-  for (p = 0; p < (s / sizeof(int)); p += 8)
-    {
-      spiram[p] = p ^ 0xaaaaaaaa;
-    }
-
-  for (p = 0; p < (s / sizeof(int)); p += 8)
-    {
-      if (spiram[p] != (p ^ 0xaaaaaaaa))
-        {
-          errct++;
-          if (errct == 1)
-            {
-              initial_err = p * sizeof(int);
-            }
-
-          if (errct < 4)
-            {
-              merr("SPI SRAM error@%p:%08x/%08x \n", &spiram[p], spiram[p],
-                   p ^ 0xaaaaaaaa);
-            }
-        }
-    }
-
-  if (errct != 0)
-    {
-      merr("SPI SRAM memory test fail. %d/%d writes failed, first @ %X\n",
-           errct, s / 32, initial_err + SOC_EXTRAM_DATA_LOW);
-      return ERROR;
-    }
-  else
-    {
-      minfo("SPI SRAM memory test OK!");
-      return OK;
-    }
 }
 
 int esp_spiram_get_chip_size(void)

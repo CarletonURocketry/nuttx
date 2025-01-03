@@ -1,6 +1,8 @@
-*.xz
-*.bz2
-/libcxx/libcxx
-/libcxxabi/libcxxabi
-/uClibc++/uClibc++
-/libstdc++/
+/uClibc++
+/libcxx
+/libcxxabi
+/libcxx-*.src.tar.xz
+/libcxxabi-*.src.tar.xz
+/etl
+/.libcxx_patch
+/.libcxxabi_patch

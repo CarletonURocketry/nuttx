@@ -1,8 +1,6 @@
 # ##############################################################################
 # drivers/input/CMakeLists.txt
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -120,10 +118,6 @@ if(CONFIG_INPUT)
 
   if(CONFIG_INPUT_SPQ10KBD)
     list(APPEND SRCS spq10kbd.c)
-  endif()
-
-  if(CONFIG_INPUT_GOLDFISH_EVENTS)
-    list(APPEND SRCS goldfish_events.c)
   endif()
 
   target_sources(drivers PRIVATE ${SRCS})

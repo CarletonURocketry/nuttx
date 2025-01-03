@@ -28,7 +28,7 @@ try:
     from kconfiglib import Kconfig
 except ModuleNotFoundError:
     print("Please execute the following command to install dependencies:")
-    print("sudo apt install python3-kconfiglib")
+    print("pip install kconfiglib")
     exit()
 
 script_path = os.path.split(os.path.realpath(__file__))[0]

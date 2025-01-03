@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/segger/stream_rtt.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -54,12 +52,12 @@ static void rttstream_putc(FAR struct lib_outstream_s *self, int ch)
  * Name: rttstream_puts
  ****************************************************************************/
 
-static ssize_t rttstream_puts(FAR struct lib_outstream_s *self,
-                              FAR const void *buf, size_t len)
+static int rttstream_puts(FAR struct lib_outstream_s *self,
+                          FAR const void *buf, int len)
 {
   FAR struct lib_rttoutstream_s *stream =
                                 (FAR struct lib_rttoutstream_s *)self;
-  ssize_t ret;
+  int ret;
 
   SEGGER_RTT_BLOCK_IF_FIFO_FULL(0);
   ret = SEGGER_RTT_Write(stream->channel, buf, len);
@@ -86,12 +84,12 @@ static int rttstream_getc(FAR struct lib_instream_s *self)
  * Name: rttstream_gets
  ****************************************************************************/
 
-static ssize_t rttstream_gets(FAR struct lib_instream_s *self,
-                              FAR void * buffer, size_t size)
+static int rttstream_gets(FAR struct lib_instream_s *self,
+                          FAR void * buffer, int size)
 {
   FAR struct lib_rttinstream_s *stream =
                                 (FAR struct lib_rttinstream_s *)self;
-  ssize_t ret;
+  int ret;
 
   DEBUGASSERT(stream);
   ret = SEGGER_RTT_Read(stream->channel, buffer, size);

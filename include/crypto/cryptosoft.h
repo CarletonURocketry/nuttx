@@ -1,9 +1,6 @@
 /****************************************************************************
  * include/crypto/cryptosoft.h
- *
- * SPDX-License-Identifier: OAR
- * SPDX-FileCopyrightText: 2000 Angelos D. Keromytis
- * SPDX-FileContributor: Angelos D. Keromytis (angelos@cis.upenn.edu)
+ * $OpenBSD: cryptosoft.h,v 1.14 2012/12/07 17:03:22 mikeb Exp $
  *
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
  *

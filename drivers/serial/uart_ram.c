@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/serial/uart_ram.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -229,8 +227,8 @@ static struct uart_ram_s g_uart_ram2 =
 
 static size_t uart_rambuf_txready(FAR struct uart_rambuf_s *buf)
 {
-  int wroff = atomic_read(&buf->wroff);
-  int rdoff = atomic_read(&buf->rdoff);
+  atomic_uint wroff = atomic_load(&buf->wroff);
+  atomic_uint rdoff = atomic_load(&buf->rdoff);
   return rdoff > wroff ? rdoff - wroff - 1 :
          sizeof(buf->buffer) - wroff + rdoff - 1;
 }
@@ -241,8 +239,8 @@ static size_t uart_rambuf_txready(FAR struct uart_rambuf_s *buf)
 
 static size_t uart_rambuf_rxavailable(FAR struct uart_rambuf_s *buf)
 {
-  int wroff = atomic_read(&buf->wroff);
-  int rdoff = atomic_read(&buf->rdoff);
+  atomic_uint wroff = atomic_load(&buf->wroff);
+  atomic_uint rdoff = atomic_load(&buf->rdoff);
 
   return wroff >= rdoff ? wroff - rdoff :
          sizeof(buf->buffer) - rdoff + wroff;
@@ -303,19 +301,19 @@ static int uart_ram_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 static int uart_ram_receive(FAR struct uart_dev_s *dev, FAR uint32_t *status)
 {
   FAR struct uart_ram_s *priv = dev->priv;
-  int rdoff;
+  atomic_uint rdoff;
   int ch;
 
   while (!uart_rambuf_rxavailable(priv->rx));
 
-  rdoff = atomic_read(&priv->rx->rdoff);
+  rdoff = atomic_load(&priv->rx->rdoff);
   ch = priv->rx->buffer[rdoff];
   if (++rdoff >= sizeof(priv->rx->buffer))
     {
       rdoff = 0;
     }
 
-  atomic_set(&priv->rx->rdoff, rdoff);
+  atomic_store(&priv->rx->rdoff, rdoff);
 
   *status = 0;
   return ch;
@@ -347,7 +345,7 @@ static void uart_ram_dmasend(FAR struct uart_dev_s *dev)
 {
   FAR struct uart_ram_s *priv = dev->priv;
 
-  atomic_set(&priv->tx->wroff, dev->xmit.head);
+  atomic_store(&priv->tx->wroff, dev->xmit.head);
 }
 
 /****************************************************************************
@@ -371,7 +369,7 @@ static void uart_ram_dmarxfree(FAR struct uart_dev_s *dev)
 
   /* When the dma RX buffer is free, update the read data position */
 
-  atomic_set(&priv->rx->rdoff, dev->recv.tail);
+  atomic_store(&priv->rx->rdoff, dev->recv.tail);
 }
 
 /****************************************************************************
@@ -393,18 +391,18 @@ static void uart_ram_dmatxavail(FAR struct uart_dev_s *dev)
 static void uart_ram_send(FAR struct uart_dev_s *dev, int ch)
 {
   FAR struct uart_ram_s *priv = dev->priv;
-  int wroff;
+  atomic_uint wroff;
 
   while (!uart_rambuf_txready(priv->tx));
 
-  wroff = atomic_read(&priv->tx->wroff);
+  wroff = atomic_load(&priv->tx->wroff);
   priv->tx->buffer[wroff] = ch;
   if (++wroff >= sizeof(priv->tx->buffer))
     {
       wroff = 0;
     }
 
-  atomic_set(&priv->tx->wroff, wroff);
+  atomic_store(&priv->tx->wroff, wroff);
 }
 
 /****************************************************************************
@@ -488,10 +486,10 @@ int uart_ram_register(FAR const char *devname,
       return -ENOMEM;
     }
 
-  atomic_set(&rambuf[0].wroff, 0);
-  atomic_set(&rambuf[0].rdoff, 0);
-  atomic_set(&rambuf[1].wroff, 0);
-  atomic_set(&rambuf[1].rdoff, 0);
+  atomic_store(&rambuf[0].wroff, 0);
+  atomic_store(&rambuf[0].rdoff, 0);
+  atomic_store(&rambuf[1].wroff, 0);
+  atomic_store(&rambuf[1].rdoff, 0);
 
   if (slave)
     {

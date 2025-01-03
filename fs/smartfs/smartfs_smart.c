@@ -1,8 +1,6 @@
 /****************************************************************************
  * fs/smartfs/smartfs_smart.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -147,8 +145,6 @@ const struct mountpt_operations g_smartfs_operations =
   NULL,                  /* mmap */
   smartfs_truncate,      /* truncate */
   NULL,                  /* poll */
-  NULL,                  /* readv */
-  NULL,                  /* writev */
 
   smartfs_sync,          /* sync */
   smartfs_dup,           /* dup */

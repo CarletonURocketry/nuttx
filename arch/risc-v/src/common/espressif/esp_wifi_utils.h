@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/common/espressif/esp_wifi_utils.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -46,8 +44,6 @@ extern "C"
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
-
-#ifdef CONFIG_ESPRESSIF_WIFI
 
 /****************************************************************************
  * Name: esp_wifi_start_scan
@@ -98,8 +94,6 @@ int esp_wifi_get_scan_results(struct iwreq *iwr);
  ****************************************************************************/
 
 void esp_wifi_scan_event_parse(void);
-
-#endif
 
 /****************************************************************************
  * Name: esp_wifi_to_errno

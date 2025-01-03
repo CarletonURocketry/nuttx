@@ -417,16 +417,10 @@ int glob(FAR const char *pat, int flags,
   size_t i;
   size_t offs = (flags & GLOB_DOOFFS) ? g->gl_offs : 0;
   int error = 0;
-  FAR char *buf;
+  char buf[PATH_MAX];
 
   head.next = NULL;
   head.name[0] = '\0';
-
-  buf = lib_get_pathbuffer();
-  if (buf == NULL)
-    {
-      return -ENOMEM;
-    }
 
   if (!errfunc)
     {
@@ -448,7 +442,6 @@ int glob(FAR const char *pat, int flags,
 
       if (!p)
         {
-          lib_put_pathbuffer(buf);
           return GLOB_NOSPACE;
         }
 
@@ -460,7 +453,6 @@ int glob(FAR const char *pat, int flags,
       lib_free(p);
     }
 
-  lib_put_pathbuffer(buf);
   if (error == GLOB_NOSPACE)
     {
       freelist(&head);

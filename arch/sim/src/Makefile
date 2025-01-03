@@ -1,8 +1,6 @@
 ############################################################################
 # arch/sim/src/Makefile
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.  The
@@ -20,7 +18,7 @@
 #
 ############################################################################
 
-include $(TOPDIR)/tools/Make.defs
+include $(TOPDIR)/tools/apps-or-nuttx-Make.defs
 
 ARCH_SRCDIR = $(TOPDIR)$(DELIM)arch$(DELIM)$(CONFIG_ARCH)$(DELIM)src
 APPSDIR     = $(TOPDIR)$(DELIM)$(CONFIG_APPS_DIR)
@@ -142,8 +140,12 @@ ifeq ($(CONFIG_LIBM_TOOLCHAIN),y)
   STDLIBS += -lm
 endif
 
-ifeq ($(CONFIG_COVERAGE_TOOLCHAIN),y)
+ifeq ($(CONFIG_SCHED_GCOV),y)
   STDLIBS += -lgcov
+endif
+
+ifeq ($(CONFIG_SIM_GPROF),y)
+  HOSTCFLAGS += -pg
 endif
 
 ifeq ($(CONFIG_STACK_COLORATION),y)
@@ -254,7 +256,7 @@ ifeq ($(CONFIG_SIM_LIBUSB),y)
 endif
 endif
 
-ifeq ($(CONFIG_RPMSG_VIRTIO_LITE),y)
+ifeq ($(CONFIG_RPMSG_VIRTIO),y)
   CSRCS += sim_rpmsg_virtio.c
 endif
 

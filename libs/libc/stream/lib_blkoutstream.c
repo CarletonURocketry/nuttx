@@ -45,7 +45,7 @@
  * Name: blkoutstream_flush
  ****************************************************************************/
 
-static int blkoutstream_flush(FAR struct lib_sostream_s *self)
+static int blkoutstream_flush(FAR struct lib_outstream_s *self)
 {
   FAR struct lib_blkoutstream_s *stream =
                                  (FAR struct lib_blkoutstream_s *)self;
@@ -62,81 +62,11 @@ static int blkoutstream_flush(FAR struct lib_sostream_s *self)
 }
 
 /****************************************************************************
- * Name: blkoutstream_seek
- ****************************************************************************/
-
-static off_t blkoutstream_seek(FAR struct lib_sostream_s *self,
-                               off_t offset, int whence)
-{
-  FAR struct lib_blkoutstream_s *stream =
-                                 (FAR struct lib_blkoutstream_s *)self;
-  size_t sectorsize = stream->geo.geo_sectorsize;
-  off_t streamsize = sectorsize * stream->geo.geo_nsectors;
-  FAR struct inode *inode = stream->inode;
-  off_t sector;
-  off_t ret;
-
-  switch (whence)
-    {
-      case SEEK_SET:
-        break;
-      case SEEK_END:
-        offset += streamsize;
-        break;
-      case SEEK_CUR:
-        offset += self->nput;
-        break;
-      default:
-        return -ENOTSUP;
-    }
-
-  /* Seek to negative value or value larger than maximum size shall fail. */
-
-  if (offset < 0 || offset > streamsize)
-    {
-      return -EINVAL;
-    }
-
-  if (self->nput % sectorsize)
-    {
-      sector = self->nput / sectorsize;
-      if (offset >= sector * sectorsize &&
-          offset < (sector + 1) * sectorsize)
-        {
-          /* Inside same sector */
-
-          goto out;
-        }
-
-      ret = inode->u.i_bops->write(stream->inode, stream->cache,
-                                   sector, 1);
-      if (ret < 0)
-        {
-          return ret;
-        }
-    }
-
-  if (offset % sectorsize)
-    {
-      ret = inode->u.i_bops->read(inode, stream->cache,
-                                  offset / sectorsize, 1);
-      if (ret < 0)
-        {
-          return ret;
-        }
-    }
-
-out:
-  self->nput = offset;
-  return offset;
-}
-
-/****************************************************************************
  * Name: blkoutstream_puts
  ****************************************************************************/
 
-static ssize_t blkoutstream_puts(FAR struct lib_sostream_s *self,
-                                 FAR const void *buf, size_t len)
+static int blkoutstream_puts(FAR struct lib_outstream_s *self,
+                             FAR const void *buf, int len)
 {
   FAR struct lib_blkoutstream_s *stream =
                                  (FAR struct lib_blkoutstream_s *)self;
@@ -144,12 +74,12 @@ static ssize_t blkoutstream_puts(FAR struct lib_sostream_s *self,
   FAR struct inode *inode = stream->inode;
   FAR const unsigned char *ptr = buf;
   size_t remain = len;
-  ssize_t ret;
+  int ret;
 
   while (remain > 0)
     {
-      off_t sector = self->nput / sectorsize;
-      off_t offset = self->nput % sectorsize;
+      size_t sblock = self->nput / sectorsize;
+      size_t offset = self->nput % sectorsize;
 
       if (offset > 0)
         {
@@ -163,35 +93,28 @@ static ssize_t blkoutstream_puts(FAR struct lib_sostream_s *self,
           self->nput += copyin;
           remain     -= copyin;
 
-          if (offset == sectorsize)
+          if (offset == stream->geo.geo_sectorsize)
             {
-              ret = inode->u.i_bops->write(inode, stream->cache, sector, 1);
+              ret = inode->u.i_bops->write(inode, stream->cache, sblock, 1);
               if (ret < 0)
                 {
                   return ret;
                 }
             }
         }
-      else if (remain < sectorsize)
+      else if (remain < stream->geo.geo_sectorsize)
         {
-          /* Read sector back to keep as more as possible old data */
-
-          ret = inode->u.i_bops->read(inode, stream->cache, sector, 1);
-          if (ret < 0)
-            {
-              return ret;
-            }
-
           memcpy(stream->cache, ptr, remain);
           self->nput += remain;
           remain      = 0;
         }
-      else
+      else if (remain >= stream->geo.geo_sectorsize)
         {
-          size_t nsector = remain / sectorsize;
-          size_t copyin = nsector * sectorsize;
+          size_t copyin = (remain / stream->geo.geo_sectorsize) *
+                                    stream->geo.geo_sectorsize;
 
-          ret = inode->u.i_bops->write(inode, ptr, sector, nsector);
+          ret = inode->u.i_bops->write(inode, ptr, sblock,
+                                       remain / stream->geo.geo_sectorsize);
           if (ret < 0)
             {
               return ret;
@@ -210,7 +133,7 @@ static ssize_t blkoutstream_puts(FAR struct lib_sostream_s *self,
  * Name: blkoutstream_putc
  ****************************************************************************/
 
-static void blkoutstream_putc(FAR struct lib_sostream_s *self, int ch)
+static void blkoutstream_putc(FAR struct lib_outstream_s *self, int ch)
 {
   char tmp = ch;
   blkoutstream_puts(self, &tmp, 1);
@@ -247,7 +170,6 @@ void lib_blkoutstream_close(FAR struct lib_blkoutstream_s *stream)
 
       if (stream->cache != NULL)
         {
-          blkoutstream_flush(&stream->common);
           lib_free(stream->cache);
           stream->cache = NULL;
         }
@@ -310,7 +232,6 @@ int lib_blkoutstream_open(FAR struct lib_blkoutstream_s *stream,
   stream->common.putc  = blkoutstream_putc;
   stream->common.puts  = blkoutstream_puts;
   stream->common.flush = blkoutstream_flush;
-  stream->common.seek  = blkoutstream_seek;
 
   return OK;
 }

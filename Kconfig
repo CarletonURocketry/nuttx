@@ -329,13 +329,6 @@ config BUILD_KERNEL
 
 endchoice # Build configuration
 
-config BUILD_PIC
-	bool "NuttX PIC build"
-	default n
-	---help---
-		Builds NuttX with position-independent code (PIC).  This will allow
-		load NuttX into memory at any address and run it.
-
 config BUILD_2PASS
 	bool "Two pass build"
 	default n
@@ -573,14 +566,6 @@ config ARCH_FLOAT_H
 		float.h header file will provided if this option is selected.  However
 		there is no assurance that the settings in this float.h are actually
 		correct for your platform!
-
-config DISABLE_FLOAT
-	bool "Disable floating point"
-	default n
-	---help---
-		Disable floating point support in the compiler. This will reduce
-		code size and increase performance. This option is only available
-		on some architectures.
 
 config ARCH_HAVE_STDARG_H
 	bool
@@ -2495,7 +2480,6 @@ config DEBUG_SYMBOLS
 
 config DEBUG_SYMBOLS_LEVEL
 	string "Custom symbols level"
-	depends on DEBUG_SYMBOLS
 	default "-g"
 	---help---
 		This string represents the custom symbol level that will be
@@ -2775,7 +2759,6 @@ source "libs/libc/Kconfig"
 source "libs/libm/Kconfig"
 source "libs/libxx/Kconfig"
 source "libs/libdsp/Kconfig"
-source "libs/libbuiltin/Kconfig"
 endmenu
 
 menu "Open Asymmetric Multi Processing"

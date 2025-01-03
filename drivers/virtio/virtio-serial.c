@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/virtio/virtio-serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -670,11 +668,20 @@ int virtio_register_serial_driver(void)
  * Name: up_putc
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
   if (g_virtio_console != NULL)
     {
+      if (ch == '\n')
+        {
+          /* Add CR */
+
+          virtio_serial_send(g_virtio_console, '\r');
+        }
+
       virtio_serial_send(g_virtio_console, ch);
     }
+
+  return ch;
 }
 #endif

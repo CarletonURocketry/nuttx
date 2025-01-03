@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/dm320/dm320_decodeirq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -47,8 +45,7 @@ uint32_t *arm_decodeirq(uint32_t *regs)
   struct tcb_s *tcb = this_task();
 
 #ifdef CONFIG_SUPPRESS_INTERRUPTS
-  tcb->xcp.regs = regs;
-  up_set_interrupt_context(true);
+  up_set_current_regs(regs);
   err("ERROR: Unexpected IRQ\n");
   PANIC();
   return NULL;
@@ -75,14 +72,17 @@ uint32_t *arm_decodeirq(uint32_t *regs)
 
           arm_ack_irq(irq);
 
-          /* Nested interrupts are not supported. */
+          /* Current regs non-zero indicates that we are processing an
+           * interrupt;
+           * current_regs is also used to manage interrupt level context
+           * switches.
+           *
+           * Nested interrupts are not supported.
+           */
 
-          DEBUGASSERT(!up_interrupt_context());
+          DEBUGASSERT(up_current_regs() == NULL);
           tcb->xcp.regs = regs;
-
-          /* Set irq flag */
-
-          up_set_interrupt_context(true);
+          up_set_current_regs(regs);
 
           /* Deliver the IRQ */
 
@@ -90,7 +90,12 @@ uint32_t *arm_decodeirq(uint32_t *regs)
           tcb = this_task();
 
 #ifdef CONFIG_ARCH_ADDRENV
-          /* Check for a context switch. */
+          /* Check for a context switch.  If a context switch occurred, then
+           * current_regs will have a different value than it did on entry.
+           * If an interrupt level context switch has occurred, then
+           * establish the correct address environment before returning
+           * from the interrupt.
+           */
 
           if (regs != tcb->xcp.regs)
             {
@@ -100,13 +105,15 @@ uint32_t *arm_decodeirq(uint32_t *regs)
                * thread at the head of the ready-to-run list.
                */
 
-              addrenv_switch(tcb);
+              addrenv_switch(NULL);
             }
 #endif
 
-          /* Set irq flag */
+          /* Set current_regs to NULL to indicate that we are no longer in
+           * an interrupt handler.
+           */
 
-          up_set_interrupt_context(false);
+          up_set_current_regs(NULL);
         }
     }
 #endif

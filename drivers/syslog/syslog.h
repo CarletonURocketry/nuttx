@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/syslog/syslog.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -196,7 +194,8 @@ void syslog_register(void);
  *   ch - The character to add to the interrupt buffer (must be positive).
  *
  * Returned Value:
- *   None
+ *   Zero success, the character is echoed back to the caller.  A negated
+ *   errno value is returned on any failure.
  *
  * Assumptions:
  *   Called only from interrupt handling logic; Interrupts will be disabled.
@@ -204,7 +203,7 @@ void syslog_register(void);
  ****************************************************************************/
 
 #ifdef CONFIG_SYSLOG_INTBUFFER
-void syslog_add_intbuffer(FAR const char *buffer, size_t buflen);
+int syslog_add_intbuffer(int ch);
 #endif
 
 /****************************************************************************
@@ -218,7 +217,8 @@ void syslog_add_intbuffer(FAR const char *buffer, size_t buflen);
  *   force   - Use the force() method of the channel vs. the putc() method.
  *
  * Returned Value:
- *   None
+ *   On success, the character is echoed back to the caller.  A negated
+ *   errno value is returned on any failure.
  *
  * Assumptions:
  *   Interrupts may or may not be disabled.
@@ -226,30 +226,8 @@ void syslog_add_intbuffer(FAR const char *buffer, size_t buflen);
  ****************************************************************************/
 
 #ifdef CONFIG_SYSLOG_INTBUFFER
-void syslog_flush_intbuffer(bool force);
+int syslog_flush_intbuffer(bool force);
 #endif
-
-/****************************************************************************
- * Name: syslog_write_foreach
- *
- * Description:
- *   This provides a default write method for syslog devices that do not
- *   support multiple byte writes  This functions simply loops, outputting
- *   one character at a time.
- *
- * Input Parameters:
- *   buffer - The buffer containing the data to be output
- *   buflen - The number of bytes in the buffer
- *   force  - Use the force() method of the channel vs. the putc() method.
- *
- * Returned Value:
- *   On success, the number of characters written is returned.  A negated
- *   errno value is returned on any failure.
- *
- ****************************************************************************/
-
-ssize_t syslog_write_foreach(FAR const char *buffer,
-                             size_t buflen, bool force);
 #endif /* CONFIG_SYSLOG */
 
 #undef EXTERN

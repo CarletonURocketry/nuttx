@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/pci/pci_ivshmem.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -31,7 +29,6 @@
 #include <errno.h>
 #include <debug.h>
 
-#include <nuttx/arch.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/list.h>
 #include <nuttx/mutex.h>
@@ -255,26 +252,23 @@ static int ivshmem_probe(FAR struct pci_device_s *dev)
 
       if (ivdev->vmid != 0 && ivdev->vmid != 1)
         {
-          pciwarn("Vmid=%"PRIu32" not 0/1, use polling mode\n", ivdev->vmid);
-          ivdev->vmid = IVSHMEM_INVALID_VMID;
-          goto out;
+          ret = -EINVAL;
+          pcierr("Vmid must be 0 or 1\n");
+          goto err_master;
         }
 
       ret = pci_alloc_irq(dev, &ivdev->irq, 1);
       if (ret != 1)
         {
-          pciwarn("Failed to allocate irq %d, use polling mode\n", ret);
-          ivdev->vmid = IVSHMEM_INVALID_VMID;
-          goto out;
+          pcierr("Failed to allocate irq %d\n", ret);
+          goto err_master;
         }
 
       ret = pci_connect_irq(dev, &ivdev->irq, 1);
       if (ret < 0)
         {
-          pciwarn("Failed to connect irq %d, use polling mode\n", ret);
-          pci_release_irq(dev, &ivdev->irq, 1);
-          ivdev->vmid = IVSHMEM_INVALID_VMID;
-          goto out;
+          pcierr("Failed to connect irq %d\n", ret);
+          goto err_msi_alloc;
         }
 
       pciinfo("vmid=%" PRIu32 " irq=%d\n", ivdev->vmid, ivdev->irq);
@@ -284,7 +278,6 @@ static int ivshmem_probe(FAR struct pci_device_s *dev)
       ivdev->vmid = IVSHMEM_INVALID_VMID;
     }
 
-out:
   ret = ivshmem_register_device(ivdev);
   if (ret < 0)
     {
@@ -294,6 +287,8 @@ out:
   g_ivshmem_next_id++;
   return ret;
 
+err_msi_alloc:
+  pci_release_irq(dev, &ivdev->irq, 1);
 err_master:
   pci_clear_master(dev);
   pci_disable_device(dev);

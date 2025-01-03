@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/samd5e5/sam_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -326,10 +324,6 @@ static bool sam_txempty(struct uart_dev_s *dev);
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-#ifdef HAVE_SERIAL_CONSOLE
-static spinlock_t g_sam_serial_lock = SP_UNLOCKED;
-#endif
 
 static const struct uart_ops_s g_uart_ops =
 {
@@ -1102,7 +1096,7 @@ void arm_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
   irqstate_t flags;
@@ -1111,10 +1105,21 @@ void up_putc(int ch)
    * interrupts from firing in the serial driver code.
    */
 
-  flags = spin_lock_irqsave(&g_sam_serial_lock);
+  flags = spin_lock_irqsave(NULL);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      sam_lowputc('\r');
+    }
+
   sam_lowputc(ch);
-  spin_unlock_irqrestore(&g_sam_serial_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 #endif
+  return ch;
 }
 
 #else /* USE_SERIALDRIVER */
@@ -1127,11 +1132,21 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      sam_lowputc('\r');
+    }
+
   sam_lowputc(ch);
 #endif
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

@@ -36,12 +36,12 @@
  * Name: memoutstream_puts
  ****************************************************************************/
 
-static ssize_t memoutstream_puts(FAR struct lib_outstream_s *self,
-                                 FAR const void *buf, size_t len)
+static int memoutstream_puts(FAR struct lib_outstream_s *self,
+                             FAR const void *buf, int len)
 {
   FAR struct lib_memoutstream_s *stream =
                                 (FAR struct lib_memoutstream_s *)self;
-  size_t ncopy;
+  int ncopy;
 
   DEBUGASSERT(self);
 
@@ -94,7 +94,7 @@ static void memoutstream_putc(FAR struct lib_outstream_s *self, int ch)
  ****************************************************************************/
 
 void lib_memoutstream(FAR struct lib_memoutstream_s *outstream,
-                      FAR char *bufstart, size_t buflen)
+                      FAR char *bufstart, int buflen)
 {
   outstream->common.putc  = memoutstream_putc;
   outstream->common.puts  = memoutstream_puts;

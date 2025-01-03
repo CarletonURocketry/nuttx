@@ -553,10 +553,6 @@ NuttX provides support for a variety of file systems out of the box.
   userfs.rst
   zipfs.rst
   inotify.rst
-  nuttxfs.rst
-  nxflat.rst
-  pseudofs.rst
-  special_files_dev_num.rst
 
 FS Categories
 -------------

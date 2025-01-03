@@ -51,10 +51,6 @@ static int stdsistream_getc(FAR struct lib_sistream_s *self)
     {
       self->nget++;
     }
-  else
-    {
-      ret = _NX_GETERRVAL(ret);
-    }
 
   return ret;
 }
@@ -63,12 +59,12 @@ static int stdsistream_getc(FAR struct lib_sistream_s *self)
  * Name: stdsistream_gets
  ****************************************************************************/
 
-static ssize_t stdsistream_gets(FAR struct lib_instream_s *self,
-                                FAR void *buffer, size_t len)
+static int stdsistream_gets(FAR struct lib_instream_s *self,
+                            FAR void *buffer, int len)
 {
   FAR struct lib_stdsistream_s *stream =
                                         (FAR struct lib_stdsistream_s *)self;
-  ssize_t nread = 0;
+  int nread = 0;
 
   DEBUGASSERT(self);
 
@@ -98,13 +94,7 @@ static off_t stdsistream_seek(FAR struct lib_sistream_s *self, off_t offset,
                                         (FAR struct lib_stdsistream_s *)self;
 
   DEBUGASSERT(self);
-  offset = fseek(stream->handle, offset, whence);
-  if (offset < 0)
-    {
-      offset = _NX_GETERRVAL(offset);
-    }
-
-  return offset;
+  return fseek(stream->handle, offset, whence);
 }
 
 /****************************************************************************

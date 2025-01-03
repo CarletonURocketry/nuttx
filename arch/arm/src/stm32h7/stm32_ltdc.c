@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/stm32h7/stm32_ltdc.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -2626,7 +2624,7 @@ static int stm32_setchromakey(struct fb_vtable_s *vtable,
   struct stm32_ltdcdev_s *priv = (struct stm32_ltdcdev_s *)vtable;
 
   DEBUGASSERT(vtable != NULL && priv == &g_vtable && oinfo != NULL);
-  lcdinfo("vtable=%p, overlay=%d, chromakey=%08" PRIx32 "\n", vtable,
+  lcdinfo("vtable=%p, overlay=%d, chromakey=%08x\n", vtable,
           oinfo->overlay, oinfo->chromakey);
 
   if (oinfo->overlay < LTDC_NLAYERS)
@@ -2692,8 +2690,7 @@ static int stm32_setcolor(struct fb_vtable_s *vtable,
                           const struct fb_overlayinfo_s *oinfo)
 {
   DEBUGASSERT(vtable != NULL && vtable == &g_vtable.vtable && oinfo != NULL);
-  lcdinfo("vtable=%p, overlay=%d, color=%08" PRIx32 "\n",
-          vtable, oinfo->overlay, oinfo->color);
+  lcdinfo("vtable=%p, overlay=%d, color=%08x\n", vtable, oinfo->color);
 
   if (oinfo->overlay < LTDC_NOVERLAYS)
     {
@@ -2740,8 +2737,7 @@ static int stm32_setblank(struct fb_vtable_s *vtable,
   struct stm32_ltdcdev_s *priv = (struct stm32_ltdcdev_s *)vtable;
 
   DEBUGASSERT(vtable != NULL && priv == &g_vtable && oinfo != NULL);
-  lcdinfo("vtable=%p, overlay=%d, blank=%02x\n",
-          vtable, oinfo->overlay, oinfo->blank);
+  lcdinfo("vtable=%p, overlay=%d, blank=%02x\n", vtable, oinfo->blank);
 
   if (oinfo->overlay < LTDC_NLAYERS)
     {

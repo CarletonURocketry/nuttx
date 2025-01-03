@@ -1,7 +1,5 @@
 /****************************************************************************
- * boards/arm/nrf53/nrf5340-audio-dk/scripts/flash_net.ld
- *
- * SPDX-License-Identifier: Apache-2.0
+* boards/arm/nrf53/nrf5340-audio-dk/scripts/flash_net.ld
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

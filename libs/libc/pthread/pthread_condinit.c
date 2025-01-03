@@ -74,7 +74,6 @@ int pthread_cond_init(FAR pthread_cond_t *cond,
   else
     {
       cond->clockid = attr ? attr->clockid : CLOCK_REALTIME;
-      cond->wait_count = 0;
     }
 
   sinfo("Returning %d\n", ret);

@@ -42,17 +42,8 @@
 
 #include "devif/devif.h"
 #include "ieee802154/ieee802154.h"
-#include "utils/utils.h"
 
 #ifdef CONFIG_NET_IEEE802154
-
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-
-#ifndef CONFIG_NET_IEEE802154_MAX_CONNS
-#  define CONFIG_NET_IEEE802154_MAX_CONNS 0
-#endif
 
 /****************************************************************************
  * Private Data
@@ -62,11 +53,14 @@
  * network lock.
  */
 
-NET_BUFPOOL_DECLARE(g_ieee802154_connections,
-                    sizeof(struct ieee802154_conn_s),
-                    CONFIG_NET_IEEE802154_PREALLOC_CONNS,
-                    CONFIG_NET_IEEE802154_ALLOC_CONNS,
-                    CONFIG_NET_IEEE802154_MAX_CONNS);
+#if CONFIG_NET_IEEE802154_PREALLOC_CONNS > 0
+static struct ieee802154_conn_s
+  g_ieee802154_connections[CONFIG_NET_IEEE802154_PREALLOC_CONNS];
+#endif
+
+/* A list of all free packet socket connections */
+
+static dq_queue_t g_free_ieee802154_connections;
 
 /* A list of all allocated packet socket connections */
 
@@ -90,7 +84,17 @@ static dq_queue_t g_active_ieee802154_connections;
 
 void ieee802154_conn_initialize(void)
 {
-  NET_BUFPOOL_INIT(g_ieee802154_connections);
+#if CONFIG_NET_IEEE802154_PREALLOC_CONNS > 0
+  int i;
+
+  for (i = 0; i < CONFIG_NET_IEEE802154_PREALLOC_CONNS; i++)
+    {
+      /* Link each pre-allocated connection structure into the free list. */
+
+      dq_addlast(&g_ieee802154_connections[i].sconn.node,
+                 &g_free_ieee802154_connections);
+    }
+#endif
 }
 
 /****************************************************************************
@@ -105,12 +109,39 @@ void ieee802154_conn_initialize(void)
 FAR struct ieee802154_conn_s *ieee802154_conn_alloc(void)
 {
   FAR struct ieee802154_conn_s *conn;
+#if CONFIG_NET_IEEE802154_ALLOC_CONNS > 0
+  int i;
+#endif
 
   /* The free list is protected by the network lock. */
 
   net_lock();
+#if CONFIG_NET_IEEE802154_ALLOC_CONNS > 0
+  if (dq_peek(&g_free_ieee802154_connections) == NULL)
+    {
+#if CONFIG_NET_IEEE802154_MAX_CONNS > 0
+      if (dq_count(&g_active_ieee802154_connections) +
+         CONFIG_NET_IEEE802154_ALLOC_CONNS > CONFIG_NET_IEEE802154_MAX_CONNS)
+        {
+          net_unlock();
+          return NULL;
+        }
+#endif
 
-  conn = NET_BUFPOOL_TRYALLOC(g_ieee802154_connections);
+      conn = kmm_zalloc(sizeof(*conn) * CONFIG_NET_IEEE802154_ALLOC_CONNS);
+      if (conn != NULL)
+        {
+          for (i = 0; i < CONFIG_NET_IEEE802154_ALLOC_CONNS; i++)
+            {
+              dq_addlast(&conn[i].sconn.node,
+                         &g_free_ieee802154_connections);
+            }
+        }
+    }
+#endif
+
+  conn = (FAR struct ieee802154_conn_s *)
+         dq_remfirst(&g_free_ieee802154_connections);
   if (conn)
     {
       dq_addlast(&conn->sconn.node, &g_active_ieee802154_connections);
@@ -164,9 +195,22 @@ void ieee802154_conn_free(FAR struct ieee802154_conn_s *conn)
       ieee802154_container_free(container);
     }
 
-  /* Free the connection. */
+  /* If this is a preallocated or a batch allocated connection store it in
+   * the free connections list. Else free it.
+   */
 
-  NET_BUFPOOL_FREE(g_ieee802154_connections, conn);
+#if CONFIG_NET_IEEE802154_ALLOC_CONNS == 1
+  if (conn < g_ieee802154_connections || conn >= (g_ieee802154_connections +
+      CONFIG_NET_IEEE802154_PREALLOC_CONNS))
+    {
+      kmm_free(conn);
+    }
+  else
+#endif
+    {
+      memset(conn, 0, sizeof(*conn));
+      dq_addlast(&conn->sconn.node, &g_free_ieee802154_connections);
+    }
 
   net_unlock();
 }

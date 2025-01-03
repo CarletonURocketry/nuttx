@@ -29,6 +29,7 @@ if(CONFIG_WIRELESS_BLUETOOTH)
     list(
       APPEND
       SRCS
+      bt_atomic.c
       bt_att.c
       bt_conn.c
       bt_gatt.c

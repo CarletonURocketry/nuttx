@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_schedulesigaction.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -35,50 +33,48 @@
 #include <nuttx/arch.h>
 
 #include "sched/sched.h"
-#include "signal/signal.h"
 #include "arm64_internal.h"
 #include "arm64_arch.h"
 #include "irq/irq.h"
 #include "arm64_fatal.h"
 
 /****************************************************************************
- * Private Functions
+ * Public Functions
  ****************************************************************************/
 
-static void arm64_init_signal_process(struct tcb_s *tcb, uint64_t *regs)
+void arm64_init_signal_process(struct tcb_s *tcb, struct regs_context *regs)
 {
 /****************************************************************************
  * if regs != NULL We are interrupting the context,
  * we should modify the regs
  ****************************************************************************/
 
-  regs = (regs != NULL) ? regs : tcb->xcp.regs;
+  struct regs_context  *pctx = (regs != NULL) ? regs :
+  (struct regs_context *)tcb->xcp.regs;
+  struct regs_context  *psigctx;
+  char *stack_ptr    = (char *)pctx->sp_elx - sizeof(struct regs_context);
 
-  tcb->xcp.regs = (uint64_t *)(regs[REG_SP_ELX] - XCPTCONTEXT_SIZE * 2);
-  memset(tcb->xcp.regs, 0, XCPTCONTEXT_SIZE);
-
-  tcb->xcp.regs[REG_ELR]    = (uint64_t)arm64_sigdeliver;
+  psigctx            = STACK_PTR_TO_FRAME(struct regs_context, stack_ptr);
+  memset(psigctx, 0, sizeof(struct regs_context));
+  psigctx->elr       = (uint64_t)arm64_sigdeliver;
 
   /* Keep using SP_EL1 */
 
 #if CONFIG_ARCH_ARM64_EXCEPTION_LEVEL == 3
-  tcb->xcp.regs[REG_SPSR]   = SPSR_MODE_EL3H | DAIF_FIQ_BIT | DAIF_IRQ_BIT;
+  psigctx->spsr      = SPSR_MODE_EL3H | DAIF_FIQ_BIT | DAIF_IRQ_BIT;
 #else
-  tcb->xcp.regs[REG_SPSR]   = SPSR_MODE_EL1H | DAIF_FIQ_BIT | DAIF_IRQ_BIT;
+  psigctx->spsr      = SPSR_MODE_EL1H | DAIF_FIQ_BIT | DAIF_IRQ_BIT;
 #endif
-
+  psigctx->sp_elx    = (uint64_t)stack_ptr;
 #ifdef CONFIG_ARCH_KERNEL_STACK
-  tcb->xcp.regs[REG_SP_EL0] = regs[REG_SP_EL0];
+  psigctx->sp_el0    = (uint64_t)pctx->sp_el0;
 #else
-  tcb->xcp.regs[REG_SP_EL0] = regs[REG_SP_ELX] - XCPTCONTEXT_SIZE * 2;
+  psigctx->sp_el0    = (uint64_t)psigctx;
 #endif
-  tcb->xcp.regs[REG_SP_ELX] = regs[REG_SP_ELX] - XCPTCONTEXT_SIZE;
-  tcb->xcp.regs[REG_EXE_DEPTH]  = 1;
-}
+  psigctx->exe_depth = 1;
 
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
+  tcb->xcp.regs      = (uint64_t *)psigctx;
+}
 
 /****************************************************************************
  * Name: up_schedule_sigaction
@@ -131,8 +127,8 @@ void up_schedule_sigaction(struct tcb_s *tcb)
        * REVISIT:  Signal handler will run in a critical section!
        */
 
-      nxsig_deliver(tcb);
-      tcb->flags &= ~TCB_FLAG_SIGDELIVER;
+      (tcb->sigdeliver)(tcb);
+      tcb->sigdeliver = NULL;
     }
   else
     {
@@ -141,7 +137,7 @@ void up_schedule_sigaction(struct tcb_s *tcb)
        * have been delivered.
        */
 
-      tcb->xcp.saved_regs = tcb->xcp.regs;
+      tcb->xcp.saved_reg = tcb->xcp.regs;
 
       /* create signal process context */
 

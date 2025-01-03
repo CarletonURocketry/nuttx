@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_fork.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -65,7 +63,7 @@ void arm64_fork_fpureg_save(struct fork_s *context)
 
   flags = enter_critical_section();
 
-  arm64_fpu_save(context->fpu);
+  arm64_fpu_save(&context->fpu);
   ARM64_DSB();
 
   leave_critical_section(flags);
@@ -127,6 +125,8 @@ pid_t arm64_fork(const struct fork_s *context)
   uint64_t newtop;
   uint64_t stacktop;
   uint64_t stackutil;
+  char   *stack_ptr;
+  struct regs_context  *pforkctx;
 
   /* Allocate and initialize a TCB for the child task. */
 
@@ -181,55 +181,58 @@ pid_t arm64_fork(const struct fork_s *context)
 
   /* make the fork stack frame */
 
-#ifdef CONFIG_ARCH_FPU
-  child->cmn.xcp.fpu_regs = (void *)(newsp - FPU_CONTEXT_SIZE);
-  memcpy(child->cmn.xcp.fpu_regs, context->fpu, FPU_CONTEXT_SIZE);
-#endif
+  stack_ptr = (char *)newsp;
 
-  child->cmn.xcp.regs             = (void *)(newsp - XCPTCONTEXT_SIZE);
+  pforkctx      = STACK_PTR_TO_FRAME(struct regs_context, stack_ptr);
 
-  child->cmn.xcp.regs[REG_X0]     = 0;
-  child->cmn.xcp.regs[REG_X8]     = context->regs[FORK_REG_X8];
-  child->cmn.xcp.regs[REG_X9]     = context->regs[FORK_REG_X9];
-  child->cmn.xcp.regs[REG_X10]    = context->regs[FORK_REG_X10];
-  child->cmn.xcp.regs[REG_X11]    = context->regs[FORK_REG_X11];
-  child->cmn.xcp.regs[REG_X12]    = context->regs[FORK_REG_X12];
-  child->cmn.xcp.regs[REG_X13]    = context->regs[FORK_REG_X13];
-  child->cmn.xcp.regs[REG_X14]    = context->regs[FORK_REG_X14];
-  child->cmn.xcp.regs[REG_X15]    = context->regs[FORK_REG_X15];
-  child->cmn.xcp.regs[REG_X16]    = context->regs[FORK_REG_X16];
-  child->cmn.xcp.regs[REG_X17]    = context->regs[FORK_REG_X17];
-  child->cmn.xcp.regs[REG_X18]    = context->regs[FORK_REG_X18];
-  child->cmn.xcp.regs[REG_X19]    = context->regs[FORK_REG_X19];
-  child->cmn.xcp.regs[REG_X20]    = context->regs[FORK_REG_X20];
-  child->cmn.xcp.regs[REG_X21]    = context->regs[FORK_REG_X21];
-  child->cmn.xcp.regs[REG_X22]    = context->regs[FORK_REG_X22];
-  child->cmn.xcp.regs[REG_X23]    = context->regs[FORK_REG_X23];
-  child->cmn.xcp.regs[REG_X24]    = context->regs[FORK_REG_X24];
-  child->cmn.xcp.regs[REG_X25]    = context->regs[FORK_REG_X25];
-  child->cmn.xcp.regs[REG_X26]    = context->regs[FORK_REG_X26];
-  child->cmn.xcp.regs[REG_X27]    = context->regs[FORK_REG_X27];
-  child->cmn.xcp.regs[REG_X28]    = context->regs[FORK_REG_X28];
-  child->cmn.xcp.regs[REG_FP]     = newfp;
+  pforkctx->regs[REG_X0]   = 0;
+  pforkctx->regs[REG_X8]   = context->regs[FORK_REG_X8];
+  pforkctx->regs[REG_X9]   = context->regs[FORK_REG_X9];
+  pforkctx->regs[REG_X10]  = context->regs[FORK_REG_X10];
+  pforkctx->regs[REG_X11]  = context->regs[FORK_REG_X11];
+  pforkctx->regs[REG_X12]  = context->regs[FORK_REG_X12];
+  pforkctx->regs[REG_X13]  = context->regs[FORK_REG_X13];
+  pforkctx->regs[REG_X14]  = context->regs[FORK_REG_X14];
+  pforkctx->regs[REG_X15]  = context->regs[FORK_REG_X15];
+  pforkctx->regs[REG_X16]  = context->regs[FORK_REG_X16];
+  pforkctx->regs[REG_X17]  = context->regs[FORK_REG_X17];
+  pforkctx->regs[REG_X18]  = context->regs[FORK_REG_X18];
+  pforkctx->regs[REG_X19]  = context->regs[FORK_REG_X19];
+  pforkctx->regs[REG_X20]  = context->regs[FORK_REG_X20];
+  pforkctx->regs[REG_X21]  = context->regs[FORK_REG_X21];
+  pforkctx->regs[REG_X22]  = context->regs[FORK_REG_X22];
+  pforkctx->regs[REG_X23]  = context->regs[FORK_REG_X23];
+  pforkctx->regs[REG_X24]  = context->regs[FORK_REG_X24];
+  pforkctx->regs[REG_X25]  = context->regs[FORK_REG_X25];
+  pforkctx->regs[REG_X26]  = context->regs[FORK_REG_X26];
+  pforkctx->regs[REG_X27]  = context->regs[FORK_REG_X27];
+  pforkctx->regs[REG_X28]  = context->regs[FORK_REG_X28];
+  pforkctx->regs[REG_X29]  = newfp;
 
 #if CONFIG_ARCH_ARM64_EXCEPTION_LEVEL == 3
-  child->cmn.xcp.regs[REG_SPSR]   = SPSR_MODE_EL3H;
+  pforkctx->spsr = SPSR_MODE_EL3H;
 #else
-  child->cmn.xcp.regs[REG_SPSR]   = SPSR_MODE_EL1H;
+  pforkctx->spsr = SPSR_MODE_EL1H;
 #endif
 
 #ifdef CONFIG_SUPPRESS_INTERRUPTS
-  child->cmn.xcp.regs[REG_SPSR]  |= (DAIF_IRQ_BIT | DAIF_FIQ_BIT);
+  pforkctx->spsr       |= (DAIF_IRQ_BIT | DAIF_FIQ_BIT);
 #endif /* CONFIG_SUPPRESS_INTERRUPTS */
 
-  child->cmn.xcp.regs[REG_ELR]    = (uint64_t)context->lr;
+  pforkctx->elr  = (uint64_t)context->lr;
 
-  child->cmn.xcp.regs[REG_EXE_DEPTH] = 0;
-  child->cmn.xcp.regs[REG_SP_ELX]    = newsp - XCPTCONTEXT_SIZE;
+  pforkctx->exe_depth       = 0;
+  pforkctx->sp_elx          = (uint64_t)stack_ptr;
 #ifdef CONFIG_ARCH_KERNEL_STACK
-  child->cmn.xcp.regs[REG_SP_EL0]    = (uint64_t)child->cmn.xcp.ustkptr;
+  pforkctx->sp_el0          = (uint64_t)child->cmn.xcp.ustkptr;
 #else
-  child->cmn.xcp.regs[REG_SP_EL0]    = newsp - XCPTCONTEXT_SIZE;
+  pforkctx->sp_el0          = (uint64_t)pforkctx;
+#endif
+
+  child->cmn.xcp.regs = (uint64_t *)pforkctx;
+
+#ifdef CONFIG_ARCH_FPU
+  memcpy(&pforkctx->fpu_regs, &context->fpu, sizeof(struct fpu_reg));
 #endif
 
   /* And, finally, start the child task.  On a failure, nxtask_start_fork()

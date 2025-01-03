@@ -28,7 +28,6 @@
 #include <nuttx/arch.h>
 #include <nuttx/wdog.h>
 #include <nuttx/spinlock.h>
-#include "sched/sched.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -50,20 +49,11 @@ struct profinfo_s
   spinlock_t lock;             /* Lock for this structure */
 };
 
-#ifdef CONFIG_SMP
-static int profil_timer_handler_cpu(FAR void *arg);
-#endif
-
 /****************************************************************************
  * Private Data
  ****************************************************************************/
 
 static struct profinfo_s g_prof;
-
-#ifdef CONFIG_SMP
-static struct smp_call_data_s g_call_data =
-SMP_CALL_INITIALIZER(profil_timer_handler_cpu, &g_prof);
-#endif
 
 /****************************************************************************
  * Private Functions
@@ -98,7 +88,8 @@ static void profil_timer_handler(wdparm_t arg)
 #ifdef CONFIG_SMP
   cpu_set_t cpus = (1 << CONFIG_SMP_NCPUS) - 1;
   CPU_CLR(this_cpu(), &cpus);
-  nxsched_smp_call_async(cpus, &g_call_data);
+  nxsched_smp_call(cpus, profil_timer_handler_cpu,
+                   (FAR void *)arg, false);
 #endif
 
   profil_timer_handler_cpu(prof);

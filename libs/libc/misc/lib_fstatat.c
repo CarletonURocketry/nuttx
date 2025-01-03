@@ -67,33 +67,20 @@
 int fstatat(int dirfd, FAR const char *path, FAR struct stat *buf,
             int flags)
 {
-  FAR char *fullpath;
+  char fullpath[PATH_MAX];
   int ret;
 
-  fullpath = lib_get_pathbuffer();
-  if (fullpath == NULL)
-    {
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
-  ret = lib_getfullpath(dirfd, path, fullpath, PATH_MAX);
+  ret = lib_getfullpath(dirfd, path, fullpath, sizeof(fullpath));
   if (ret < 0)
     {
-      lib_put_pathbuffer(fullpath);
       set_errno(-ret);
       return ERROR;
     }
 
   if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
     {
-      ret = lstat(fullpath, buf);
-    }
-  else
-    {
-      ret = stat(fullpath, buf);
+      return lstat(fullpath, buf);
     }
 
-  lib_put_pathbuffer(fullpath);
-  return ret;
+  return stat(fullpath, buf);
 }

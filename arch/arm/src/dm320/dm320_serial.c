@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/dm320/dm320_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -744,7 +742,7 @@ void arm_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
   struct up_dev_s *priv = (struct up_dev_s *)CONSOLE_DEV.priv;
   uint16_t  ier;
@@ -753,8 +751,19 @@ void up_putc(int ch)
   up_waittxready(priv);
   up_serialout(priv, UART_DTRR, (uint16_t)ch);
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      up_waittxready(priv);
+      up_serialout(priv, UART_DTRR, '\r');
+    }
+
   up_waittxready(priv);
   up_restoreuartint(priv, ier);
+  return ch;
 }
 
 #else /* USE_SERIALDRIVER */
@@ -790,12 +799,23 @@ static inline void up_waittxready(void)
  * Public Functions
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
   up_waittxready();
   putreg16((uint16_t)ch, DM320_REGISTER_BASE + UART_DTRR);
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      up_waittxready();
+      putreg16((uint16_t)'\r', DM320_REGISTER_BASE + UART_DTRR);
+    }
+
   up_waittxready();
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

@@ -35,7 +35,7 @@
 #include <nuttx/compiler.h>
 #include <langinfo.h>
 
-#ifdef CONFIG_LIBCXXTOOLCHAIN
+#ifndef _MSC_VER
 
 /* GNU libstdc++ is expecting ctype.h to define a few macros for
  * locale related functions like C++ streams.

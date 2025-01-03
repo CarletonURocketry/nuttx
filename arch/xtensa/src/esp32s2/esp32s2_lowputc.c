@@ -99,7 +99,6 @@ struct esp32s2_uart_s g_uart0_config =
   .rs485_dir_polarity = true,
 #endif
 #endif
-  .lock = SP_UNLOCKED
 };
 
 #endif /* CONFIG_ESP32S2_UART0 */
@@ -147,7 +146,6 @@ struct esp32s2_uart_s g_uart1_config =
   .rs485_dir_polarity = true,
 #endif
 #endif
-  .lock = SP_UNLOCKED
 };
 
 #endif /* CONFIG_ESP32S2_UART1 */
@@ -656,7 +654,7 @@ void esp32s2_lowputc_disable_all_uart_int(const struct esp32s2_uart_s *priv,
 {
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
 
   if (current_status != NULL)
     {
@@ -673,7 +671,7 @@ void esp32s2_lowputc_disable_all_uart_int(const struct esp32s2_uart_s *priv,
 
   putreg32(UINT32_MAX, UART_INT_CLR_REG(priv->id));
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************

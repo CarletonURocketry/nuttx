@@ -70,12 +70,12 @@ static void stdsostream_putc(FAR struct lib_sostream_s *self, int ch)
  * Name: stdsostream_puts
  ****************************************************************************/
 
-static ssize_t stdsostream_puts(FAR struct lib_sostream_s *self,
-                                FAR const void *buffer, size_t len)
+static int stdsostream_puts(FAR struct lib_sostream_s *self,
+                            FAR const void *buffer, int len)
 {
   FAR struct lib_stdsostream_s *stream =
                                         (FAR struct lib_stdsostream_s *)self;
-  ssize_t result;
+  int result;
 
   DEBUGASSERT(self && stream->handle);
 
@@ -129,13 +129,7 @@ static off_t stdsostream_seek(FAR struct lib_sostream_s *self, off_t offset,
                                         (FAR struct lib_stdsostream_s *)self;
 
   DEBUGASSERT(stream != NULL && stream->handle != NULL);
-  offset = fseek(stream->handle, offset, whence);
-  if (offset < 0)
-    {
-      offset = _NX_GETERRVAL(offset);
-    }
-
-  return offset;
+  return fseek(stream->handle, offset, whence);
 }
 
 /****************************************************************************

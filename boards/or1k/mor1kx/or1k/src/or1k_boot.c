@@ -1,9 +1,8 @@
 /****************************************************************************
  * boards/or1k/mor1kx/or1k/src/or1k_boot.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2018 Extent3D. All rights reserved.
- * SPDX-FileContributor: Matt Thompson <matt@extent3d.com>
+ *   Copyright (C) 2018 Extent3D. All rights reserved.
+ *   Author: Matt Thompson <matt@extent3d.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

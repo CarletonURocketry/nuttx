@@ -1,7 +1,5 @@
 /****************************************************************************
- * boards/arm/stm32h7/openh743i/scripts/flash.ld
- *
- * SPDX-License-Identifier: Apache-2.0
+* boards/arm/stm32h7/openh743i/scripts/flash.ld
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

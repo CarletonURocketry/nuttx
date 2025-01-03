@@ -68,9 +68,11 @@
 
 int nxsem_tickwait(FAR sem_t *sem, uint32_t delay)
 {
-  FAR struct tcb_s *rtcb;
+  FAR struct tcb_s *rtcb = this_task();
   irqstate_t flags;
   int ret;
+
+  DEBUGASSERT(sem != NULL && up_interrupt_context() == false);
 
   /* We will disable interrupts until we have completed the semaphore
    * wait.  We need to do this (as opposed to just disabling pre-emption)
@@ -103,8 +105,6 @@ int nxsem_tickwait(FAR sem_t *sem, uint32_t delay)
       ret = -ETIMEDOUT;
       goto out;
     }
-
-  rtcb = this_task();
 
   /* Start the watchdog with interrupts still disabled */
 

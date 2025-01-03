@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/samv7/sam_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -33,7 +31,6 @@
 
 #include <nuttx/irq.h>
 #include <nuttx/arch.h>
-#include <nuttx/spinlock.h>
 #include <arch/board/board.h>
 
 #include "arm_internal.h"
@@ -75,8 +72,6 @@
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-static spinlock_t g_configgpio_lock = SP_UNLOCKED;
 
 #ifdef CONFIG_DEBUG_GPIO_INFO
 static const char g_portchar[SAMV7_NPIO] =
@@ -500,7 +495,7 @@ int sam_configgpio(gpio_pinset_t cfgset)
 
   /* Disable interrupts to prohibit re-entrance. */
 
-  flags = spin_lock_irqsave(&g_configgpio_lock);
+  flags = enter_critical_section();
 
   /* Enable writing to GPIO registers */
 
@@ -536,7 +531,7 @@ int sam_configgpio(gpio_pinset_t cfgset)
   /* Disable writing to GPIO registers */
 
   putreg32(PIO_WPMR_WPEN | PIO_WPMR_WPKEY, base + SAM_PIO_WPMR_OFFSET);
-  spin_unlock_irqrestore(&g_configgpio_lock, flags);
+  leave_critical_section(flags);
 
   return ret;
 }
@@ -609,7 +604,7 @@ int sam_dumpgpio(uint32_t pinset, const char *msg)
 
   /* The following requires exclusive access to the GPIO registers */
 
-  flags = spin_lock_irqsave(&g_configgpio_lock);
+  flags = enter_critical_section();
 
   gpioinfo("PIO%c pinset: %08x base: %08x -- %s\n",
            g_portchar[port], pinset, base, msg);
@@ -666,7 +661,7 @@ int sam_dumpgpio(uint32_t pinset, const char *msg)
            getreg32(base + SAM_PIO_PCISR_OFFSET),
            getreg32(base + SAM_PIO_PCRHR_OFFSET));
 
-  spin_unlock_irqrestore(&g_configgpio_lock, flags);
+  leave_critical_section(flags);
   return OK;
 }
 #endif

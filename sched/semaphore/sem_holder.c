@@ -30,8 +30,8 @@
 #include <assert.h>
 #include <debug.h>
 
+#include <nuttx/addrenv.h>
 #include <nuttx/arch.h>
-#include <nuttx/mm/kmap.h>
 
 #include "sched/sched.h"
 #include "semaphore/semaphore.h"
@@ -41,6 +41,12 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+
+/* Configuration ************************************************************/
+
+#ifndef CONFIG_SEM_PREALLOCHOLDERS
+#  define CONFIG_SEM_PREALLOCHOLDERS 0
+#endif
 
 /****************************************************************************
  * Private Type Declarations
@@ -97,10 +103,6 @@ nxsem_allocholder(FAR sem_t *sem, FAR struct tcb_s *htcb)
       serr("ERROR: Insufficient pre-allocated holders\n");
       PANIC();
     }
-
-#ifdef CONFIG_MM_KMAP
-  sem = kmm_map_user(this_task(), sem, sizeof(*sem));
-#endif
 
   pholder->sem    = sem;
   pholder->htcb   = htcb;
@@ -197,10 +199,6 @@ static inline void nxsem_freeholder(FAR sem_t *sem,
           break;
         }
     }
-
-#ifdef CONFIG_MM_KMAP
-  kmm_unmap(pholder->sem);
-#endif
 
   /* Release the holder and counts */
 
@@ -406,6 +404,15 @@ static void nxsem_restore_priority(FAR struct tcb_s *htcb)
     {
       FAR struct semholder_s *pholder;
 
+#ifdef CONFIG_ARCH_ADDRENV
+      FAR struct addrenv_s *oldenv;
+
+      if (htcb->addrenv_own)
+        {
+          addrenv_select(htcb->addrenv_own, &oldenv);
+        }
+#endif
+
       /* Try to find the highest priority across all the threads that are
        * waiting for any semaphore held by htcb.
        */
@@ -422,6 +429,13 @@ static void nxsem_restore_priority(FAR struct tcb_s *htcb)
               hpriority = stcb->sched_priority;
             }
         }
+
+#ifdef CONFIG_ARCH_ADDRENV
+      if (htcb->addrenv_own)
+        {
+          addrenv_restore(oldenv);
+        }
+#endif
 
       /* Apply the selected priority to the thread (hopefully back to the
        * threads base_priority).
@@ -558,8 +572,6 @@ void nxsem_initialize_holders(void)
 
 void nxsem_destroyholder(FAR sem_t *sem)
 {
-  irqstate_t flags = enter_critical_section();
-
   /* It might be an error if a semaphore is destroyed while there are any
    * holders of the semaphore (except perhaps the thread that release the
    * semaphore itself).  We actually have to assume that the caller knows
@@ -594,8 +606,6 @@ void nxsem_destroyholder(FAR sem_t *sem)
 #endif
 
   nxsem_foreachholder(sem, nxsem_recoverholders, NULL);
-
-  leave_critical_section(flags);
 }
 
 /****************************************************************************
@@ -876,7 +886,7 @@ void nxsem_canceled(FAR struct tcb_s *stcb, FAR sem_t *sem)
 {
   /* Check our assumptions */
 
-  DEBUGASSERT(atomic_read(NXSEM_COUNT(sem)) <= 0);
+  DEBUGASSERT(sem->semcount <= 0);
 
   /* Adjust the priority of every holder as necessary */
 
@@ -974,7 +984,7 @@ void nxsem_release_all(FAR struct tcb_s *htcb)
        * that was taken by sem_wait() or sem_post().
        */
 
-      atomic_fetch_add(NXSEM_COUNT(sem), 1);
+      sem->semcount++;
     }
 }
 

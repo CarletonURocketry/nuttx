@@ -63,12 +63,12 @@ static int bufferedoutstream_flush(FAR struct lib_outstream_s *self)
  * Name: bufferedoutstream_puts
  ****************************************************************************/
 
-static ssize_t bufferedoutstream_puts(FAR struct lib_outstream_s *self,
-                                      FAR const void *buf, size_t len)
+static int bufferedoutstream_puts(FAR struct lib_outstream_s *self,
+                                 FAR const void *buf, int len)
 {
   FAR struct lib_bufferedoutstream_s *stream =
     (FAR struct lib_bufferedoutstream_s *)self;
-  size_t ret = len;
+  int ret = len;
 
   if (stream->pending + len <= CONFIG_STREAM_OUT_BUFFER_SIZE)
     {

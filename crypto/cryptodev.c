@@ -1,8 +1,7 @@
 /****************************************************************************
  * crypto/cryptodev.c
- *
- * SPDX-License-Identifier: BSD-2-Clause
- * SPDX-FileCopyrightText: Copyright (c) 2001 Theo de Raadt
+ * $OpenBSD: cryptodev.c,v 1.82 2014/08/18 05:11:03 dlg Exp $
+ * Copyright (c) 2001 Theo de Raadt
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +27,6 @@
  * Effort sponsored in part by the Defense Advanced Research Projects
  * Agency (DARPA) and Air Force Research Laboratory, Air Force
  * Materiel Command, USAF, under agreement number F30602-01-2-0537.
- *
  ****************************************************************************/
 
 /****************************************************************************

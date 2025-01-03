@@ -1,11 +1,14 @@
 /****************************************************************************
  * drivers/analog/ads1255.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2010, 2016 Gregory Nutt. All rights reserved.
- * SPDX-FileCopyrightText: 2011 Li Zhuoyi. All rights reserved.
- * SPDX-FileContributor: Li Zhuoyi <lzyy.cn@gmail.com>
- * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
+ *   Copyright (C) 2010, 2016 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011 Li Zhuoyi. All rights reserved.
+ *   Author: Li Zhuoyi <lzyy.cn@gmail.com>
+ *           Gregory Nutt <gnutt@nuttx.org>
+ *
+ * This file is a part of NuttX:
+ *
+ *   Copyright (C) 2010 Gregory Nutt. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -494,7 +497,7 @@ static int adc_interrupt(int irq, FAR void *context, FAR void *arg)
  ****************************************************************************/
 
 /****************************************************************************
- * Name: ads1255_initialize
+ * Name: up_ads1255initialize
  *
  * Description:
  *   Initialize the selected adc port
@@ -507,8 +510,8 @@ static int adc_interrupt(int irq, FAR void *context, FAR void *arg)
  *
  ****************************************************************************/
 
-FAR struct adc_dev_s *ads1255_initialize(FAR struct spi_dev_s *spi,
-                                         unsigned int devno)
+FAR struct adc_dev_s *up_ads1255initialize(FAR struct spi_dev_s *spi,
+                                           unsigned int devno)
 {
   FAR struct ads1255_dev_s *priv =
     (FAR struct ads1255_dev_s *)g_adcdev.ad_priv;

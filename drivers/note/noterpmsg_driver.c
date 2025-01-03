@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/note/noterpmsg_driver.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -28,7 +26,6 @@
 #include <nuttx/rpmsg/rpmsg.h>
 #include <nuttx/sched_note.h>
 #include <nuttx/wqueue.h>
-#include <nuttx/spinlock.h>
 
 #include "noterpmsg.h"
 
@@ -50,7 +47,6 @@ struct noterpmsg_driver_s
   uint8_t               buffer[CONFIG_DRIVERS_NOTERPMSG_BUFSIZE];
   struct work_s         work;
   struct rpmsg_endpoint ept;
-  spinlock_t            lock;
 };
 
 /****************************************************************************
@@ -180,7 +176,7 @@ static bool noterpmsg_transfer(FAR struct noterpmsg_driver_s *drv,
 static void noterpmsg_work(FAR void *priv)
 {
   FAR struct noterpmsg_driver_s *drv = priv;
-  irqstate_t flags = spin_lock_irqsave_wo_note(&drv->lock);
+  irqstate_t flags = enter_critical_section();
 
   if (!noterpmsg_transfer(drv, false))
     {
@@ -188,7 +184,7 @@ static void noterpmsg_work(FAR void *priv)
                  NOTE_RPMSG_WORK_DELAY);
     }
 
-  spin_unlock_irqrestore_wo_note(&drv->lock, flags);
+  leave_critical_section(flags);
 }
 
 static void noterpmsg_add(FAR struct note_driver_s *driver,
@@ -199,7 +195,7 @@ static void noterpmsg_add(FAR struct note_driver_s *driver,
   irqstate_t flags;
   size_t space;
 
-  flags = spin_lock_irqsave_wo_note(&drv->lock);
+  flags = enter_critical_section();
 
   space = CONFIG_DRIVERS_NOTERPMSG_BUFSIZE - noterpmsg_length(drv);
   if (space < notelen)
@@ -236,7 +232,7 @@ static void noterpmsg_add(FAR struct note_driver_s *driver,
                  NOTE_RPMSG_WORK_DELAY);
     }
 
-  spin_unlock_irqrestore_wo_note(&drv->lock, flags);
+  leave_critical_section(flags);
 }
 
 static int noterpmsg_ept_cb(FAR struct rpmsg_endpoint *ept,
@@ -256,7 +252,6 @@ static void noterpmsg_device_created(FAR struct rpmsg_device *rdev,
              rpmsg_get_cpuname(rdev)) == 0)
     {
       drv->ept.priv = drv;
-      spin_lock_init(&drv->lock);
 
       ret = rpmsg_create_ept(&drv->ept, rdev, NOTERPMSG_EPT_NAME,
                              RPMSG_ADDR_ANY, RPMSG_ADDR_ANY,

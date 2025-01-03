@@ -1,8 +1,7 @@
 /****************************************************************************
  * include/crypto/sha1.h
- *
- * SPDX-License-Identifier: NuttX-PublicDomain
- *
+ * $OpenBSD: sha1.h,v 1.6 2014/11/16 17:39:09 tedu Exp $
+ * SHA-1 in C
  * By Steve Reid <steve@edmweb.com>
  * 100% Public Domain
  ****************************************************************************/

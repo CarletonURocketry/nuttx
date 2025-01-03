@@ -30,7 +30,6 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <nuttx/lib/lib.h>
 
 #if defined(CONFIG_LIBC_MEMFD_TMPFS) || defined(CONFIG_LIBC_MEMFD_SHMFS)
 /****************************************************************************
@@ -55,17 +54,10 @@ int memfd_create(FAR const char *name, unsigned int flags)
   set_errno(ENOSYS);
   return -1;
 #else
-  FAR char *path;
+  char path[PATH_MAX];
   int ret;
 
-  path = lib_get_pathbuffer();
-  if (path == NULL)
-    {
-      set_errno(ENOMEM);
-      return -1;
-    }
-
-  snprintf(path, PATH_MAX, LIBC_MEM_FD_VFS_PATH_FMT, name);
+  snprintf(path, sizeof(path), LIBC_MEM_FD_VFS_PATH_FMT, name);
 #  ifdef CONFIG_LIBC_MEMFD_SHMFS
   ret = shm_open(path, O_RDWR | flags, 0660);
   if (ret >= 0)
@@ -81,7 +73,6 @@ int memfd_create(FAR const char *name, unsigned int flags)
     }
 #  endif
 
-  lib_put_pathbuffer(path);
   return ret;
 #endif
 }

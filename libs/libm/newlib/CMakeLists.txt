@@ -87,11 +87,10 @@ if(CONFIG_LIBM_NEWLIB)
     set(ARCH_DIR ${CONFIG_ARCH})
   endif()
 
-  file(GLOB_RECURSE ARCH_CSRCS
-       ${NEWLIB_DIR}/newlib/libm/machine/${ARCH_DIR}/*.c)
-
   file(GLOB_RECURSE COMMON_CSRCS ${NEWLIB_DIR}/newlib/libm/common/*.c)
   file(GLOB_RECURSE COMPLEX_CSRCS ${NEWLIB_DIR}/newlib/libm/complex/*.c)
+  file(GLOB_RECURSE ARCH_CSRCS
+       ${NEWLIB_DIR}/newlib/libm/machine/${ARCH_DIR}/*.c)
 
   if(CONFIG_ARCH_X86_64)
     file(GLOB_RECURSE ARCH_CSRCS ${NEWLIB_DIR}/newlib/libm/fenv/*.c)

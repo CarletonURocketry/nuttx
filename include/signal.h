@@ -172,8 +172,6 @@
 
 #define SIGSYS          31
 
-#define SIGIOT          SIGABRT
-
 /* sigprocmask() "how" definitions.
  * Only one of the following can be specified:
  */
@@ -200,10 +198,6 @@
 #define SA_RESETHAND    (1 << 6) /* Clears the handler when the signal
                                   * is delivered */
 #define SA_KERNELHAND   (1 << 7) /* Invoke the handler in kernel space directly */
-
-/* SA_NOMASK is a nonstandard synonym of SA_NODEFER */
-
-#define SA_NOMASK       SA_NODEFER
 
 /* These are the possible values of the siginfo si_code field */
 
@@ -416,11 +410,7 @@ struct sigaction
   } sa_u;
   sigset_t          sa_mask;
   int               sa_flags;
-  union
-  {
-    CODE void (*sa_restorer)(void);
-    FAR void         *sa_user; /* Passed to siginfo.si_user (non-standard) */
-  };
+  FAR void         *sa_user; /* Passed to siginfo.si_user (non-standard) */
 };
 
 /* Definitions that adjust the non-standard naming */
@@ -436,8 +426,6 @@ typedef struct
   int ss_flags;
   size_t ss_size;
 } stack_t;
-
-typedef CODE void (*sig_t)(int);
 
 /****************************************************************************
  * Public Function Prototypes

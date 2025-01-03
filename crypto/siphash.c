@@ -1,8 +1,9 @@
 /****************************************************************************
  * crypto/siphash.c
+ * $OpenBSD: siphash.c,v 1.5 2018/01/05 19:05:09 mikeb Exp $
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2013 Andre Oppermann <andre@FreeBSD.org>
+ * Copyright (c) 2013 Andre Oppermann <andre@FreeBSD.org>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

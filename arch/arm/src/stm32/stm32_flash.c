@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/stm32/stm32_flash.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -38,8 +36,6 @@
 #  include "stm32f10xxf30xx_flash.c"
 #elif defined(CONFIG_STM32_STM32F20XX) || defined (CONFIG_STM32_STM32F4XXX)
 #  include "stm32f20xxf40xx_flash.c"
-#elif defined(CONFIG_STM32_STM32G4XXX)
-#  include "stm32g4xxx_flash.c"
 #else
 #  warning "No FLASH support for the selected part"
 #endif

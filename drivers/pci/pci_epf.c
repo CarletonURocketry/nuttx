@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/pci/pci_epf.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -103,7 +101,6 @@ pci_epf_match_device(FAR struct pci_epf_device_s *dev,
  *
  * Returned Value:
  *   None
- *
  ****************************************************************************/
 
 static void pci_epf_unbind(FAR struct pci_epf_device_s *epf)
@@ -139,7 +136,6 @@ static void pci_epf_unbind(FAR struct pci_epf_device_s *epf)
  *
  * Returned Value:
  *   Return 0 if success, negative if failed
- *
  ****************************************************************************/
 
 static int pci_epf_bind(FAR struct pci_epf_device_s *epf)
@@ -182,7 +178,6 @@ static int pci_epf_bind(FAR struct pci_epf_device_s *epf)
  *
  * Returned Value:
  *   None
- *
  ****************************************************************************/
 
 void pci_epf_free_space(FAR struct pci_epf_device_s *epf,
@@ -223,7 +218,6 @@ void pci_epf_free_space(FAR struct pci_epf_device_s *epf,
  *
  * Returned Value:
  *  Return space address malloced if success, otherwise NULL
- *
  ****************************************************************************/
 
 FAR void *pci_epf_alloc_space(FAR struct pci_epf_device_s *epf, int barno,
@@ -289,7 +283,6 @@ FAR void *pci_epf_alloc_space(FAR struct pci_epf_device_s *epf, int barno,
  *
  * Returned Value:
  *    Return >= 0 if success, < 0 if failed
- *
  ****************************************************************************/
 
 int pci_epf_device_register(FAR struct pci_epf_device_s *epf)
@@ -361,7 +354,6 @@ int pci_epf_device_register(FAR struct pci_epf_device_s *epf)
  *
  * Returned Value:
  *    Return >= 0 if success, < 0 if failed
- *
  ****************************************************************************/
 
 int pci_epf_device_unregister(FAR struct pci_epf_device_s *epf)
@@ -405,7 +397,6 @@ int pci_epf_device_unregister(FAR struct pci_epf_device_s *epf)
  *
  * Returned Value:
  *   Return >= 0 if success, < 0 if failed
- *
  ****************************************************************************/
 
 int pci_epf_register_driver(FAR struct pci_epf_driver_s *drv)
@@ -491,7 +482,6 @@ int pci_epf_register_driver(FAR struct pci_epf_driver_s *drv)
  *
  * Returned Value:
  *    Return >= 0 if success, < 0 if failed
- *
  ****************************************************************************/
 
 int pci_epf_unregister_driver(FAR struct pci_epf_driver_s *drv)

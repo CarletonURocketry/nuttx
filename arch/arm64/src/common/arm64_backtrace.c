@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_backtrace.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -118,6 +116,7 @@ int up_backtrace(struct tcb_s *tcb,
                  void **buffer, int size, int skip)
 {
   struct tcb_s *rtcb = running_task();
+  struct regs_context * p_regs;
   int ret;
 
   if (size <= 0 || !buffer)
@@ -143,10 +142,11 @@ int up_backtrace(struct tcb_s *tcb,
 #endif /* CONFIG_ARCH_INTERRUPTSTACK > 7 */
           if (ret < size)
             {
+              p_regs = (struct regs_context *)up_current_regs();
               ret += backtrace(rtcb->stack_base_ptr,
                                rtcb->stack_base_ptr + rtcb->adj_stack_size,
-                               running_regs()[REG_X29],
-                               running_regs()[REG_ELR],
+                               (void *)p_regs->regs[REG_X29],
+                               (void *)p_regs->elr,
                                &buffer[ret], size - ret, &skip);
             }
         }
@@ -160,10 +160,12 @@ int up_backtrace(struct tcb_s *tcb,
     }
   else
     {
+      p_regs = (struct regs_context *)tcb->xcp.regs;
+
       ret = backtrace(tcb->stack_base_ptr,
                       tcb->stack_base_ptr + tcb->adj_stack_size,
-                      running_regs()[REG_X29],
-                      running_regs()[REG_ELR],
+                      (void *)p_regs->regs[REG_X29],
+                      (void *)p_regs->elr,
                       buffer, size, &skip);
     }
 

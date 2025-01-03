@@ -1,8 +1,6 @@
 /****************************************************************************
  * fs/shm/shmfs.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -28,9 +26,12 @@
 
 #include <nuttx/fs/ioctl.h>
 #include <nuttx/mm/map.h>
+
+#if defined (CONFIG_BUILD_KERNEL)
 #include <nuttx/arch.h>
 #include <nuttx/pgalloc.h>
 #include <nuttx/sched.h>
+#endif
 
 #include "shm/shmfs.h"
 #include "inode/inode.h"
@@ -73,8 +74,6 @@ const struct file_operations g_shmfs_operations =
   shmfs_mmap,       /* mmap */
   shmfs_truncate,   /* truncate */
   NULL,             /* poll */
-  NULL,             /* readv */
-  NULL,             /* writev */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   shmfs_unlink      /* unlink */
 #endif
@@ -186,7 +185,7 @@ static int shmfs_release(FAR struct inode *inode)
    * The inode is released after this call, hence checking if i_crefs <= 1.
    */
 
-  if (inode->i_parent == NULL && atomic_read(&inode->i_crefs) <= 1)
+  if (inode->i_parent == NULL && atomic_load(&inode->i_crefs) <= 1)
     {
       shmfs_free_object(inode->i_private);
       inode->i_private = NULL;
@@ -256,7 +255,7 @@ static int shmfs_truncate(FAR struct file *filep, off_t length)
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
 static int shmfs_unlink(FAR struct inode *inode)
 {
-  if (atomic_read(&inode->i_crefs) <= 1)
+  if (atomic_load(&inode->i_crefs) <= 1)
     {
       shmfs_free_object(inode->i_private);
       inode->i_private = NULL;
@@ -388,18 +387,10 @@ static int shmfs_unmap_area(FAR struct task_group_s *group,
       /* Unmap the memory from user virtual address space */
 
       ret = up_shmdt((uintptr_t)vaddr, npages);
-      if (ret < 0)
-        {
-          return ret;
-        }
 
-      /* Free the virtual address space */
+      /* Add the virtual memory back to the shared memory pool */
 
       vm_release_region(get_group_mm(group), vaddr, length);
-    }
-  else
-    {
-      return -EINVAL;
     }
 #endif
 

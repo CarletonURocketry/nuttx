@@ -101,46 +101,6 @@ static FAR struct iob_s *iob_alloc_committed(void)
   return iob;
 }
 
-static FAR struct iob_s *iob_tryalloc_internal(bool throttled)
-{
-  FAR struct iob_s *iob;
-#if CONFIG_IOB_THROTTLE > 0
-  int16_t count = (throttled ? g_iob_count - CONFIG_IOB_THROTTLE :
-                   g_iob_count);
-
-  /* If there are free I/O buffers for this allocation */
-
-  if (count > 0)
-#endif
-    {
-      /* Take the I/O buffer from the head of the free list */
-
-      iob = g_iob_freelist;
-      if (iob != NULL)
-        {
-          /* Remove the I/O buffer from the free list and decrement the
-           * counting semaphore(s) that tracks the number of available
-           * IOBs.
-           */
-
-          g_iob_freelist = iob->io_flink;
-
-          g_iob_count--;
-          DEBUGASSERT(g_iob_count >= 0);
-
-          /* Put the I/O buffer in a known state */
-
-          iob->io_flink  = NULL; /* Not in a chain */
-          iob->io_len    = 0;    /* Length of the data in the entry */
-          iob->io_offset = 0;    /* Offset to the beginning of data */
-          iob->io_pktlen = 0;    /* Total length of the packet */
-          return iob;
-        }
-    }
-
-  return NULL;
-}
-
 /****************************************************************************
  * Name: iob_allocwait
  *
@@ -159,7 +119,7 @@ static FAR struct iob_s *iob_allocwait(bool throttled, unsigned int timeout)
   int ret = OK;
 
 #if CONFIG_IOB_THROTTLE > 0
-  /* Select the semaphore to wait. */
+  /* Select the semaphore count to check. */
 
   sem = (throttled ? &g_throttle_sem : &g_iob_sem);
 #else
@@ -172,25 +132,21 @@ static FAR struct iob_s *iob_allocwait(bool throttled, unsigned int timeout)
    * we are waiting for I/O buffers to become free.
    */
 
-  flags = spin_lock_irqsave(&g_iob_lock);
+  flags = enter_critical_section();
 
-  /* Try to get an I/O buffer */
+  /* Try to get an I/O buffer.  If successful, the semaphore count will be
+   * decremented atomically.
+   */
 
-  iob = iob_tryalloc_internal(throttled);
-  if (iob == NULL)
+  start = clock_systime_ticks();
+  iob   = iob_tryalloc(throttled);
+  while (ret == OK && iob == NULL)
     {
-#if CONFIG_IOB_THROTTLE > 0
-      if (throttled)
-        {
-          g_throttle_wait++;
-        }
-      else
-#endif
-        {
-          g_iob_count--;
-        }
-
-      spin_unlock_irqrestore(&g_iob_lock, flags);
+      /* If not successful, then the semaphore count was less than or equal
+       * to zero (meaning that there are no free buffers).  We need to wait
+       * for an I/O buffer to be released and placed in the committed
+       * list.
+       */
 
       if (timeout == UINT_MAX)
         {
@@ -198,7 +154,6 @@ static FAR struct iob_s *iob_allocwait(bool throttled, unsigned int timeout)
         }
       else
         {
-          start = clock_systime_ticks();
           ret = nxsem_tickwait_uninterruptible(sem,
                                    iob_allocwait_gettimeout(start, timeout));
         }
@@ -210,13 +165,10 @@ static FAR struct iob_s *iob_allocwait(bool throttled, unsigned int timeout)
            */
 
           iob = iob_alloc_committed();
-          DEBUGASSERT(iob != NULL);
         }
-
-      return iob;
     }
 
-  spin_unlock_irqrestore(&g_iob_lock, flags);
+  leave_critical_section(flags);
   return iob;
 }
 
@@ -298,15 +250,78 @@ FAR struct iob_s *iob_tryalloc(bool throttled)
 {
   FAR struct iob_s *iob;
   irqstate_t flags;
+#if CONFIG_IOB_THROTTLE > 0
+  FAR sem_t *sem;
+#endif
+
+#if CONFIG_IOB_THROTTLE > 0
+  /* Select the semaphore count to check. */
+
+  sem = (throttled ? &g_throttle_sem : &g_iob_sem);
+#endif
 
   /* We don't know what context we are called from so we use extreme measures
    * to protect the free list:  We disable interrupts very briefly.
    */
 
   flags = spin_lock_irqsave(&g_iob_lock);
-  iob = iob_tryalloc_internal(throttled);
+
+#if CONFIG_IOB_THROTTLE > 0
+  /* If there are free I/O buffers for this allocation */
+
+  if (sem->semcount > 0)
+#endif
+    {
+      /* Take the I/O buffer from the head of the free list */
+
+      iob = g_iob_freelist;
+      if (iob != NULL)
+        {
+          /* Remove the I/O buffer from the free list and decrement the
+           * counting semaphore(s) that tracks the number of available
+           * IOBs.
+           */
+
+          g_iob_freelist = iob->io_flink;
+
+          /* Take a semaphore count.  Note that we cannot do this in
+           * in the orthodox way by calling nxsem_wait() or nxsem_trywait()
+           * because this function may be called from an interrupt
+           * handler. Fortunately we know at at least one free buffer
+           * so a simple decrement is all that is needed.
+           */
+
+          g_iob_sem.semcount--;
+          DEBUGASSERT(g_iob_sem.semcount >= 0);
+
+#if CONFIG_IOB_THROTTLE > 0
+          /* The throttle semaphore is used to throttle the number of
+           * free buffers that are available.  It is used to prevent
+           * the overrunning of the free buffer list. Please note that
+           * it can only be decremented to zero, which indicates no
+           * throttled buffers are available.
+           */
+
+          if (g_throttle_sem.semcount > 0)
+            {
+              g_throttle_sem.semcount--;
+            }
+#endif
+
+          spin_unlock_irqrestore(&g_iob_lock, flags);
+
+          /* Put the I/O buffer in a known state */
+
+          iob->io_flink  = NULL; /* Not in a chain */
+          iob->io_len    = 0;    /* Length of the data in the entry */
+          iob->io_offset = 0;    /* Offset to the beginning of data */
+          iob->io_pktlen = 0;    /* Total length of the packet */
+          return iob;
+        }
+    }
+
   spin_unlock_irqrestore(&g_iob_lock, flags);
-  return iob;
+  return NULL;
 }
 
 #ifdef CONFIG_IOB_ALLOC

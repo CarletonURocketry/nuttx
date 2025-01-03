@@ -1,8 +1,10 @@
 /****************************************************************************
  * arch/arm/src/rp2040/rp2040_pio.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2020 Raspberry Pi (Trading) Ltd.
+ * Based upon the software originally developed by
+ *   Raspberry Pi (Trading) Ltd.
+ *
+ * Copyright 2020 (c) 2020 Raspberry Pi (Trading) Ltd.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

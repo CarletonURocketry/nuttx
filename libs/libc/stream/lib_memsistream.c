@@ -25,7 +25,6 @@
  ****************************************************************************/
 
 #include <assert.h>
-#include <errno.h>
 
 #include "libc.h"
 
@@ -41,7 +40,7 @@ static int memsistream_getc(FAR struct lib_sistream_s *self)
 {
   FAR struct lib_memsistream_s *stream =
                                        (FAR struct lib_memsistream_s *)self;
-  int ret = -EINVAL;
+  int ret;
 
   DEBUGASSERT(self);
 
@@ -53,6 +52,10 @@ static int memsistream_getc(FAR struct lib_sistream_s *self)
       stream->offset++;
       self->nget++;
     }
+  else
+    {
+      ret = EOF;
+    }
 
   return ret;
 }
@@ -61,12 +64,12 @@ static int memsistream_getc(FAR struct lib_sistream_s *self)
  * Name: meminstream_gets
  ****************************************************************************/
 
-static ssize_t memsistream_gets(FAR struct lib_instream_s *self,
-                                FAR void *buffer, size_t len)
+static int memsistream_gets(FAR struct lib_instream_s *self,
+                            FAR void *buffer, int len)
 {
   FAR struct lib_memsistream_s *stream =
                                        (FAR struct lib_memsistream_s *)self;
-  ssize_t ret = -EINVAL;
+  int ret;
 
   DEBUGASSERT(self);
 
@@ -78,6 +81,10 @@ static ssize_t memsistream_gets(FAR struct lib_instream_s *self,
       ret = ret < len ? ret : len;
       self->nget += ret;
       memcpy(buffer, stream->buffer, ret);
+    }
+  else
+    {
+      ret = EOF;
     }
 
   return ret;
@@ -99,7 +106,7 @@ static off_t memsistream_seek(FAR struct lib_sistream_s *self, off_t offset,
   switch (whence)
     {
       case SEEK_CUR:
-        newpos = stream->offset + offset;
+        newpos = (off_t)stream->offset + offset;
         break;
 
       case SEEK_SET:
@@ -107,23 +114,23 @@ static off_t memsistream_seek(FAR struct lib_sistream_s *self, off_t offset,
         break;
 
       case SEEK_END:
-        newpos = stream->buflen + offset;
+        newpos = (off_t)stream->buflen + offset;
         break;
 
       default:
-        return -EINVAL;
+        return (off_t)ERROR;
     }
 
   /* Make sure that the new position is within range */
 
-  if (newpos < 0 || newpos >= stream->buflen)
+  if (newpos < 0 || newpos >= (off_t)stream->buflen)
     {
-      return -EINVAL;
+      return (off_t)ERROR;
     }
 
   /* Return the new position */
 
-  stream->offset = newpos;
+  stream->offset = (size_t)newpos;
   return newpos;
 }
 
@@ -149,7 +156,7 @@ static off_t memsistream_seek(FAR struct lib_sistream_s *self, off_t offset,
  ****************************************************************************/
 
 void lib_memsistream(FAR struct lib_memsistream_s *instream,
-                     FAR const char *bufstart, size_t buflen)
+                     FAR const char *bufstart, int buflen)
 {
   instream->common.getc = memsistream_getc;
   instream->common.gets = memsistream_gets;

@@ -1,8 +1,6 @@
 /****************************************************************************
  * fs/nxffs/nxffs_inode.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -215,7 +213,7 @@ void nxffs_freeentry(FAR struct nxffs_entry_s *entry)
 {
   if (entry->name)
     {
-      fs_heap_free(entry->name);
+      lib_free(entry->name);
       entry->name = NULL;
     }
 }

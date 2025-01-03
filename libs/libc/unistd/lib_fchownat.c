@@ -68,33 +68,20 @@
 int fchownat(int dirfd, FAR const char *path, uid_t owner,
              gid_t group, int flags)
 {
-  FAR char *fullpath;
+  char fullpath[PATH_MAX];
   int ret;
 
-  fullpath = lib_get_pathbuffer();
-  if (fullpath == NULL)
-    {
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
-  ret = lib_getfullpath(dirfd, path, fullpath, PATH_MAX);
+  ret = lib_getfullpath(dirfd, path, fullpath, sizeof(fullpath));
   if (ret < 0)
     {
-      lib_put_pathbuffer(fullpath);
       set_errno(-ret);
       return ERROR;
     }
 
   if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
     {
-      ret = lchown(fullpath, owner, group);
-    }
-  else
-    {
-      ret = chown(fullpath, owner, group);
+      return lchown(fullpath, owner, group);
     }
 
-  lib_put_pathbuffer(fullpath);
-  return ret;
+  return chown(fullpath, owner, group);
 }

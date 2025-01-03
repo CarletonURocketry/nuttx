@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv8-r/arm_initialstate.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -133,13 +131,13 @@ void up_initial_state(struct tcb_s *tcb)
   cpsr |= (PSR_I_BIT | PSR_F_BIT);
 
 #else /* CONFIG_SUPPRESS_INTERRUPTS */
-  /* Leave IRQs enabled (Also FIQs if CONFIG_ARCH_HIPRI_INTERRUPT is selected) */
+  /* Leave IRQs enabled (Also FIQs if CONFIG_ARMV8R_DECODEFIQ is selected) */
 
-#ifndef CONFIG_ARCH_HIPRI_INTERRUPT
+#ifndef CONFIG_ARMV8R_DECODEFIQ
 
   cpsr |= PSR_F_BIT;
 
-#endif /* !CONFIG_ARCH_HIPRI_INTERRUPT */
+#endif /* !CONFIG_ARMV8R_DECODEFIQ */
 
 #ifdef CONFIG_ARM_THUMB
   cpsr |= PSR_T_BIT;

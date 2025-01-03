@@ -1,7 +1,9 @@
 /****************************************************************************
  * drivers/can/sja1000.c
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SJA1000 CAN driver based on esp32c3_twai.c
+ *
+ * License header retained from original source.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -339,6 +341,7 @@ static int sja1000_setup(struct can_dev_s *dev)
   if (ret < 0)
     {
       canerr("ERROR: Failed to attach to IRQ Handler!\n");
+      return ret;
     }
 
 #ifdef CONFIG_ARCH_HAVE_MULTICPU

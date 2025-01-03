@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv6-m/arm_schedulesigaction.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -37,10 +35,8 @@
 #include "psr.h"
 #include "exc_return.h"
 #include "sched/sched.h"
-#include "signal/signal.h"
 #include "arm_internal.h"
 #include "irq/irq.h"
-#include "nvic.h"
 
 /****************************************************************************
  * Public Functions
@@ -84,31 +80,23 @@
 
 void up_schedule_sigaction(struct tcb_s *tcb)
 {
-  struct tcb_s *rtcb = running_task();
-  uint32_t      ipsr = getipsr();
+  sinfo("tcb=%p, rtcb=%p current_regs=%p\n", tcb, this_task(),
+        this_task()->xcp.regs);
 
   /* First, handle some special cases when the signal is
    * being delivered to the currently executing task.
    */
 
-  if (tcb == rtcb && ipsr == 0)
+  if (tcb == this_task() && !up_interrupt_context())
     {
       /* In this case just deliver the signal now.
        * REVISIT:  Signal handle will run in a critical section!
        */
 
-      nxsig_deliver(tcb);
-      tcb->flags &= ~TCB_FLAG_SIGDELIVER;
+      (tcb->sigdeliver)(tcb);
+      tcb->sigdeliver = NULL;
     }
-  else if (tcb == rtcb && ipsr != NVIC_IRQ_PENDSV)
-    {
-      /* Context switch should be done in pendsv, for exception directly
-       * last regs is not saved tcb->xcp.regs.
-       */
-
-      up_trigger_irq(NVIC_IRQ_PENDSV, 0);
-    }
-  else /* ipsr == NVIC_IRQ_PENDSV || tcb != rtcb */
+  else
     {
       /* Save the return PC, CPSR and either the BASEPRI or PRIMASK
        * registers (and perhaps also the LR).  These will be restored

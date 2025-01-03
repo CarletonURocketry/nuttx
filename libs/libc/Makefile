@@ -173,13 +173,7 @@ endif
 
 # Context
 
-bin:
-	$(Q) mkdir $@
-
-kbin:
-	$(Q) mkdir $@
-
-context:: bin kbin
+context::
 ifeq ($(CONFIG_LIBC_ZONEINFO_ROMFS),y)
 	$(Q) $(MAKE) -C zoneinfo context BIN=$(BIN)
 endif
@@ -209,6 +203,8 @@ depend:: .depend
 # Clean most derived files, retaining the configuration
 
 clean::
+	$(Q) $(MAKE) -C bin  clean
+	$(Q) $(MAKE) -C kbin clean
 	$(Q) $(MAKE) -C zoneinfo clean BIN=$(BIN)
 	$(call DELFILE, $(BIN))
 	$(call DELFILE, $(KBIN))
@@ -217,11 +213,13 @@ clean::
 # Deep clean -- removes all traces of the configuration
 
 distclean:: clean
+	$(Q) $(MAKE) -C bin  distclean
+	$(Q) $(MAKE) -C kbin distclean
 	$(Q) $(MAKE) -C zoneinfo distclean BIN=$(BIN)
 	$(call DELFILE, exec_symtab.c)
+	$(call DELFILE, bin$(DELIM)Make.dep)
+	$(call DELFILE, kbin$(DELIM)Make.dep)
 	$(call DELFILE, .depend)
-	$(call DELDIR, bin)
-	$(call DELDIR, kbin)
 
 -include bin$(DELIM)Make.dep
 -include kbin$(DELIM)Make.dep

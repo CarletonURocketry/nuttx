@@ -1,12 +1,14 @@
 /****************************************************************************
  * arch/arm/src/stm32l4/stm32l4_lptim.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2016 Motorola Mobility LLC. All rights reserved.
- * SPDX-FileCopyrightText: 2011-2012, 2017 Gregory Nutt. All rights reserved.
- * SPDX-FileCopyrightText: 2011 Uros Platise. All rights reserved.
- * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
- * SPDX-FileContributor: Uros Platise <uros.platise@isotel.eu>
+ *   Copyright (C) 2011 Uros Platise. All rights reserved.
+ *   Author: Uros Platise <uros.platise@isotel.eu>
+ *
+ * With modifications and updates by:
+ *
+ *   Copyright (C) 2016 Motorola Mobility, LLC. All rights reserved.
+ *   Copyright (C) 2011-2012, 2017 Gregory Nutt. All rights reserved.
+ *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

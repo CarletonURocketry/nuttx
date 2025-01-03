@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/sparc/src/bm3803/bm3803-serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -156,7 +154,6 @@ struct up_dev_s
   uint8_t   parity;    /* 0=none, 1=odd, 2=even */
   uint8_t   bits;      /* Number of bits (5, 6, 7 or 8) */
   bool      stopbits2; /* true: Configure with 2 stop bits instead of 1 */
-  spinlock_t lock;     /* Spinlock */
 };
 
 /****************************************************************************
@@ -236,7 +233,6 @@ static struct up_dev_s g_uart1priv =
   .parity    = CONFIG_UART1_PARITY,
   .bits      = CONFIG_UART1_BITS,
   .stopbits2 = CONFIG_UART1_2STOP,
-  .lock      = SP_UNLOCKED,
 };
 
 static uart_dev_t g_uart1port =
@@ -267,7 +263,6 @@ static struct up_dev_s g_uart2priv =
   .parity    = CONFIG_UART2_PARITY,
   .bits      = CONFIG_UART2_BITS,
   .stopbits2 = CONFIG_UART2_2STOP,
-  .lock      = SP_UNLOCKED,
 };
 
 static uart_dev_t g_uart2port =
@@ -298,7 +293,6 @@ static struct up_dev_s g_uart3priv =
   .parity    = CONFIG_UART3_PARITY,
   .bits      = CONFIG_UART3_BITS,
   .stopbits2 = CONFIG_UART3_2STOP,
-  .lock      = SP_UNLOCKED,
 };
 
 static uart_dev_t g_uart3port =
@@ -358,24 +352,18 @@ static inline void up_setuartint(struct up_dev_s *priv)
  * Name: up_restoreuartint
  ****************************************************************************/
 
-static void up_restoreuartint_nolock(struct uart_dev_s *dev, uint8_t im)
-{
-  up_rxint(dev, RX_ENABLED(im));
-  up_txint(dev, TX_ENABLED(im));
-}
-
 static void up_restoreuartint(struct uart_dev_s *dev, uint8_t im)
 {
-  struct up_dev_s *priv = (struct up_dev_s *)dev->priv;
   irqstate_t flags;
 
   /* Re-enable/re-disable interrupts corresponding to the state of bits
    * in im
    */
 
-  flags = spin_lock_irqsave(&priv->lock);
-  up_restoreuartint_nolock(dev, im);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  flags = spin_lock_irqsave(NULL);
+  up_rxint(dev, RX_ENABLED(im));
+  up_txint(dev, TX_ENABLED(im));
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -387,14 +375,14 @@ static void up_disableuartint(struct uart_dev_s *dev, uint8_t *im)
   struct up_dev_s *priv = (struct up_dev_s *)dev->priv;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   if (im)
     {
       *im = priv->im;
     }
 
-  up_restoreuartint_nolock(dev, 0);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  up_restoreuartint(dev, 0);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -882,16 +870,27 @@ void sparc_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
   struct uart_dev_s *dev = (struct uart_dev_s *)&CONSOLE_DEV;
   uint8_t imr = 0;
 
   up_disableuartint(dev, &imr);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      sparc_lowputc('\r');
+    }
+
   sparc_lowputc(ch);
   up_restoreuartint(dev, imr);
 #endif
+  return ch;
 }
 
 /****************************************************************************
@@ -913,8 +912,9 @@ void sparc_serialinit(void)
 {
 }
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  return ch;
 }
 
 #endif /* HAVE_UART_DEVICE */
@@ -928,11 +928,21 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      sparc_lowputc('\r');
+    }
+
   sparc_lowputc(ch);
 #endif
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

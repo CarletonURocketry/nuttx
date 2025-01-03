@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_mpu.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -354,7 +352,7 @@ void mpu_dump_region(void)
       write_sysreg(i, prselr_el1);
       prlar = read_sysreg(prlar_el1);
       prbar = read_sysreg(prbar_el1);
-      _info("MPU-%d, 0x%08llX-0x%08llX SH=%llX AP=%llX XN=%llX\n", i,
+      _info("MPU-%d, 0x%08X-0x%08X SH=%X AP=%X XN=%X\n", i,
             prbar & MPU_RBAR_BASE_MSK, prlar & MPU_RLAR_LIMIT_MSK,
             prbar & MPU_RBAR_SH_MSK, prbar & MPU_RBAR_AP_MSK,
             prbar & MPU_RBAR_XN_MSK);

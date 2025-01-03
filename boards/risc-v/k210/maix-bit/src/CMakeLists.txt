@@ -1,7 +1,5 @@
 # ##############################################################################
-# boards/risc-v/k210/maix-bit/src/CMakeLists.txt
-#
-# SPDX-License-Identifier: Apache-2.0
+# boards/risc-v/k230/canmv230/src/CMakeLists.txt
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for

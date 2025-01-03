@@ -174,10 +174,7 @@ bool gran_match(const gran_t *gran, size_t posi, size_t size, bool used,
   uint32_t e;   /* expected cell value */
   gatr_t   r;   /* range helper */
 
-  if (gran_range(gran, posi, size, &r) < 0)
-    {
-      memset(&r, 0, sizeof(r));
-    }
+  gran_range(gran, posi, size, &r);
 
   /* check the ending cell */
 
@@ -223,33 +220,17 @@ failure:
 
   if (mpos && !used)
     {
-      size_t tmp;
+      /* offset of last used when matching for free */
 
-      v = gran->gat[c];
       DEBUGASSERT(v);
-
-      if (v == GATCFULL)
-        {
-          /* Handle full GAT quickly */
-
-          tmp = 31;
-        }
-      else
-        {
-          /* offset of last used when matching for free */
-
 #ifdef CONFIG_HAVE_BUILTIN_CLZ
-          tmp = 31 - __builtin_clz(v);
+      *mpos = 31 - __builtin_clz(v);
 #else
-          tmp = (uint32_t)((msb_mask(v)) * DEBRUJIN_NUM) >> 27;
-          DEBUGASSERT(tmp < sizeof(DEBRUJIN_LUT));
-          tmp = DEBRUJIN_LUT[tmp];
+      *mpos = (uint32_t)((msb_mask(v)) * DEBRUJIN_NUM) >> 27;
+      DEBUGASSERT(*mpos < sizeof(DEBRUJIN_LUT));
+      *mpos = DEBRUJIN_LUT[*mpos];
 #endif
-        }
-
-      /* return the last used position to caller */
-
-      *mpos = tmp + c * GATC_BITS(gran);
+      *mpos += c * GATC_BITS(gran);
     }
 
   return false;

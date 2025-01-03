@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm64/src/common/arm64_modifyreg32.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -34,12 +32,6 @@
 #include "arm64_internal.h"
 
 /****************************************************************************
- * Private Data
- ****************************************************************************/
-
-static spinlock_t g_modifyreg_lock = SP_UNLOCKED;
-
-/****************************************************************************
  * Public Functions
  ****************************************************************************/
 
@@ -56,10 +48,10 @@ void modifyreg32(unsigned int addr, uint32_t clearbits, uint32_t setbits)
   irqstate_t flags;
   uint32_t   regval;
 
-  flags   = spin_lock_irqsave(&g_modifyreg_lock);
+  flags   = spin_lock_irqsave(NULL);
   regval  = getreg32(addr);
   regval &= ~clearbits;
   regval |= setbits;
   putreg32(regval, addr);
-  spin_unlock_irqrestore(&g_modifyreg_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }

@@ -30,7 +30,6 @@
 #include <nuttx/config.h>
 
 #include <nuttx/serial/serial.h>
-#include <nuttx/spinlock.h>
 
 #ifdef CONFIG_16550_UART
 
@@ -377,7 +376,6 @@ struct u16550_s
 #endif
 #endif
   uart_datawidth_t       rxtrigger; /* RX trigger level */
-  spinlock_t             lock;      /* Spinlock */
 };
 
 /****************************************************************************

@@ -1,11 +1,13 @@
 /****************************************************************************
  * arch/arm/src/lpc2378/lpc23xx_spi.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2010-2017 Gregory Nutt. All rights reserved.
- * SPDX-FileCopyrightText: 2013 Li Zhuoyi. All rights reserved.
- * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
- * SPDX-FileContributor: Li Zhuoyi <lzyy.cn@gmail.com>
+ *   Copyright (C) 2013 Li Zhuoyi. All rights reserved.
+ *   Author: Li Zhuoyi <lzyy.cn@gmail.com>
+ *
+ * Derived from  arch/arm/src/lpc17xx_40xx/lpc17_40_spi.c
+ *
+ *   Copyright (C) 2010-2017 Gregory Nutt. All rights reserved.
+ *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

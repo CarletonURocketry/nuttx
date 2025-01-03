@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/esp32c3/esp_coex_adapter.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -238,7 +236,7 @@ void *esp_coex_common_spin_lock_create_wrapper(void)
       DEBUGPANIC();
     }
 
-  spin_lock_init(lock);
+  spin_initialize(lock, SP_UNLOCKED);
 
   return lock;
 }

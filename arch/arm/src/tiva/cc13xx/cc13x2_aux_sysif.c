@@ -1,10 +1,15 @@
 /****************************************************************************
  * arch/arm/src/tiva/cc13xx/cc13x2_aux_sysif.c
+ * Driver for the AUX System Interface
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2019 Gregory Nutt. All rights reserved.
- * SPDX-FileCopyrightText: 2015-2017, Texas Instruments Incorporated
- * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
+ *   Copyright (C) 2018 Gregory Nutt. All rights reserved.
+ *   Authors: Gregory Nutt <gnutt@nuttx.org>
+ *
+ * Technical content derives from a TI aux_sysif.c file that has a
+ * compatible BSD license:
+ *
+ *   Copyright (c) 2015-2017, Texas Instruments Incorporated
+ *   All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

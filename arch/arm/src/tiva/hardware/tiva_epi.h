@@ -1,9 +1,8 @@
 /****************************************************************************
  * arch/arm/src/tiva/hardware/tiva_epi.h
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2009-2013 Max Neklyudov. All rights reserved.
- * SPDX-FileContributor: Max Neklyudov <macscomp@gmail.com>
+ *   Copyright (C) 2009-2013 Max Neklyudov. All rights reserved.
+ *   Author: Max Neklyudov <macscomp@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

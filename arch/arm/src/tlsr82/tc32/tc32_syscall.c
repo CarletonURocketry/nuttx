@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/tlsr82/tc32/tc32_syscall.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -53,10 +51,7 @@
 
 void arm_syscall(uint32_t *regs)
 {
-  struct tcb_s *tcb = this_task();
-
   _alert("Syscall from 0x%" PRIx32 "\n", regs[REG_PC]);
-  tcb->xcp.regs = regs;
-
+  up_set_current_regs(regs);
   PANIC();
 }

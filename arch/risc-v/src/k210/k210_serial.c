@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/k210/k210_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -101,7 +99,6 @@ struct up_dev_s
   uint32_t  baud;     /* Configured baud */
   uint8_t   irq;      /* IRQ associated with this UART */
   uint8_t   im;       /* Interrupt mask state */
-  spinlock_t lock;    /* Spinllock */
 };
 
 /****************************************************************************
@@ -168,7 +165,6 @@ static struct up_dev_s g_uart0priv =
   .uartbase  = K210_UART0_BASE,
   .baud      = CONFIG_UART0_BAUD,
   .irq       = K210_IRQ_UART0,
-  .lock      = SP_UNLOCKED
 };
 
 static uart_dev_t g_uart0port =
@@ -219,12 +215,12 @@ static void up_serialout(struct up_dev_s *priv, int offset, uint32_t value)
 
 static void up_restoreuartint(struct up_dev_s *priv, uint8_t im)
 {
-  irqstate_t flags = spin_lock_irqsave(&priv->lock);
+  irqstate_t flags = spin_lock_irqsave(NULL);
 
   priv->im = im;
   up_serialout(priv, UART_IE_OFFSET, im);
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -233,7 +229,7 @@ static void up_restoreuartint(struct up_dev_s *priv, uint8_t im)
 
 static void up_disableuartint(struct up_dev_s *priv, uint8_t *im)
 {
-  irqstate_t flags = spin_lock_irqsave(&priv->lock);
+  irqstate_t flags = spin_lock_irqsave(NULL);
 
   /* Return the current interrupt mask value */
 
@@ -246,7 +242,7 @@ static void up_disableuartint(struct up_dev_s *priv, uint8_t *im)
 
   priv->im = 0;
   up_serialout(priv, UART_IE_OFFSET, 0);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -657,16 +653,27 @@ void riscv_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
   struct up_dev_s *priv = (struct up_dev_s *)CONSOLE_DEV.priv;
   uint8_t imr;
 
   up_disableuartint(priv, &imr);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      riscv_lowputc('\r');
+    }
+
   riscv_lowputc(ch);
   up_restoreuartint(priv, imr);
 #endif
+  return ch;
 }
 
 /****************************************************************************
@@ -689,8 +696,9 @@ void riscv_serialinit(void)
 {
 }
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  return ch;
 }
 
 #endif /* HAVE_UART_DEVICE */
@@ -704,11 +712,21 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef HAVE_SERIAL_CONSOLE
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      riscv_lowputc('\r');
+    }
+
   riscv_lowputc(ch);
 #endif
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

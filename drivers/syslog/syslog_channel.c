@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/syslog/syslog_channel.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -33,7 +31,7 @@
 
 #include <nuttx/syslog/syslog.h>
 #include <nuttx/compiler.h>
-#include <nuttx/init.h>
+#include <nuttx/mutex.h>
 
 #ifdef CONFIG_RAMLOG_SYSLOG
 #  include <nuttx/syslog/ramlog.h>
@@ -57,6 +55,10 @@
  * Private Function Prototypes
  ****************************************************************************/
 
+/****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
+
 #if defined(CONFIG_SYSLOG_DEFAULT)
 static int syslog_default_putc(FAR syslog_channel_t *channel,
                                int ch);
@@ -68,7 +70,11 @@ static ssize_t syslog_default_write(FAR syslog_channel_t *channel,
  * Private Data
  ****************************************************************************/
 
-#ifdef CONFIG_RAMLOG_SYSLOG
+#if defined(CONFIG_SYSLOG_DEFAULT) && defined(CONFIG_ARCH_LOWPUTC)
+static mutex_t g_lowputs_lock = NXMUTEX_INITIALIZER;
+#endif
+
+#if defined(CONFIG_RAMLOG_SYSLOG)
 static const struct syslog_channel_ops_s g_ramlog_channel_ops =
 {
   ramlog_putc,
@@ -82,14 +88,12 @@ static syslog_channel_t g_ramlog_channel =
   &g_ramlog_channel_ops
 #  ifdef CONFIG_SYSLOG_IOCTL
   , "ram"
-#  endif
-#  ifdef CONFIG_SYSLOG_CRLF
-  , SYSLOG_CHANNEL_DISABLE_CRLF
+  , false
 #  endif
 };
 #endif
 
-#ifdef CONFIG_SYSLOG_RPMSG
+#if defined(CONFIG_SYSLOG_RPMSG)
 static const struct syslog_channel_ops_s g_rpmsg_channel_ops =
 {
   syslog_rpmsg_putc,
@@ -104,14 +108,12 @@ static syslog_channel_t g_rpmsg_channel =
   &g_rpmsg_channel_ops
 #  ifdef CONFIG_SYSLOG_IOCTL
   , "rpmsg"
-#  endif
-#  ifdef CONFIG_SYSLOG_CRLF
-  , SYSLOG_CHANNEL_DISABLE_CRLF
+  , false
 #  endif
 };
 #endif
 
-#ifdef CONFIG_SYSLOG_RTT
+#if defined(CONFIG_SYSLOG_RTT)
 static const struct syslog_channel_ops_s g_rtt_channel_ops =
 {
   syslog_rtt_putc,
@@ -126,14 +128,12 @@ static syslog_channel_t g_rtt_channel =
   &g_rtt_channel_ops
 #  ifdef CONFIG_SYSLOG_IOCTL
   , "rtt"
-#  endif
-#  ifdef CONFIG_SYSLOG_CRLF
-  , SYSLOG_CHANNEL_DISABLE_CRLF
+  , false
 #  endif
 };
 #endif
 
-#ifdef CONFIG_SYSLOG_DEFAULT
+#if defined(CONFIG_SYSLOG_DEFAULT)
 static const struct syslog_channel_ops_s g_default_channel_ops =
 {
   syslog_default_putc,
@@ -147,6 +147,7 @@ static syslog_channel_t g_default_channel =
   &g_default_channel_ops
 #  ifdef CONFIG_SYSLOG_IOCTL
   , "default"
+  , false
 #  endif
 };
 #endif
@@ -196,16 +197,19 @@ const
 #endif
 g_syslog_channel[CONFIG_SYSLOG_MAX_CHANNELS] =
 {
-#ifdef CONFIG_SYSLOG_DEFAULT
+#if defined(CONFIG_SYSLOG_DEFAULT)
   &g_default_channel,
 #endif
-#ifdef CONFIG_RAMLOG_SYSLOG
+
+#if defined(CONFIG_RAMLOG_SYSLOG)
   &g_ramlog_channel,
 #endif
-#ifdef CONFIG_SYSLOG_RPMSG
+
+#if defined(CONFIG_SYSLOG_RPMSG)
   &g_rpmsg_channel,
 #endif
-#ifdef CONFIG_SYSLOG_RTT
+
+#if defined(CONFIG_SYSLOG_RTT)
   &g_rtt_channel
 #endif
 };
@@ -213,30 +217,6 @@ g_syslog_channel[CONFIG_SYSLOG_MAX_CHANNELS] =
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
-
-#if defined(CONFIG_SYSLOG_DEFAULT) && defined(CONFIG_ARCH_LOWPUTC)
-
-/****************************************************************************
- * Name: csection_available
- *
- * Description:
- *   Return true if the critical section is available.
- *
- ****************************************************************************/
-
-static bool csection_available(void)
-{
-  /* Degrade the critical section in a few cases:
-   *
-   * a) early in the boot, where tasks are not available
-   *
-   * b) after a panic, where taking a lock can make the situation worse
-   */
-
-  return OSINIT_TASK_READY() && g_nx_initstate != OSINIT_PANIC;
-}
-
-#endif /* defined(CONFIG_SYSLOG_DEFAULT) && defined(CONFIG_ARCH_LOWPUTC) */
 
 /****************************************************************************
  * Name: syslog_default_putc
@@ -247,49 +227,28 @@ static bool csection_available(void)
  *
  ****************************************************************************/
 
-#ifdef CONFIG_SYSLOG_DEFAULT
+#if defined(CONFIG_SYSLOG_DEFAULT)
 static int syslog_default_putc(FAR syslog_channel_t *channel, int ch)
 {
-#  ifdef CONFIG_ARCH_LOWPUTC
-  if (csection_available())
-    {
-      /* See https://github.com/apache/nuttx/issues/14662
-       * about what this critical section is for.
-       */
-
-      irqstate_t flags = enter_critical_section();
-      up_putc(ch);
-      leave_critical_section(flags);
-    }
-  else
-    {
-      up_putc(ch);
-    }
-#  endif
-
   UNUSED(channel);
+
+#if defined(CONFIG_ARCH_LOWPUTC)
+  return up_putc(ch);
+#else
   return ch;
+#endif
 }
 
 static ssize_t syslog_default_write(FAR syslog_channel_t *channel,
                                     FAR const char *buffer, size_t buflen)
 {
-#  ifdef CONFIG_ARCH_LOWPUTC
-  if (csection_available())
-    {
-      /* See https://github.com/apache/nuttx/issues/14662
-       * about what this critical section is for.
-       */
+#if defined(CONFIG_ARCH_LOWPUTC)
+  nxmutex_lock(&g_lowputs_lock);
 
-      irqstate_t flags = enter_critical_section();
-      up_nputs(buffer, buflen);
-      leave_critical_section(flags);
-    }
-  else
-    {
-      up_nputs(buffer, buflen);
-    }
-#  endif
+  up_nputs(buffer, buflen);
+
+  nxmutex_unlock(&g_lowputs_lock);
+#endif
 
   UNUSED(channel);
   return buflen;
@@ -319,16 +278,18 @@ static ssize_t syslog_default_write(FAR syslog_channel_t *channel,
 #ifdef CONFIG_SYSLOG_REGISTER
 int syslog_channel_register(FAR syslog_channel_t *channel)
 {
+#if (CONFIG_SYSLOG_MAX_CHANNELS != 1)
+  int i;
+#endif
+
   DEBUGASSERT(channel != NULL);
 
   if (channel != NULL)
     {
-#if CONFIG_SYSLOG_MAX_CHANNELS == 1
+#if (CONFIG_SYSLOG_MAX_CHANNELS == 1)
       g_syslog_channel[0] = channel;
       return OK;
 #else
-      int i;
-
       for (i = 0; i < CONFIG_SYSLOG_MAX_CHANNELS; i++)
         {
           if (g_syslog_channel[i] == NULL)

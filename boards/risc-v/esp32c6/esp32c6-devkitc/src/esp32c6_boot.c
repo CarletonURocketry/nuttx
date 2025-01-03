@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/risc-v/esp32c6/esp32c6-devkitc/src/esp32c6_boot.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -26,7 +24,7 @@
 
 #include <nuttx/config.h>
 
-#include "esp32c6-devkitc.h"
+#include "riscv_internal.h"
 
 /****************************************************************************
  * Pre-processor Definitions

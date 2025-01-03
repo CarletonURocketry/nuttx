@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/risc-v/src/common/espressif/esp_lowputc.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -102,8 +100,7 @@ struct esp_uart_s g_uart0_config =
   .oflow  = false,   /* output flow control (CTS) disabled */
 #endif
 #endif
-  .hal = &g_uart0_hal,
-  .lock = SP_UNLOCKED
+  .hal = &g_uart0_hal
 };
 
 #endif /* CONFIG_ESPRESSIF_UART0 */
@@ -148,8 +145,7 @@ struct esp_uart_s g_uart1_config =
   .oflow  = false,   /* output flow control (CTS) disabled */
 #endif
 #endif
-  .hal = &g_uart1_hal,
-  .lock = SP_UNLOCKED
+  .hal = &g_uart1_hal
 };
 
 #endif /* CONFIG_ESPRESSIF_UART1 */
@@ -207,12 +203,12 @@ void esp_lowputc_enable_sysclk(const struct esp_uart_s *priv)
  *
  ****************************************************************************/
 
-void esp_lowputc_disable_all_uart_int(struct esp_uart_s *priv,
+void esp_lowputc_disable_all_uart_int(const struct esp_uart_s *priv,
                                       uint32_t *current_status)
 {
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
 
   if (current_status != NULL)
     {
@@ -229,7 +225,7 @@ void esp_lowputc_disable_all_uart_int(struct esp_uart_s *priv,
 
   uart_hal_clr_intsts_mask(priv->hal, UINT32_MAX);
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************

@@ -49,6 +49,7 @@ struct restart_arg_s
 {
   pid_t pid;
   cpu_set_t saved_affinity;
+  uint16_t saved_flags;
   bool need_restore;
 };
 
@@ -79,7 +80,7 @@ static int restart_handler(FAR void *cookie)
   if (arg->need_restore)
     {
       tcb->affinity = arg->saved_affinity;
-      tcb->flags &= ~TCB_FLAG_CPU_LOCKED;
+      tcb->flags = arg->saved_flags;
     }
 
   nxsched_remove_readytorun(tcb);
@@ -237,6 +238,7 @@ static int nxtask_restart(pid_t pid)
       else
         {
           arg.pid = tcb->pid;
+          arg.saved_flags = tcb->flags;
           arg.saved_affinity = tcb->affinity;
           arg.need_restore = true;
 
@@ -244,7 +246,7 @@ static int nxtask_restart(pid_t pid)
           CPU_SET(tcb->cpu, &tcb->affinity);
         }
 
-      nxsched_smp_call_single(tcb->cpu, restart_handler, &arg);
+      nxsched_smp_call_single(tcb->cpu, restart_handler, &arg, true);
 
       tcb = nxsched_get_tcb(pid);
       if (!tcb || tcb->task_state != TSTATE_TASK_INVALID ||

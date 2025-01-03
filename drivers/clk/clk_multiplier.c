@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/clk/clk_multiplier.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -109,7 +107,7 @@ static bool __is_best_rate(uint32_t rate, uint32_t new,
 {
   if (flags & CLK_MULT_ROUND_CLOSEST)
     {
-      return clk_is_best_rate_closest(rate, new, best);
+      return abs(rate - new) < abs(rate - best);
     }
 
   return new >= rate && new < best;

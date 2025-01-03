@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/armv7-r/arm_l2cc_pl310.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -57,7 +55,7 @@
 #if defined(CONFIG_ARMV7R_ASSOCIATIVITY_8WAY)
 #  define PL310_NWAYS      8
 #  define PL310_WAY_MASK   0x000000ff
-#elif defined(CONFIG_ARMV7R_ASSOCIATIVITY_16WAY)
+#elif defined(CONFIG_ARMV7R_ASSOCIATIVITY_8WAY)
 #  define PL310_NWAYS 16
 #  define PL310_WAY_MASK   0x0000ffff
 #else

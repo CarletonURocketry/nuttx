@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/lc823450/lc823450_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -1360,7 +1358,7 @@ void arm_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
   struct up_dev_s *priv = (struct up_dev_s *)CONSOLE_DEV.priv;
   uint32_t im;
@@ -1368,7 +1366,7 @@ void up_putc(int ch)
 #ifdef CONFIG_DEV_CONSOLE_SWITCH
   if (g_console_disable)
     {
-      return;
+      return ch;
     }
 #endif /* CONFIG_DEV_CONSOLE_SWITCH */
 
@@ -1376,8 +1374,19 @@ void up_putc(int ch)
   up_waittxnotfull(priv);
   up_serialout(priv, UART_USTF, (uint32_t)ch);
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      up_waittxnotfull(priv);
+      up_serialout(priv, UART_USTF, (uint32_t)'\r');
+    }
+
   up_waittxnotfull(priv);
   up_restoreuartint(priv, im);
+  return ch;
 }
 
 #else /* USE_SERIALDRIVER */
@@ -1390,9 +1399,19 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      arm_lowputc('\r');
+    }
+
   arm_lowputc(ch);
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

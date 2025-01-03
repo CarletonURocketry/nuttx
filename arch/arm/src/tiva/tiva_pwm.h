@@ -1,9 +1,8 @@
 /****************************************************************************
  * arch/arm/src/tiva/tiva_pwm.h
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2016 Young Mu. All rights reserved.
- * SPDX-FileContributor: Young Mu <young.mu@aliyun.com>
+ *   Copyright (C) 2016 Young Mu. All rights reserved.
+ *   Author: Young Mu <young.mu@aliyun.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

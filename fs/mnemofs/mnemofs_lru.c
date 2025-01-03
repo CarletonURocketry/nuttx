@@ -1,7 +1,6 @@
 /****************************************************************************
  * fs/mnemofs/mnemofs_lru.c
- *
- * SPDX-License-Identifier: Apache-2.0 or BSD-3-Clause
+ * LRU cache of mnemofs.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -950,9 +949,9 @@ errout:
   return ret;
 }
 
-int mfs_lru_getupdatedinfo(FAR const struct mfs_sb_s * const sb,
-                           FAR struct mfs_path_s * const path,
-                           const mfs_t depth)
+int mfs_lru_updatedinfo(FAR const struct mfs_sb_s * const sb,
+                        FAR struct mfs_path_s * const path,
+                        const mfs_t depth)
 {
   int                    ret  = OK;
   bool                   found;

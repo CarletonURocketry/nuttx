@@ -32,8 +32,8 @@
 #include <debug.h>
 
 #include <nuttx/mm/iob.h>
-#include <nuttx/semaphore.h>
 #include <nuttx/spinlock.h>
+#include <nuttx/semaphore.h>
 
 #ifdef CONFIG_MM_IOB
 
@@ -75,30 +75,17 @@ extern FAR struct iob_qentry_s *g_iob_freeqlist;
 extern FAR struct iob_qentry_s *g_iob_qcommitted;
 #endif
 
-/* semaphores that IOBs need wait */
+/* Counting semaphores that tracks the number of free IOBs/qentries */
 
-extern sem_t g_iob_sem;
-
-/* Counts free I/O buffers */
-
-extern int16_t g_iob_count;
-
+extern sem_t g_iob_sem;       /* Counts free I/O buffers */
 #if CONFIG_IOB_THROTTLE > 0
-extern sem_t g_throttle_sem;
-
-/* Wait Counts for throttle */
-
-extern int16_t g_throttle_wait;
+extern sem_t g_throttle_sem;  /* Counts available I/O buffers when throttled */
 #endif
 #if CONFIG_IOB_NCHAINS > 0
-extern sem_t g_qentry_sem;
-
-/* Wait Counts for qentry */
-
-extern int16_t g_qentry_wait;
+extern sem_t g_qentry_sem;    /* Counts free I/O buffer queue containers */
 #endif
 
-extern volatile spinlock_t g_iob_lock;
+extern spinlock_t g_iob_lock;
 
 /****************************************************************************
  * Public Function Prototypes

@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/virtio/virtio-rpmb.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -92,8 +90,6 @@ static const struct file_operations g_virtio_rpmb_ops =
   NULL,               /* mmap */
   NULL,               /* truncate */
   NULL,               /* poll */
-  NULL,               /* readv */
-  NULL,               /* writev */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   NULL,               /* unlink */
 #endif

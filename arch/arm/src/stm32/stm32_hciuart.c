@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/stm32/stm32_hciuart.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -283,7 +281,6 @@ struct hciuart_config_s
   uint32_t rx_gpio;                  /* U[S]ART RX GPIO pin configuration */
   uint32_t cts_gpio;                 /* U[S]ART CTS GPIO pin configuration */
   uint32_t rts_gpio;                 /* U[S]ART RTS GPIO pin configuration */
-  spinlock_t lock;                   /* Spinlock */
 };
 
 /****************************************************************************
@@ -409,7 +406,6 @@ static const struct hciuart_config_s g_hciusart1_config =
   .rx_gpio       = GPIO_USART1_RX,
   .cts_gpio      = GPIO_USART1_CTS,
   .rts_gpio      = GPIO_USART1_RTS,
-  .lock          = SP_UNLOCKED
 };
 #endif
 
@@ -470,7 +466,6 @@ static const struct hciuart_config_s g_hciusart2_config =
   .rx_gpio       = GPIO_USART2_RX,
   .cts_gpio      = GPIO_USART2_CTS,
   .rts_gpio      = GPIO_USART2_RTS,
-  .lock          = SP_UNLOCKED
 };
 #endif
 
@@ -531,7 +526,6 @@ static const struct hciuart_config_s g_hciusart3_config =
   .rx_gpio       = GPIO_USART3_RX,
   .cts_gpio      = GPIO_USART3_CTS,
   .rts_gpio      = GPIO_USART3_RTS,
-  .lock          = SP_UNLOCKED
 };
 #endif
 
@@ -592,7 +586,6 @@ static const struct hciuart_config_s g_hciusart6_config =
   .rx_gpio       = GPIO_USART6_RX,
   .cts_gpio      = GPIO_USART6_CTS,
   .rts_gpio      = GPIO_USART6_RTS,
-  .lock          = SP_UNLOCKED
 };
 #endif
 
@@ -653,7 +646,6 @@ static const struct hciuart_config_s g_hciuart7_config =
   .rx_gpio       = GPIO_UART7_RX,
   .cts_gpio      = GPIO_UART7_CTS,
   .rts_gpio      = GPIO_UART7_RTS,
-  .lock          = SP_UNLOCKED
 };
 #endif
 
@@ -714,7 +706,6 @@ static const struct hciuart_config_s g_hciuart8_config =
   .rx_gpio       = GPIO_UART8_RX,
   .cts_gpio      = GPIO_UART8_CTS,
   .rts_gpio      = GPIO_UART8_RTS,
-  .lock          = SP_UNLOCKED
 };
 #endif
 
@@ -1922,7 +1913,7 @@ static void hciuart_rxattach(const struct btuart_lowerhalf_s *lower,
 
   /* If the callback is NULL, then we are detaching */
 
-  flags = spin_lock_irqsave(&config->lock);
+  flags = spin_lock_irqsave(NULL);
   if (callback == NULL)
     {
       uint32_t intset;
@@ -1945,7 +1936,7 @@ static void hciuart_rxattach(const struct btuart_lowerhalf_s *lower,
       state->callback = callback;
     }
 
-  spin_unlock_irqrestore(&config->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -2010,7 +2001,7 @@ static void hciuart_rxenable(const struct btuart_lowerhalf_s *lower,
        * "           "    USART_SR_ORE  Overrun Error Detected
        */
 
-      flags = spin_lock_irqsave(&config->lock);
+      flags = spin_lock_irqsave(NULL);
       if (enable)
         {
           /* Receive an interrupt when their is anything in the Rx data
@@ -2026,7 +2017,7 @@ static void hciuart_rxenable(const struct btuart_lowerhalf_s *lower,
           hciuart_disableints(config, intset);
         }
 
-      spin_unlock_irqrestore(&config->lock, flags);
+      spin_unlock_irqrestore(NULL, flags);
     }
 #endif
 }
@@ -2225,9 +2216,9 @@ static ssize_t hciuart_write(const struct btuart_lowerhalf_s *lower,
    * USART_CR3_CTSIE  USART_SR_CTS  CTS flag               (not used)
    */
 
-  flags = spin_lock_irqsave(&config->lock);
+  flags = spin_lock_irqsave(NULL);
   hciuart_disableints(config, USART_CR1_TXEIE);
-  spin_unlock_irqrestore(&config->lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
 
   /* Loop until all of the user data have been moved to the Tx buffer */
 
@@ -2320,9 +2311,9 @@ static ssize_t hciuart_write(const struct btuart_lowerhalf_s *lower,
 
   if (state->txhead != state->txtail)
     {
-      flags = spin_lock_irqsave(&config->lock);
+      flags = spin_lock_irqsave(NULL);
       hciuart_enableints(config, USART_CR1_TXEIE);
-      spin_unlock_irqrestore(&config->lock, flags);
+      spin_unlock_irqrestore(NULL, flags);
     }
 
   return ntotal;
@@ -2401,18 +2392,7 @@ static void hciuart_dma_rxcallback(DMA_HANDLE handle, uint8_t status,
   const struct hciuart_config_s *config =
     (const struct hciuart_config_s *)arg;
   struct hciuart_state_s *state;
-  irqstate_t flags;
   ssize_t nbytes;
-
-  flags = spin_lock_irqsave(&config->lock);
-  sched_lock();
-
-  if (config.state->rxdmastream == NULL)
-    {
-      spin_unlock_irqrestore(&config->lock, flags);
-      sched_unlock();
-      return;
-    }
 
   wlinfo("status %u config %p\n", status, config);
 
@@ -2435,9 +2415,6 @@ static void hciuart_dma_rxcallback(DMA_HANDLE handle, uint8_t status,
       state->callback(config->lower, state->arg);
       handled = true;
     }
-
-  spin_unlock_irqrestore(&config->lock, flags);
-  sched_unlock();
 }
 #endif
 
@@ -2660,35 +2637,59 @@ void hciuart_initialize(void)
 #ifdef CONFIG_STM32_HCIUART_RXDMA
 void stm32_serial_dma_poll(void)
 {
+  irqstate_t flags;
+
+  flags = spin_lock_irqsave(NULL);
+
 #ifdef CONFIG_STM32_HCIUART1_RXDMA
-  hciuart_dma_rxcallback(g_hciusart1_config.state->rxdmastream, 0,
-                    &g_hciusart1_config);
+  if (g_hciusart1_config.state->rxdmastream != NULL)
+    {
+      hciuart_dma_rxcallback(g_hciusart1_config.state->rxdmastream, 0,
+                        &g_hciusart1_config);
+    }
 #endif
 
 #ifdef CONFIG_STM32_HCIUART2_RXDMA
-  hciuart_dma_rxcallback(g_hciusart2_config.state->rxdmastream, 0,
+  if (g_hciusart2_config.state->rxdmastream != NULL)
+    {
+      hciuart_dma_rxcallback(g_hciusart2_config.state->rxdmastream, 0,
                         &g_hciusart2_config);
+    }
 #endif
 
 #ifdef CONFIG_STM32_HCIUART3_RXDMA
-  hciuart_dma_rxcallback(g_hciusart3_config.state->rxdmastream, 0,
-                    &g_hciusart3_config);
+  if (g_hciusart3_config.state->rxdmastream != NULL)
+    {
+      hciuart_dma_rxcallback(g_hciusart3_config.state->rxdmastream, 0,
+                        &g_hciusart3_config);
+    }
 #endif
 
 #ifdef CONFIG_STM32_HCIUART6_RXDMA
-  hciuart_dma_rxcallback(g_hciusart6_config.state->rxdmastream, 0,
-                    &g_hciusart6_config);
+  if (g_hciusart6_config.state->rxdmastream != NULL)
+    {
+      hciuart_dma_rxcallback(g_hciusart6_config.state->rxdmastream, 0,
+                        &g_hciusart6_config);
+    }
 #endif
 
 #ifdef CONFIG_STM32_HCIUART7_RXDMA
-  hciuart_dma_rxcallback(g_hciuart7_config.state->rxdmastream,
-                          0,
-                          &g_hciuart7_config);
+  if (g_hciuart7_config.state->rxdmastream != NULL)
+    {
+      hciuart_dma_rxcallback(g_hciuart7_config.state->rxdmastream,
+                             0,
+                             &g_hciuart7_config);
+    }
 #endif
 
 #ifdef CONFIG_STM32_HCIUART8_RXDMA
-  hciuart_dma_rxcallback(g_hciuart8.state->rxdmastream, 0,
-                    &g_hciuart8_config);
+  if (g_hciuart8_config.state->rxdmastream != NULL)
+    {
+      hciuart_dma_rxcallback(g_hciuart8.state->rxdmastream, 0,
+                        &g_hciuart8_config);
+    }
 #endif
+
+  spin_unlock_irqrestore(NULL, flags);
 }
 #endif

@@ -26,9 +26,7 @@
 
 #include <nuttx/config.h>
 
-#include <nuttx/sched.h>
 #include <nuttx/spinlock.h>
-
 #include "signal/signal.h"
 
 /****************************************************************************
@@ -46,7 +44,6 @@
 FAR sigactq_t *nxsig_find_action(FAR struct task_group_s *group, int signo)
 {
   FAR sigactq_t *sigact = NULL;
-  irqstate_t flags;
 
   /* Verify the caller's sanity */
 
@@ -57,7 +54,7 @@ FAR sigactq_t *nxsig_find_action(FAR struct task_group_s *group, int signo)
        * protection.
        */
 
-      flags = spin_lock_irqsave(NULL);
+      sched_lock();
 
       /* Search the list for a sigaction on this signal */
 
@@ -65,7 +62,7 @@ FAR sigactq_t *nxsig_find_action(FAR struct task_group_s *group, int signo)
            ((sigact) && (sigact->signo != signo));
            sigact = sigact->flink);
 
-      spin_unlock_irqrestore(NULL, flags);
+      sched_unlock();
     }
 
   return sigact;

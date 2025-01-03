@@ -1,9 +1,8 @@
 /****************************************************************************
  * boards/arm/stm32f7/stm32f746g-disco/src/stm32_extmem.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2018 Marcin Wyrwas. All rights reserved.
- * SPDX-FileContributor: Marcin Wyrwas <mvp1@wp.pl>
+ *   Copyright (C) 2018 Marcin Wyrwas. All rights reserved.
+ *   Author: Marcin Wyrwas <mvp1@wp.pl>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

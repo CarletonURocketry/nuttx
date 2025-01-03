@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/common/arm_internal.h
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -35,8 +33,6 @@
 #  include <sys/types.h>
 #  include <stdint.h>
 #  include <syscall.h>
-
-#  include "chip.h"
 #endif
 
 /****************************************************************************
@@ -151,7 +147,10 @@
 /* Context switching */
 
 #ifndef arm_fullcontextrestore
-#  define arm_fullcontextrestore() sys_call0(SYS_restore_context)
+#  define arm_fullcontextrestore(restoreregs) \
+    sys_call1(SYS_restore_context, (uintptr_t)restoreregs);
+#else
+extern void arm_fullcontextrestore(uint32_t *restoreregs);
 #endif
 
 /* Redefine the linker symbols as armlink style */
@@ -216,10 +215,6 @@
  ****************************************************************************/
 
 #ifndef __ASSEMBLY__
-/* g_interrupt_context store irq status */
-
-extern volatile bool g_interrupt_context[CONFIG_SMP_NCPUS];
-
 typedef void (*up_vector_t)(void);
 #endif
 
@@ -528,10 +523,6 @@ int arm_gen_nonsecurefault(int irq, uint32_t *regs);
 
 #if defined(CONFIG_ARMV7M_STACKCHECK) || defined(CONFIG_ARMV8M_STACKCHECK)
 void arm_stack_check_init(void) noinstrument_function;
-#endif
-
-#ifdef CONFIG_ARM_COREDUMP_REGION
-  void arm_coredump_add_region(void);
 #endif
 
 #undef EXTERN

@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/sensors/sht4x.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -51,11 +49,11 @@
 #define SHT4X_TEMP_UNIT "F"
 #else
 #define SHT4X_TEMP_UNIT "C"
-#endif
+#endif // defined(CONFIG_SHT4X_FAHRENHEIT)
 
 #ifndef CONFIG_SHT4X_I2C_FREQUENCY
 #define CONFIG_SHT4X_I2C_FREQUENCY 400000
-#endif
+#endif // CONFIG_SHT4X_I2C_FREQUENCY
 
 #define SHT4X_CRC_INIT 0xFF /* Initial value of the calculated CRC. */
 #define SHT4X_CRC_POLY 0x31 /* CRC calculation polynomial. */
@@ -82,12 +80,12 @@ struct sht4x_dev_s
   uint8_t addr;                 /* I2C address. */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   bool unlinked;                    /* True, driver has been unlinked. */
-#endif
+#endif                              // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   struct timespec last_heat;        /* Last time heater was active. */
   enum sht4x_precision_e precision; /* The precision for read operations. */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   int16_t crefs; /* Number of open references. */
-#endif
+#endif           // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   mutex_t devlock;
 };
 
@@ -147,7 +145,7 @@ static const uint8_t g_crc_lookup[] =
         0xe0, 0xd1, 0x46, 0x77, 0x24, 0x15, 0x3b, 0xa,  0x59, 0x68, 0xff,
         0xce, 0x9d, 0xac,
 }
-#endif
+#endif // CONFIG_SHT4X_CRC_LOOKUP
 
 /* Measurement times for the various precisions, in microseconds. */
 
@@ -423,7 +421,7 @@ static int32_t sht4x_calc_temp(uint16_t temp)
   return -49000 + 315 * ((temp * 1000) / 65535);
 #else
   return -45000 + 175 * ((temp * 1000) / 65535); /* Millidegrees Celsius */
-#endif
+#endif // CONFIG_SHT4X_FAHRENHEIT
 }
 
 /****************************************************************************
@@ -450,7 +448,7 @@ static int16_t sht4x_calc_hum(uint16_t humidity)
       hum = 10000;
     }
 
-#endif
+#endif // CONFIG_SHT4X_LIMIT_HUMIDITY
   return hum;
 }
 
@@ -598,7 +596,7 @@ static ssize_t sht4x_read(FAR struct file *filep, FAR char *buffer,
     {
 #ifdef CONFIG_SHT4X_DEBUG
       sht4x_dbg("Could not read device: %d\n", err);
-#endif
+#endif // CONFIG_SHT4X_DEBUG
       nxmutex_unlock(&priv->devlock);
       return err;
     }
@@ -732,7 +730,7 @@ static int sht4x_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       priv->precision = arg;
 #ifdef CONFIG_SHT4X_DEBUG
       sht4x_dbg("Precision set to %d\n", priv->precision);
-#endif
+#endif // CONFIG_SHT4X_DEBUG
 
       break;
 
@@ -798,7 +796,7 @@ static int sht4x_unlink(FAR struct inode *inode)
  *   i2c     - An instance of the I2C interface to use to communicate with
  *             the SHT4X
  *   addr    - The I2C address of the SHT4X. The I2C address is one of 0x44,
- *             0x45 and 0x46.
+ *0x45 and 0x46.
  *
  * Returned Value:
  *   Zero (OK) on success; a negated errno value on failure.

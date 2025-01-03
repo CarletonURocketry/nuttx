@@ -35,17 +35,12 @@ SECTIONS
 
   .init_array :
     {
-      _sinit = .;
-      KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
-      KEEP(*(.init_array .ctors))
-      _einit = .;
+      *(.init_array)
     }
 
   .fini_array :
     {
-      KEEP (*(.dtors))
-      KEEP (*(.fini_array))
-      KEEP (*(SORT(.fini_array.*)))
+      *(.fini_array)
     }
 
   .rodata :
@@ -80,11 +75,6 @@ SECTIONS
       *(COMMON)
       . = ALIGN(4);
       _ebss = . ;
-    }
-
-  .got :
-    {
-      *(.got*)
     }
 
     /* Stabs debugging sections.    */

@@ -1,8 +1,6 @@
 # ##############################################################################
 # drivers/syslog/CMakeLists.txt
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -19,14 +17,11 @@
 # the License.
 #
 # ##############################################################################
+# ##############################################################################
 
 # Include SYSLOG Infrastructure
 
-set(SRCS)
-
-if(CONFIG_SYSLOG)
-  list(APPEND SRCS vsyslog.c syslog_channel.c syslog_write.c syslog_flush.c)
-endif()
+set(SRCS vsyslog.c syslog_channel.c syslog_putc.c syslog_write.c syslog_flush.c)
 
 if(CONFIG_SYSLOG_INTBUFFER)
   list(APPEND SRCS syslog_intbuffer.c)
@@ -40,10 +35,6 @@ endif()
 
 if(CONFIG_RAMLOG)
   list(APPEND SRCS ramlog.c)
-  if(CONFIG_RAMLOG_BUFFER_SECTION)
-    target_compile_definitions(
-      drivers PRIVATE -DRAMLOG_BUFFER_SECTION="${CONFIG_RAMLOG_BUFFER_SECTION}")
-  endif()
 endif()
 
 # Include SYSLOG drivers (only one should be enabled)

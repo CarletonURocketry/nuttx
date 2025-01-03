@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/sensors/aht10.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -120,9 +118,7 @@ static const struct file_operations g_aht10fops =
   aht10_ioctl,    /* ioctl */
   NULL,           /* mmap */
   NULL,           /* truncate */
-  NULL,           /* poll */
-  NULL,           /* readv */
-  NULL            /* writev */
+  NULL            /* poll */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   , aht10_unlink /* unlink */
 #endif

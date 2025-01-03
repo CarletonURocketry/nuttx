@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/sensors/msa301.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -30,8 +28,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-#include <nuttx/arch.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/signal.h>
 #include <nuttx/mutex.h>

@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/avr/src/avr32/avr_schedulesigaction.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -35,7 +33,6 @@
 #include <arch/avr32/avr32.h>
 
 #include "sched/sched.h"
-#include "signal/signal.h"
 #include "avr_internal.h"
 
 /****************************************************************************
@@ -97,8 +94,8 @@ void up_schedule_sigaction(struct tcb_s *tcb)
         {
           /* In this case just deliver the signal now. */
 
-          nxsig_deliver(tcb);
-          tcb->flags &= ~TCB_FLAG_SIGDELIVER;
+          (tcb->sigdeliver)(tcb);
+          tcb->sigdeliver = NULL;
         }
 
       /* CASE 2:  We are in an interrupt handler AND the

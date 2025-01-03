@@ -75,9 +75,7 @@ CHIP_CSRCS += esp32_ledc.c
 endif
 
 ifeq ($(CONFIG_ESP32_I2C),y)
-ifeq ($(CONFIG_ESPRESSIF_I2C_PERIPH),y)
 CHIP_CSRCS += esp32_i2c.c
-endif
 endif
 
 ifeq ($(CONFIG_ESP32_I2S),y)
@@ -218,7 +216,7 @@ endif
 
 ESP_HAL_3RDPARTY_REPO   = esp-hal-3rdparty
 ifndef ESP_HAL_3RDPARTY_VERSION
-	ESP_HAL_3RDPARTY_VERSION = 87ccbf88b6fd490dae1993524e70f51bb2ea181d
+	ESP_HAL_3RDPARTY_VERSION = b4c723a119344b4b71d69819019d55637fb570fd
 endif
 
 ifndef ESP_HAL_3RDPARTY_URL

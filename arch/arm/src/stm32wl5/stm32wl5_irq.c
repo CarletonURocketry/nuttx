@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/stm32wl5/stm32wl5_irq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -172,6 +170,7 @@ static int stm32wl5_reserved(int irq, void *context, void *arg)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_ARMV7M_USEBASEPRI
 static inline void stm32wl5_prioritize_syscall(int priority)
 {
   uint32_t regval;
@@ -183,6 +182,7 @@ static inline void stm32wl5_prioritize_syscall(int priority)
   regval |= (priority << NVIC_SYSH_PRIORITY_PR11_SHIFT);
   putreg32(regval, NVIC_SYSH8_11_PRIORITY);
 }
+#endif
 
 /****************************************************************************
  * Name: stm32wl5_irqinfo
@@ -318,8 +318,9 @@ void up_irqinitialize(void)
 #ifdef CONFIG_ARCH_IRQPRIO
   /* up_prioritize_irq(STM32WL5_IRQ_PENDSV, NVIC_SYSH_PRIORITY_MIN); */
 #endif
-
+#ifdef CONFIG_ARMV7M_USEBASEPRI
   stm32wl5_prioritize_syscall(NVIC_SYSH_SVCALL_PRIORITY);
+#endif
 
   /* If the MPU is enabled, then attach and enable the Memory Management
    * Fault handler.

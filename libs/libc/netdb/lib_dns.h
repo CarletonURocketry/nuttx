@@ -170,7 +170,7 @@ void dns_restorelock(unsigned int count);
  *
  ****************************************************************************/
 
-int dns_bind(sa_family_t family, bool stream);
+int dns_bind(sa_family_t family);
 
 /****************************************************************************
  * Name: dns_query

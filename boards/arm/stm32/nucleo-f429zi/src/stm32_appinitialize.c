@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/arm/stm32/nucleo-f429zi/src/stm32_appinitialize.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -43,7 +41,7 @@
 
 #if defined(CONFIG_I2C) && defined(CONFIG_SYSTEM_I2CTOOL)
 #  include "stm32_i2c.h"
-#endif
+#endif 
 
 /****************************************************************************
  * Private Functions

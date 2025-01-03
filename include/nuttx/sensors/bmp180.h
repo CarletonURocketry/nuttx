@@ -79,7 +79,6 @@ extern "C"
  *   Zero (OK) on success; a negated errno value on failure.
  *
  ****************************************************************************/
-
 #ifndef CONFIG_SENSORS_BMP180_UORB
 int bmp180_register(FAR const char *devpath, FAR struct i2c_master_s *i2c);
 #else

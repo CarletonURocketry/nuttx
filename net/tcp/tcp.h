@@ -40,7 +40,7 @@
 #include <nuttx/net/tcp.h>
 #include <nuttx/wqueue.h>
 
-#ifdef NET_TCP_HAVE_STACK
+#ifdef CONFIG_NET_TCP
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -50,6 +50,10 @@
 
 #define TCPIPv4BUF ((FAR struct tcp_hdr_s *)IPBUF(IPv4_HDRLEN))
 #define TCPIPv6BUF ((FAR struct tcp_hdr_s *)IPBUF(IPv6_HDRLEN))
+
+#ifndef CONFIG_NET_TCP_NO_STACK
+
+#define NET_TCP_HAVE_STACK 1
 
 /* Allocate a new TCP data callback */
 
@@ -438,13 +442,6 @@ struct tcp_backlog_s
   sq_queue_t bl_pending;          /* Implements a singly-linked list of pending connections */
 };
 #endif
-
-struct tcp_callback_s
-{
-  FAR struct tcp_conn_s *tc_conn;
-  FAR struct devif_callback_s *tc_cb;
-  FAR sem_t *tc_sem;
-};
 
 /****************************************************************************
  * Public Data
@@ -1396,19 +1393,6 @@ uint16_t tcp_datahandler(FAR struct net_driver_s *dev,
  *
  ****************************************************************************/
 
-/****************************************************************************
- * Name: tcp_callback_cleanup
- *
- * Description:
- *   Cleanup data and cb when thread is canceled.
- *
- * Input Parameters:
- *   arg - A pointer with conn and callback struct.
- *
- ****************************************************************************/
-
-void tcp_callback_cleanup(FAR void *arg);
-
 #ifdef CONFIG_NET_TCPBACKLOG
 int tcp_backlogcreate(FAR struct tcp_conn_s *conn, int nblg);
 #else
@@ -2350,5 +2334,6 @@ void tcp_cc_recv_ack(FAR struct tcp_conn_s *conn, FAR struct tcp_hdr_s *tcp);
 
 void tcp_set_zero_probe(FAR struct tcp_conn_s *conn, uint16_t flags);
 
-#endif /* NET_TCP_HAVE_STACK */
+#endif /* !CONFIG_NET_TCP_NO_STACK */
+#endif /* CONFIG_NET_TCP */
 #endif /* __NET_TCP_TCP_H */

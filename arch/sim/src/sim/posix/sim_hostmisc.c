@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/sim/src/sim/posix/sim_hostmisc.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -52,7 +50,7 @@
  * Public Function Prototypes
  ****************************************************************************/
 
-#ifndef CONFIG_COVERAGE_NONE
+#ifdef CONFIG_SCHED_GCOV
 void __gcov_dump(void);
 #endif
 
@@ -74,7 +72,7 @@ extern int backtrace(void **array, int size);
 
 void host_abort(int status)
 {
-#ifndef CONFIG_COVERAGE_NONE
+#ifdef CONFIG_SCHED_GCOV
   /* Dump gcov data. */
 
   host_uninterruptible_no_return(__gcov_dump);

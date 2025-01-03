@@ -25,7 +25,6 @@
  ****************************************************************************/
 
 #include <assert.h>
-#include <errno.h>
 
 #include "libc.h"
 
@@ -62,10 +61,10 @@ static void memsostream_putc(FAR struct lib_sostream_s *self, int ch)
  * Name: memoutstream_puts
  ****************************************************************************/
 
-static ssize_t memsostream_puts(FAR struct lib_sostream_s *self,
-                                FAR const void *buf, size_t len)
+static int memsostream_puts(FAR struct lib_sostream_s *self,
+                            FAR const void *buf, int len)
 {
-  ssize_t ncopy;
+  int ncopy;
   FAR struct lib_memsostream_s *stream =
                                        (FAR struct lib_memsostream_s *)self;
 
@@ -100,7 +99,7 @@ static off_t memsostream_seek(FAR struct lib_sostream_s *self, off_t offset,
   switch (whence)
     {
       case SEEK_CUR:
-        newpos = stream->offset + offset;
+        newpos = (off_t)stream->offset + offset;
         break;
 
       case SEEK_SET:
@@ -108,23 +107,23 @@ static off_t memsostream_seek(FAR struct lib_sostream_s *self, off_t offset,
         break;
 
       case SEEK_END:
-        newpos = stream->buflen + offset;
+        newpos = (off_t)stream->buflen + offset;
         break;
 
       default:
-        return -EINVAL;
+        return (off_t)ERROR;
     }
 
   /* Make sure that the new position is within range */
 
-  if (newpos < 0 || newpos >= stream->buflen)
+  if (newpos < 0 || newpos >= (off_t)stream->buflen)
     {
-      return -EINVAL;
+      return (off_t)ERROR;
     }
 
   /* Return the new position */
 
-  stream->offset = newpos;
+  stream->offset = (size_t)newpos;
   return newpos;
 }
 
@@ -150,7 +149,7 @@ static off_t memsostream_seek(FAR struct lib_sostream_s *self, off_t offset,
  ****************************************************************************/
 
 void lib_memsostream(FAR struct lib_memsostream_s *outstream,
-                     FAR char *bufstart, size_t buflen)
+                     FAR char *bufstart, int buflen)
 {
   outstream->common.putc  = memsostream_putc;
   outstream->common.puts  = memsostream_puts;

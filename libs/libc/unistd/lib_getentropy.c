@@ -24,8 +24,8 @@
  * Included Files
  ****************************************************************************/
 
+#include <sys/random.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <unistd.h>
 
 /****************************************************************************
@@ -56,12 +56,30 @@
 
 int getentropy(FAR void *buffer, size_t length)
 {
+  FAR char *pos = buffer;
+
   if (length > 256)
     {
       set_errno(EIO);
       return -1;
     }
 
-  arc4random_buf(buffer, length);
+  while (length > 0)
+    {
+      int ret = getrandom(pos, length, 0);
+      if (ret < 0)
+        {
+          if (get_errno() == EINTR)
+            {
+              continue;
+            }
+
+          return ret;
+        }
+
+      pos += ret;
+      length -= ret;
+    }
+
   return 0;
 }

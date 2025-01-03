@@ -1,8 +1,6 @@
 ############################################################################
 # drivers/audio/Make.defs
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.  The
@@ -85,10 +83,6 @@ endif
 
 ifeq ($(CONFIG_AUDIO_NULL),y)
 CSRCS += audio_null.c
-endif
-
-ifeq ($(CONFIG_AUDIO_FAKE),y)
-CSRCS += audio_fake.c
 endif
 
 ifeq ($(CONFIG_AUDIO_TONE),y)

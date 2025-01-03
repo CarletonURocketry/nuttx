@@ -96,11 +96,11 @@
 	.text
 	.section .text.memcpy
 	.align	2
-	.global	ARCH_LIBCFUN(memcpy)
+	.global	memcpy
 	.thumb
 	.thumb_func
-	.type	ARCH_LIBCFUN(memcpy), %function
-ARCH_LIBCFUN(memcpy):
+	.type	memcpy, %function
+memcpy:
 	@ r0: dst
 	@ r1: src
 	@ r2: len
@@ -355,6 +355,6 @@ ARCH_LIBCFUN(memcpy):
 #endif
 	bx	lr
 
-	.size	ARCH_LIBCFUN(memcpy), .-ARCH_LIBCFUN(memcpy)
+	.size	memcpy, .-memcpy
 
 #endif

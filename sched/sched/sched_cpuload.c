@@ -87,14 +87,6 @@
 volatile clock_t g_cpuload_total;
 
 /****************************************************************************
- * Private Data
- ****************************************************************************/
-
-#ifdef CONFIG_SCHED_CPULOAD_SYSCLK
-static struct wdog_s g_cpuload_wdog;
-#endif
-
-/****************************************************************************
  * Private Functions
  ****************************************************************************/
 
@@ -232,12 +224,6 @@ int clock_cpuload(int pid, FAR struct cpuload_s *cpuload)
 
   DEBUGASSERT(cpuload);
 
-#ifdef CONFIG_SCHED_CPULOAD_CRITMONITOR
-  /* Update critmon in case of the target thread busyloop */
-
-  nxsched_update_critmon(nxsched_get_tcb(pid));
-#endif
-
   /* Momentarily disable interrupts.  We need (1) the task to stay valid
    * while we are doing these operations and (2) the tick counts to be
    * synchronized when read.
@@ -287,6 +273,7 @@ int clock_cpuload(int pid, FAR struct cpuload_s *cpuload)
 #ifdef CONFIG_SCHED_CPULOAD_SYSCLK
 void cpuload_init(void)
 {
+  static struct wdog_s g_cpuload_wdog;
   wd_start(&g_cpuload_wdog, CPULOAD_SAMPLING_PERIOD, cpuload_callback,
            (wdparm_t)&g_cpuload_wdog);
 }

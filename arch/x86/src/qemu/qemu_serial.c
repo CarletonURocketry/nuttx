@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/x86/src/qemu/qemu_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -75,9 +73,19 @@ void uart_putreg(struct u16550_s *priv,
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      x86_lowputc('\r');
+    }
+
   x86_lowputc(ch);
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

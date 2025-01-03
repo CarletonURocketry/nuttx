@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/arm/tiva/ekk-lm3s9b96/src/lm_ssi.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The

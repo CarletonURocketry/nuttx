@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/efm32/efm32_leserial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -134,7 +132,6 @@ struct efm32_leuart_s
 {
   const struct efm32_config_s *config;
   uint16_t  ien;       /* Interrupts enabled */
-  spinlock_t lock;     /* Spinlock */
 };
 
 /****************************************************************************
@@ -213,7 +210,6 @@ static const struct efm32_config_s g_leuart0config =
 static struct efm32_leuart_s g_leuart0priv =
 {
   .config    = &g_leuart0config,
-  .lock      = SP_UNLOCKED
 };
 
 static struct uart_dev_s g_leuart0port =
@@ -249,7 +245,6 @@ static struct efm32_config_s g_leuart1config =
 static struct efm32_leuart_s g_leuart1priv =
 {
   .config    = &g_leuart1config,
-  .lock      = SP_UNLOCKED
 };
 
 static struct uart_dev_s g_leuart1port =
@@ -306,17 +301,6 @@ static inline void efm32_setuartint(struct efm32_leuart_s *priv)
  * Name: efm32_restoreuartint
  ****************************************************************************/
 
-static void efm32_restoreuartint_nolock(struct efm32_leuart_s *priv,
-                                        uint32_t ien)
-{
-  /* Re-enable/re-disable interrupts corresponding to the state of
-   * bits in ien.
-   */
-
-  priv->ien = ien;
-  efm32_setuartint(priv);
-}
-
 static void efm32_restoreuartint(struct efm32_leuart_s *priv, uint32_t ien)
 {
   irqstate_t flags;
@@ -325,9 +309,10 @@ static void efm32_restoreuartint(struct efm32_leuart_s *priv, uint32_t ien)
    * bits in ien.
    */
 
-  flags = spin_lock_irqsave(&priv->lock);
-  efm32_restoreuartint_nolock(priv, ien);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  flags     = spin_lock_irqsave(NULL);
+  priv->ien = ien;
+  efm32_setuartint(priv);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -338,14 +323,14 @@ static void efm32_disableuartint(struct efm32_leuart_s *priv, uint32_t *ien)
 {
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = spin_lock_irqsave(NULL);
   if (ien)
     {
       *ien = priv->ien;
     }
 
-  efm32_restoreuartint_nolock(priv, 0);
-  spin_unlock_irqrestore(&priv->lock, flags);
+  efm32_restoreuartint(priv, 0);
+  spin_unlock_irqrestore(NULL, flags);
 }
 
 /****************************************************************************
@@ -620,7 +605,7 @@ static void efm32_rxint(struct uart_dev_s *dev, bool enable)
   struct efm32_leuart_s *priv = (struct efm32_leuart_s *)dev->priv;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = enter_critical_section();
   if (enable)
     {
       /* Receive an interrupt when there is anything in the Rx data register
@@ -638,7 +623,7 @@ static void efm32_rxint(struct uart_dev_s *dev, bool enable)
       efm32_setuartint(priv);
     }
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  leave_critical_section(flags);
 }
 
 /****************************************************************************
@@ -686,7 +671,7 @@ static void efm32_txint(struct uart_dev_s *dev, bool enable)
   struct efm32_leuart_s *priv = (struct efm32_leuart_s *)dev->priv;
   irqstate_t flags;
 
-  flags = spin_lock_irqsave(&priv->lock);
+  flags = enter_critical_section();
   if (enable)
     {
       /* Enable the TX interrupt */
@@ -710,7 +695,7 @@ static void efm32_txint(struct uart_dev_s *dev, bool enable)
       efm32_setuartint(priv);
     }
 
-  spin_unlock_irqrestore(&priv->lock, flags);
+  leave_critical_section(flags);
 }
 
 /****************************************************************************
@@ -824,14 +809,25 @@ void arm_serialinit(void)
  ****************************************************************************/
 
 #ifdef HAVE_LEUART_CONSOLE
-void up_putc(int ch)
+int up_putc(int ch)
 {
   struct efm32_leuart_s *priv = (struct efm32_leuart_s *)CONSOLE_DEV.priv;
   uint32_t ien;
 
   efm32_disableuartint(priv, &ien);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      efm32_lowputc('\r');
+    }
+
   efm32_lowputc(ch);
   efm32_restoreuartint(priv, ien);
+  return ch;
 }
 #endif
 
@@ -846,9 +842,19 @@ void up_putc(int ch)
  ****************************************************************************/
 
 #ifdef HAVE_LEUART_CONSOLE
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      efm32_lowputc('\r');
+    }
+
   efm32_lowputc(ch);
+  return ch;
 }
 #endif
 

@@ -1,7 +1,8 @@
 /****************************************************************************
  * include/search.h
  *
- * SPDX-License-Identifier: NuttX-PublicDomain
+ * $NetBSD: search.h,v 1.12 1999/02/22 10:34:28 christos Exp $
+ * $FreeBSD: src/include/search.h,v 1.4 2002/03/23 17:24:53 imp Exp $
  *
  * Written by J.T. Conklin <jtc@netbsd.org>
  * Public domain.

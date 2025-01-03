@@ -1,8 +1,6 @@
 /****************************************************************************
  * boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_touchsceen_gt911.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -87,18 +85,19 @@ struct gt911_dev_s
 
 /* This structure describes the frame of touchpoint */
 
-begin_packed_struct struct gt911_touchpoint_s
+struct gt911_touchpoint_s
 {
   uint8_t id;                               /* Not used */
   uint16_t x;                               /* Touch X-axis */
   uint16_t y;                               /* Touch Y-axis */
   uint16_t pressure;                        /* Touch pressure */
   uint8_t  reserved;                        /* Not used */
-} end_packed_struct;
+}
+__attribute__((packed));
 
 /* This structure describes the frame of touchpoint */
 
-begin_packed_struct struct gt911_data_s
+struct gt911_data_s
 {
   uint8_t touchpoints     : 4;              /* Touch point number */
   uint8_t has_key         : 1;              /* 1: key is inpressed */
@@ -107,7 +106,8 @@ begin_packed_struct struct gt911_data_s
   uint8_t buffer_status   : 1;              /* 1: input data is valid */
 
   struct gt911_touchpoint_s touchpoint[0];
-} end_packed_struct;
+}
+__attribute__((packed));
 
 /****************************************************************************
  * Private Data

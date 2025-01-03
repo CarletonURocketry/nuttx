@@ -118,23 +118,22 @@
 #  define TCB_FLAG_TTYPE_TASK      (0 << TCB_FLAG_TTYPE_SHIFT)   /*   Normal user task */
 #  define TCB_FLAG_TTYPE_PTHREAD   (1 << TCB_FLAG_TTYPE_SHIFT)   /*   User pthread */
 #  define TCB_FLAG_TTYPE_KERNEL    (2 << TCB_FLAG_TTYPE_SHIFT)   /*   Kernel thread */
-#define TCB_FLAG_POLICY_SHIFT      (2)                           /* Bit 2-3: Scheduling policy */
+#define TCB_FLAG_POLICY_SHIFT      (3)                           /* Bit 3-4: Scheduling policy */
 #define TCB_FLAG_POLICY_MASK       (3 << TCB_FLAG_POLICY_SHIFT)
 #  define TCB_FLAG_SCHED_FIFO      (0 << TCB_FLAG_POLICY_SHIFT)  /* FIFO scheding policy */
 #  define TCB_FLAG_SCHED_RR        (1 << TCB_FLAG_POLICY_SHIFT)  /* Round robin scheding policy */
 #  define TCB_FLAG_SCHED_SPORADIC  (2 << TCB_FLAG_POLICY_SHIFT)  /* Sporadic scheding policy */
-#define TCB_FLAG_CPU_LOCKED        (1 << 4)                      /* Bit 4: Locked to this CPU */
-#define TCB_FLAG_SIGNAL_ACTION     (1 << 5)                      /* Bit 5: In a signal handler */
-#define TCB_FLAG_SYSCALL           (1 << 6)                      /* Bit 6: In a system call */
-#define TCB_FLAG_EXIT_PROCESSING   (1 << 7)                      /* Bit 7: Exitting */
-#define TCB_FLAG_FREE_STACK        (1 << 8)                      /* Bit 8: Free stack after exit */
-#define TCB_FLAG_HEAP_CHECK        (1 << 9)                      /* Bit 9: Heap check */
-#define TCB_FLAG_HEAP_DUMP         (1 << 10)                     /* Bit 10: Heap dump */
-#define TCB_FLAG_DETACHED          (1 << 11)                     /* Bit 11: Pthread detached */
-#define TCB_FLAG_FORCED_CANCEL     (1 << 12)                     /* Bit 12: Pthread cancel is forced */
-#define TCB_FLAG_JOIN_COMPLETED    (1 << 13)                     /* Bit 13: Pthread join completed */
-#define TCB_FLAG_FREE_TCB          (1 << 14)                     /* Bit 14: Free tcb after exit */
-#define TCB_FLAG_SIGDELIVER        (1 << 15)                     /* Bit 15: Deliver pending signals */
+#define TCB_FLAG_CPU_LOCKED        (1 << 5)                      /* Bit 5: Locked to this CPU */
+#define TCB_FLAG_SIGNAL_ACTION     (1 << 6)                      /* Bit 6: In a signal handler */
+#define TCB_FLAG_SYSCALL           (1 << 7)                      /* Bit 7: In a system call */
+#define TCB_FLAG_EXIT_PROCESSING   (1 << 8)                      /* Bit 8: Exitting */
+#define TCB_FLAG_FREE_STACK        (1 << 9)                      /* Bit 9: Free stack after exit */
+#define TCB_FLAG_HEAP_CHECK        (1 << 10)                     /* Bit 10: Heap check */
+#define TCB_FLAG_HEAP_DUMP         (1 << 11)                     /* Bit 11: Heap dump */
+#define TCB_FLAG_DETACHED          (1 << 12)                     /* Bit 12: Pthread detached */
+#define TCB_FLAG_FORCED_CANCEL     (1 << 13)                     /* Bit 13: Pthread cancel is forced */
+#define TCB_FLAG_JOIN_COMPLETED    (1 << 14)                     /* Bit 14: Pthread join completed */
+#define TCB_FLAG_FREE_TCB          (1 << 15)                     /* Bit 15: Free tcb after exit */
 
 /* Values for struct task_group tg_flags */
 
@@ -233,19 +232,22 @@
 #  define get_task_name(tcb)         "<noname>"
 #endif
 
-#define SMP_CALL_INITIALIZER(func, arg) {(func), (arg)}
-
 /* These are macros to access the current CPU and the current task on a CPU.
  * These macros are intended to support a future SMP implementation.
  */
 
 #ifdef CONFIG_SMP
-#  define this_cpu()                 up_this_cpu()
+#  define this_cpu()                 up_cpu_index()
 #else
 #  define this_cpu()                 (0)
 #endif
 
-#define running_regs()               ((FAR void **)(g_running_tasks[this_cpu()]->xcp.regs))
+/* Task Switching Interfaces (non-standard).
+ * These two macros can be called in interrupt context.
+ */
+
+#define nxsched_lock_irq() (up_interrupt_context() ? OK : sched_lock())
+#define nxsched_unlock_irq() (up_interrupt_context() ? OK : sched_unlock())
 
 /****************************************************************************
  * Public Type Definitions
@@ -304,6 +306,7 @@ typedef enum tstate_e tstate_t;
 /* The following is the form of a thread start-up function */
 
 typedef CODE void (*start_t)(void);
+typedef CODE void (*sig_deliver_t)(FAR struct tcb_s *tcb);
 
 /* This is the entry point into the main thread of the task or into a created
  * pthread within the task.
@@ -702,10 +705,10 @@ struct tcb_s
 #endif
 
 #if CONFIG_SCHED_CRITMONITOR_MAXTIME_PREEMPTION >= 0
-  clock_t preemp_start;                  /* Time when preemption disabled   */
-  clock_t preemp_max;                    /* Max time preemption disabled    */
-  void   *preemp_caller;                 /* Caller of preemption disabled   */
-  void   *preemp_max_caller;             /* Caller of max preemption        */
+  clock_t premp_start;                   /* Time when preemption disabled   */
+  clock_t premp_max;                     /* Max time preemption disabled    */
+  void   *premp_caller;                  /* Caller of preemption disabled   */
+  void   *premp_max_caller;              /* Caller of max preemption        */
 #endif
 
 #if CONFIG_SCHED_CRITMONITOR_MAXTIME_CSECTION >= 0
@@ -721,6 +724,11 @@ struct tcb_s
 
   struct xcptcontext xcp;                /* Interrupt register save area    */
 
+  /* The following function pointer is non-zero if there are pending signals
+   * to be processed.
+   */
+
+  sig_deliver_t sigdeliver;
 #if CONFIG_TASK_NAME_SIZE > 0
   char name[CONFIG_TASK_NAME_SIZE + 1];  /* Task name (with NUL terminator) */
 #endif
@@ -832,15 +840,6 @@ typedef CODE void (*nxsched_foreach_t)(FAR struct tcb_s *tcb, FAR void *arg);
 
 #ifdef CONFIG_SMP
 typedef CODE int (*nxsched_smp_call_t)(FAR void *arg);
-
-struct smp_call_cookie_s;
-struct smp_call_data_s
-{
-  nxsched_smp_call_t            func;
-  FAR void                     *arg;
-  FAR struct smp_call_cookie_s *cookie;
-  sq_entry_t                    node[CONFIG_SMP_NCPUS];
-};
 #endif
 
 #endif /* __ASSEMBLY__ */
@@ -862,18 +861,12 @@ extern "C"
 /* Maximum time with pre-emption disabled or within critical section. */
 
 #if CONFIG_SCHED_CRITMONITOR_MAXTIME_PREEMPTION >= 0
-EXTERN clock_t g_preemp_max[CONFIG_SMP_NCPUS];
+EXTERN clock_t g_premp_max[CONFIG_SMP_NCPUS];
 #endif /* CONFIG_SCHED_CRITMONITOR_MAXTIME_PREEMPTION  >= 0 */
 
 #if CONFIG_SCHED_CRITMONITOR_MAXTIME_CSECTION >= 0
 EXTERN clock_t g_crit_max[CONFIG_SMP_NCPUS];
 #endif /* CONFIG_SCHED_CRITMONITOR_MAXTIME_CSECTION >= 0 */
-
-/* g_running_tasks[] holds a references to the running task for each CPU.
- * It is valid only when up_interrupt_context() returns true.
- */
-
-EXTERN FAR struct tcb_s *g_running_tasks[CONFIG_SMP_NCPUS];
 
 EXTERN const struct tcbinfo_s g_tcbinfo;
 
@@ -1713,34 +1706,16 @@ int nxsched_smp_call_handler(int irq, FAR void *context,
                              FAR void *arg);
 
 /****************************************************************************
- * Name: nxsched_smp_call_init
- *
- * Description:
- *   Init call_data
- *
- * Input Parameters:
- *   data - Call data
- *   func - Function
- *   arg  - Function args
- *
- * Returned Value:
- *   Result
- *
- ****************************************************************************/
-
-void nxsched_smp_call_init(FAR struct smp_call_data_s *data,
-                           nxsched_smp_call_t func, FAR void *arg);
-
-/****************************************************************************
  * Name: nxsched_smp_call_single
  *
  * Description:
- *   Call function on single processor, wait function callback
+ *   Call function on single processor
  *
  * Input Parameters:
  *   cpuid - Target cpu id
  *   func  - Function
  *   arg   - Function args
+ *   wait  - Wait function callback or not
  *
  * Returned Value:
  *   Result
@@ -1748,18 +1723,19 @@ void nxsched_smp_call_init(FAR struct smp_call_data_s *data,
  ****************************************************************************/
 
 int nxsched_smp_call_single(int cpuid, nxsched_smp_call_t func,
-                            FAR void *arg);
+                            FAR void *arg, bool wait);
 
 /****************************************************************************
  * Name: nxsched_smp_call
  *
  * Description:
- *   Call function on multi processors, wait function callback
+ *   Call function on multi processors
  *
  * Input Parameters:
  *   cpuset - Target cpuset
  *   func   - Function
  *   arg    - Function args
+ *   wait   - Wait function callback or not
  *
  * Returned Value:
  *   Result
@@ -1767,43 +1743,7 @@ int nxsched_smp_call_single(int cpuid, nxsched_smp_call_t func,
  ****************************************************************************/
 
 int nxsched_smp_call(cpu_set_t cpuset, nxsched_smp_call_t func,
-                     FAR void *arg);
-
-/****************************************************************************
- * Name: nxsched_smp_call_single_async
- *
- * Description:
- *   Call function on single processor async
- *
- * Input Parameters:
- *   cpuset - Target cpuset
- *   data   - Call data
- *
- * Returned Value:
- *   Result
- *
- ****************************************************************************/
-
-int nxsched_smp_call_single_async(int cpuid,
-                                  FAR struct smp_call_data_s *data);
-
-/****************************************************************************
- * Name: nxsched_smp_call_async
- *
- * Description:
- *   Call function on multi processors async
- *
- * Input Parameters:
- *   cpuset - Target cpuset
- *   data   - Call data
- *
- * Returned Value:
- *   Result
- *
- ****************************************************************************/
-
-int nxsched_smp_call_async(cpu_set_t cpuset,
-                           FAR struct smp_call_data_s *data);
+                     FAR void *arg, bool wait);
 #endif
 
 #undef EXTERN

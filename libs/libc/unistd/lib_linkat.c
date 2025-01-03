@@ -78,45 +78,25 @@
 int linkat(int olddirfd, FAR const char *path1,
            int newdirfd, FAR const char *path2, int flags)
 {
-  FAR char *oldfullpath;
-  FAR char *newfullpath;
+  char oldfullpath[PATH_MAX];
+  char newfullpath[PATH_MAX];
   int ret;
 
-  oldfullpath = lib_get_pathbuffer();
-  if (oldfullpath == NULL)
-    {
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
-  newfullpath = lib_get_pathbuffer();
-  if (newfullpath == NULL)
-    {
-      lib_put_pathbuffer(oldfullpath);
-      set_errno(ENOMEM);
-      return ERROR;
-    }
-
   ret = lib_getfullpath(olddirfd, path1,
-                        oldfullpath, PATH_MAX);
+                        oldfullpath, sizeof(oldfullpath));
   if (ret >= 0)
     {
       ret = lib_getfullpath(newdirfd, path2,
-                            newfullpath, PATH_MAX);
+                            newfullpath, sizeof(newfullpath));
     }
 
   if (ret < 0)
     {
-      lib_put_pathbuffer(oldfullpath);
-      lib_put_pathbuffer(newfullpath);
       set_errno(-ret);
       return ERROR;
     }
 
-  ret = link(oldfullpath, newfullpath);
-  lib_put_pathbuffer(oldfullpath);
-  lib_put_pathbuffer(newfullpath);
-  return ret;
+  return link(oldfullpath, newfullpath);
 }
 
 #endif /* CONFIG_PSEUDOFS_SOFTLINKS */

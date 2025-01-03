@@ -1,8 +1,7 @@
 /****************************************************************************
  * boards/arm/stm32f7/stm32f746-ws/src/stm32_dma_alloc.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2016 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2016 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

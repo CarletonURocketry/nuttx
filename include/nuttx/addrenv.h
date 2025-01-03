@@ -416,9 +416,6 @@ int addrenv_leave(FAR struct tcb_s *tcb);
  *   0 (OK) is returned on success and a negated errno is returned on
  *   failure.
  *
- * Note:
- *   This API is not safe to use from interrupt.
- *
  ****************************************************************************/
 
 int addrenv_select(FAR struct addrenv_s *addrenv,

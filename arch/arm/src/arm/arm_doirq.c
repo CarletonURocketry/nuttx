@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/arm/arm_doirq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -68,11 +66,13 @@ uint32_t *arm_doirq(int irq, uint32_t *regs)
 #else
   /* Nested interrupts are not supported */
 
-  DEBUGASSERT(!up_interrupt_context());
+  DEBUGASSERT(up_current_regs() == NULL);
 
-  /* Set irq flag */
+  /* Current regs non-zero indicates that we are processing an interrupt;
+   * current_regs is also used to manage interrupt level context switches.
+   */
 
-  up_set_interrupt_context(true);
+  up_set_current_regs(regs);
   tcb->xcp.regs = regs;
 
   /* Acknowledge the interrupt */
@@ -84,7 +84,12 @@ uint32_t *arm_doirq(int irq, uint32_t *regs)
   irq_dispatch(irq, regs);
   tcb = this_task();
 
-  /* Check for a context switch. */
+  /* Check for a context switch.  If a context switch occurred, then
+   * current_regs will have a different value than it did on entry.  If an
+   * interrupt level context switch has occurred, then restore the floating
+   * point state and the establish the correct address environment before
+   * returning from the interrupt.
+   */
 
   if (regs != tcb->xcp.regs)
     {
@@ -95,7 +100,7 @@ uint32_t *arm_doirq(int irq, uint32_t *regs)
        * thread at the head of the ready-to-run list.
        */
 
-      addrenv_switch(tcb);
+      addrenv_switch(NULL);
 #endif
 
       /* Update scheduler parameters */
@@ -113,9 +118,11 @@ uint32_t *arm_doirq(int irq, uint32_t *regs)
       regs = tcb->xcp.regs;
     }
 
-  /* Set irq flag */
+  /* Set current_regs to NULL to indicate that we are no longer in an
+   * interrupt handler.
+   */
 
-  up_set_interrupt_context(false);
+  up_set_current_regs(NULL);
 #endif
   board_autoled_off(LED_INIRQ);
   return regs;

@@ -1,8 +1,8 @@
 /****************************************************************************
  * crypto/rmd160.c
+ * $OpenBSD: rmd160.c,v 1.5 2011/01/11 15:42:05 deraadt Exp $
  *
- * SPDX-License-Identifier: BSD-2-Clause
- * SPDX-FileCopyrightText: 2001 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,9 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- ****************************************************************************/
-
-/****************************************************************************
  * Preneel, Bosselaers, Dobbertin,
  * "The Cryptographic Hash Function RIPEMD-160",
  * RSA Laboratories, CryptoBytes, Volume 3, Number 2, Autumn 1997,

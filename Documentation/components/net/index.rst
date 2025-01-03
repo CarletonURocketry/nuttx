@@ -16,8 +16,6 @@ Network Support
   netlink.rst
   slip.rst
   wqueuedeadlocks.rst
-  tcp_network_perf.rst
-  delay_act_and_tcp_perf.rst
 
 ``net`` Directory Structure ::
 

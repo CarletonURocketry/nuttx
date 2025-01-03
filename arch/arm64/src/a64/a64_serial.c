@@ -1,8 +1,6 @@
 /***************************************************************************
  * arch/arm64/src/a64/a64_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -268,12 +266,6 @@ struct a64_uart_port_s
   unsigned int irq_num;          /* UART IRQ Number */
   bool is_console;               /* 1 if this UART is console */
 };
-
-/***************************************************************************
- * Private Data
- ***************************************************************************/
-
-static spinlock_t g_a64_serial_lock = SP_UNLOCKED;
 
 /***************************************************************************
  * Private Function Prototypes
@@ -973,7 +965,7 @@ static int a64_uart_init(uint32_t gating, uint32_t rst, pio_pinset_t tx,
   irqstate_t flags;
   int ret = OK;
 
-  flags = spin_lock_irqsave(&g_a64_serial_lock);
+  flags = spin_lock_irqsave(NULL);
 
   /* Enable clocking to UART */
 
@@ -999,7 +991,7 @@ static int a64_uart_init(uint32_t gating, uint32_t rst, pio_pinset_t tx,
         }
     }
 
-  spin_unlock_irqrestore(&g_a64_serial_lock, flags);
+  spin_unlock_irqrestore(NULL, flags);
   return ret;
 };
 
@@ -1420,13 +1412,23 @@ void arm64_earlyserialinit(void)
  *
  ***************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef CONSOLE_DEV
   struct uart_dev_s *dev = &CONSOLE_DEV;
 
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      a64_uart_wait_send(dev, '\r');
+    }
+
   a64_uart_wait_send(dev, ch);
 #endif
+  return ch;
 }
 
 /***************************************************************************

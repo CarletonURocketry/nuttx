@@ -7,10 +7,8 @@ config ARCH_HAVE_CAN_ERRORS
 	bool
 	default n
 
-menu "CAN Driver Support"
-
-config CAN
-	bool "CAN Character Driver Support"
+menuconfig CAN
+	bool "CAN Driver Support"
 	default n
 	---help---
 		This selection enables building of the "upper-half" CAN driver.
@@ -34,14 +32,6 @@ config CAN_ERRORS
 		error reporting is enabled.  In the event of an error, the ch_error
 		bit will be set in the CAN message and the following message payload
 		will include a more detailed description of certain errors.
-
-config CAN_TIMESTAMP
-	bool "CAN timestamp reporting"
-	default n
-	---help---
-		Support CAN timestamp reporting. if this option is selected then
-		CAN timestamp reporting is enabled. in the CAN message the ch_ts
-		member variable will record the timestamp of each frame.
 
 config CAN_FD
 	bool "CAN FD"
@@ -70,15 +60,15 @@ config CAN_NPENDINGRTR
 		The size of the list of pending RTR requests. Default: 4
 
 config CAN_TXCONFIRM
-	bool "can txconfirm ability"
-	default n
-	---help---
-		this section enables the can txconfirm ability.
+        bool "can txconfirm ability"
+        default n
+        ---help---
+                this section enables the can txconfirm ability.
 
-		Enabling this feature adds support for the can txconfirm
-		ability, the ability is used from CAN interrupt handler
-		when the transfer is complete, the ability will notify all
-		readers that the canid has been transferred.
+                Enabling this feature adds support for the can txconfirm
+                ability, the ability is used from CAN interrupt handler
+                when the transfer is complete, the ability will notify all
+                readers that the canid has been transferred.
 
 config CAN_TXREADY
 	bool "can_txready interface"
@@ -127,12 +117,6 @@ config CAN_TXREADY
 		completes.  This is a sure indication that the H/W FIFO is
 		no longer full.  can_txready() will then awaken the
 		can_write() logic and the hang condition is avoided.
-
-config CAN_TXPRIORITY
-	bool "Prioritize sending based on canid"
-	default n
-	---help---
-		Prioritize sending based on canid.
 
 choice
 	prompt "TX Ready Work Queue"
@@ -269,64 +253,3 @@ config CAN_SJA1000_DEBUG
 endif # CAN_SJA1000
 
 endif # CAN
-
-config CAN_KVASER
-	bool "Kvaser PCI CAN card"
-	default n
-	depends on PCI
-	---help---
-		Enable driver support for Kvase PCI CAN card.
-		NOTE: for now works only with QEMU
-
-if CAN_KVASER
-
-choice
-	prompt "Kvaser PCI CAN device type"
-	default CAN_KVASER_CHARDEV if CAN
-	default CAN_KVASER_SOCKET if NET_CAN
-
-config CAN_KVASER_CHARDEV
-	bool "Kvaser PCI can device as chardev"
-	depends on CAN
-	select ARCH_HAVE_CAN_ERRORS
-
-config CAN_KVASER_SOCKET
-	bool "Kvaser PCI can device as socketCAN"
-	depends on NET_CAN
-	select NET_CAN_HAVE_ERRORS
-
-endchoice # "Kvaser PCI CAN device type"
-
-endif # CAN_KVASER
-
-config CAN_CTUCANFD
-	bool "CTUCANFD PCI CAN card"
-	default n
-	depends on PCI
-	---help---
-		Enable driver support for CTU CAN FD PCI card.
-		NOTE: for now works only with QEMU
-
-if CAN_CTUCANFD
-
-choice
-	prompt "CTU CAN FD PCI CAN device type"
-	default CAN_CTUCANFD_CHARDEV if CAN
-	default CAN_CTUCANFD_SOCKET if NET_CAN
-
-config CAN_CTUCANFD_CHARDEV
-	bool "CTU CAN FD PCI can device as chardev"
-	depends on CAN
-	select ARCH_HAVE_CAN_ERRORS
-
-config CAN_CTUCANFD_SOCKET
-	bool "CTU CAN FD PCI can device as socketCAN"
-	depends on NET_CAN
-	select NET_CAN_HAVE_ERRORS
-	select NET_CAN_HAVE_CANFD
-
-endchoice # "CTU CAN FD PCI CAN device type"
-
-endif # CAN_CTUCANFD
-
-endmenu # CAN Driver Support

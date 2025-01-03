@@ -39,7 +39,6 @@
 #include <nuttx/net/netdev.h>
 
 #include "netdev/netdev.h"
-#include "utils/utils.h"
 #include "devif/devif.h"
 
 /****************************************************************************
@@ -53,9 +52,11 @@
  * Private Data
  ****************************************************************************/
 
-NET_BUFPOOL_DECLARE(g_cbprealloc, sizeof(struct devif_callback_s),
-                    CONFIG_NET_PREALLOC_DEVIF_CALLBACKS,
-                    CONFIG_NET_ALLOC_DEVIF_CALLBACKS, 0);
+#if CONFIG_NET_PREALLOC_DEVIF_CALLBACKS > 0
+static struct devif_callback_s
+  g_cbprealloc[CONFIG_NET_PREALLOC_DEVIF_CALLBACKS];
+#endif
+static FAR struct devif_callback_s *g_cbfreelist = NULL;
 
 /****************************************************************************
  * Private Functions
@@ -87,7 +88,7 @@ static void devif_callback_free(FAR struct net_driver_s *dev,
 #ifdef CONFIG_DEBUG_FEATURES
       /* Check for double freed callbacks */
 
-      curr = (FAR struct devif_callback_s *)g_cbprealloc.freebuffers.head;
+      curr = g_cbfreelist;
 
       while (curr != NULL)
         {
@@ -186,9 +187,23 @@ static void devif_callback_free(FAR struct net_driver_s *dev,
             }
         }
 
-      /* Free the callback structure */
+      /* If this is a preallocated or a batch allocated callback store it in
+       * the free callbacks list. Else free it.
+       */
 
-      NET_BUFPOOL_FREE(g_cbprealloc, cb);
+#if CONFIG_NET_ALLOC_DEVIF_CALLBACKS == 1
+      if (cb < g_cbprealloc || cb >= (g_cbprealloc +
+          CONFIG_NET_PREALLOC_DEVIF_CALLBACKS))
+        {
+          kmm_free(cb);
+        }
+      else
+#endif
+        {
+          cb->nxtconn  = g_cbfreelist;
+          cb->nxtdev   = NULL;
+          g_cbfreelist = cb;
+        }
 
       net_unlock();
     }
@@ -251,7 +266,15 @@ static bool devif_event_trigger(uint16_t events, uint16_t triggers)
 
 void devif_callback_init(void)
 {
-  NET_BUFPOOL_INIT(g_cbprealloc);
+#if CONFIG_NET_PREALLOC_DEVIF_CALLBACKS > 0
+  int i;
+
+  for (i = 0; i < CONFIG_NET_PREALLOC_DEVIF_CALLBACKS; i++)
+    {
+      g_cbprealloc[i].nxtconn = g_cbfreelist;
+      g_cbfreelist = &g_cbprealloc[i];
+    }
+#endif
 }
 
 /****************************************************************************
@@ -276,6 +299,9 @@ FAR struct devif_callback_s *
                        FAR struct devif_callback_s **list_tail)
 {
   FAR struct devif_callback_s *ret;
+#if CONFIG_NET_ALLOC_DEVIF_CALLBACKS > 0
+  int i;
+#endif
 
   net_lock();
 
@@ -298,11 +324,34 @@ FAR struct devif_callback_s *
       return NULL;
     }
 
-  /* Get a callback structure */
+  /* Allocate the callback entry from heap */
 
-  ret = NET_BUFPOOL_TRYALLOC(g_cbprealloc);
+#if CONFIG_NET_ALLOC_DEVIF_CALLBACKS > 0
+  if (g_cbfreelist == NULL)
+    {
+      ret = kmm_zalloc(sizeof(struct devif_callback_s) *
+                       CONFIG_NET_ALLOC_DEVIF_CALLBACKS);
+      if (ret != NULL)
+        {
+          for (i = 0; i < CONFIG_NET_ALLOC_DEVIF_CALLBACKS; i++)
+            {
+              ret[i].nxtconn = g_cbfreelist;
+              g_cbfreelist = &ret[i];
+            }
+        }
+    }
+#endif
+
+  /* Check the head of the free list */
+
+  ret = g_cbfreelist;
   if (ret)
     {
+      /* Remove the next instance from the head of the free list */
+
+      g_cbfreelist = ret->nxtconn;
+      memset(ret, 0, sizeof(struct devif_callback_s));
+
       /* Add the newly allocated instance to the head of the device event
        * list.
        */

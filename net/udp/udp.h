@@ -43,11 +43,13 @@
 #  include <nuttx/wqueue.h>
 #endif
 
-#ifdef NET_UDP_HAVE_STACK
+#if defined(CONFIG_NET_UDP) && !defined(CONFIG_NET_UDP_NO_STACK)
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+
+#define NET_UDP_HAVE_STACK 1
 
 #ifdef CONFIG_NET_UDP_WRITE_BUFFERS
 /* UDP write buffer dump macros */
@@ -176,14 +178,6 @@ struct udp_wrbuffer_s
   FAR struct iob_s *wb_iob;        /* Head of the I/O buffer chain */
 };
 #endif
-
-struct udp_callback_s
-{
-  FAR struct net_driver_s *dev;
-  FAR struct udp_conn_s *conn;
-  FAR struct devif_callback_s *udp_cb;
-  FAR sem_t *sem;
-};
 
 /****************************************************************************
  * Public Data
@@ -734,19 +728,6 @@ uint16_t udp_callback(FAR struct net_driver_s *dev,
                       FAR struct udp_conn_s *conn, uint16_t flags);
 
 /****************************************************************************
- * Name: udp_callback_cleanup
- *
- * Description:
- *   Cleanup data and cb when thread is canceled.
- *
- * Input Parameters:
- *   arg - A pointer with conn and callback struct.
- *
- ****************************************************************************/
-
-void udp_callback_cleanup(FAR void *arg);
-
-/****************************************************************************
  * Name: psock_udp_recvfrom
  *
  * Description:
@@ -916,7 +897,7 @@ int udp_writebuffer_notifier_setup(worker_t worker,
  ****************************************************************************/
 
 #ifdef CONFIG_NET_UDP_NOTIFIER
-void udp_notifier_teardown(FAR void *key);
+void udp_notifier_teardown(int key);
 #endif
 
 /****************************************************************************
@@ -1044,5 +1025,5 @@ uint16_t udpip_hdrsize(FAR struct udp_conn_s *conn);
 }
 #endif
 
-#endif /* NET_UDP_HAVE_STACK */
+#endif /* CONFIG_NET_UDP && !CONFIG_NET_UDP_NO_STACK */
 #endif /* __NET_UDP_UDP_H */

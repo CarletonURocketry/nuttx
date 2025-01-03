@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/nrf91/nrf91_irq.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -178,6 +176,7 @@ static int nrf91_reserved(int irq, void *context, void *arg)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_ARMV8M_USEBASEPRI
 static inline void nrf91_prioritize_syscall(int priority)
 {
   uint32_t regval;
@@ -189,6 +188,7 @@ static inline void nrf91_prioritize_syscall(int priority)
   regval |= (priority << NVIC_SYSH_PRIORITY_PR11_SHIFT);
   putreg32(regval, NVIC_SYSH8_11_PRIORITY);
 }
+#endif
 
 /****************************************************************************
  * Name: nrf91_irqinfo
@@ -262,6 +262,9 @@ static int nrf91_irqinfo(int irq, uintptr_t *regaddr, uint32_t *bit,
 void up_irqinitialize(void)
 {
   uint32_t regaddr;
+#if defined(CONFIG_DEBUG_FEATURES) && !defined(CONFIG_ARMV8M_USEBASEPRI)
+  uint32_t regval;
+#endif
   int num_priority_registers;
   int i;
 
@@ -332,7 +335,9 @@ void up_irqinitialize(void)
 #  endif
 #endif
 
+#ifdef CONFIG_ARMV8M_USEBASEPRI
   nrf91_prioritize_syscall(NVIC_SYSH_SVCALL_PRIORITY);
+#endif
 
 #ifdef CONFIG_ARM_MPU
   /* If the MPU is enabled, then attach and enable the Memory Management
@@ -358,6 +363,17 @@ void up_irqinitialize(void)
 #endif
 
   nrf91_dumpnvic("initial", NRF91_IRQ_NIRQS);
+
+#if defined(CONFIG_DEBUG_FEATURES) && !defined(CONFIG_ARMV8M_USEBASEPRI)
+  /* If a debugger is connected, try to prevent it from catching hardfaults.
+   * If CONFIG_ARMV8M_USEBASEPRI, no hardfaults are expected in normal
+   * operation.
+   */
+
+  regval  = getreg32(NVIC_DEMCR);
+  regval &= ~NVIC_DEMCR_VCHARDERR;
+  putreg32(regval, NVIC_DEMCR);
+#endif
 
 #ifdef CONFIG_NRF91_GPIOTE
   /* Initialize GPIOTE */

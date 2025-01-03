@@ -1,7 +1,6 @@
 /****************************************************************************
  * drivers/i2c/tca9548a.c
- *
- * SPDX-License-Identifier: Apache-2.0
+ * Driver for the TCA9448A i2c multiplexer
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

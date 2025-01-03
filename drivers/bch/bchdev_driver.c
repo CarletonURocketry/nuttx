@@ -1,8 +1,6 @@
 /****************************************************************************
  * drivers/bch/bchdev_driver.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -82,9 +80,7 @@ const struct file_operations g_bch_fops =
   bch_ioctl,   /* ioctl */
   NULL,        /* mmap */
   NULL,        /* truncate */
-  bch_poll,    /* poll */
-  NULL,        /* readv */
-  NULL         /* writev */
+  bch_poll     /* poll */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   , bch_unlink /* unlink */
 #endif
@@ -459,13 +455,6 @@ static int bch_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
           if (bchinode->u.i_bops->ioctl != NULL)
             {
               ret = bchinode->u.i_bops->ioctl(bchinode, cmd, arg);
-
-              /* Drivers may not support command BIOC_FLUSH */
-
-              if (ret == -ENOTTY && cmd == BIOC_FLUSH)
-                {
-                  ret = 0;
-                }
             }
         }
         break;

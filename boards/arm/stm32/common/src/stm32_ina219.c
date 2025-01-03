@@ -1,9 +1,9 @@
 /****************************************************************************
  * boards/arm/stm32/common/src/stm32_ina219.c
  *
- * SPDX-License-Identifier: BSD-3-Clause
- * SPDX-FileCopyrightText: 2018 Erle Robotics (Juan Flores Muñoz).
- * SPDX-FileContributor: Juan Flores Muñoz <juan@erlerobotics.com>
+ *   Copyright (C) 2018 Erle Robotics (Juan Flores Muñoz). All rights
+ *     reserved.
+ *   Author: Erle Robotics (Juan Flores Muñoz) <juan@erlerobotics.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +45,7 @@
 #include <debug.h>
 #include <stdio.h>
 
+#include <nuttx/spi/spi.h>
 #include <nuttx/sensors/ina219.h>
 
 #include "stm32.h"

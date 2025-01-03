@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/imx6/imx_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -196,7 +194,6 @@ struct imx_uart_s
   uint32_t ucr1;        /* Saved UCR1 value */
   uint8_t  irq;         /* IRQ associated with this UART */
   uint8_t  parity;      /* 0=none, 1=odd, 2=even */
-  spinlock_t lock;      /* Spinlock */
   uint8_t  bits;        /* Number of bits (7 or 8) */
   uint8_t  stopbits2:1; /* 1: Configure with 2 stop bits vs 1 */
 #ifdef CONFIG_SERIAL_IFLOWCONTROL
@@ -296,7 +293,6 @@ static struct imx_uart_s g_uart1priv =
   .baud           = CONFIG_UART1_BAUD,
   .irq            = IMX_IRQ_UART1,
   .parity         = CONFIG_UART1_PARITY,
-  .lock           = SP_UNLOCKED,
   .bits           = CONFIG_UART1_BITS,
   .stopbits2      = CONFIG_UART1_2STOP,
 };
@@ -327,7 +323,6 @@ static struct imx_uart_s g_uart2priv =
   .baud           = CONFIG_UART2_BAUD,
   .irq            = IMX_IRQ_UART2,
   .parity         = CONFIG_UART2_PARITY,
-  .lock           = SP_UNLOCKED
   .bits           = CONFIG_UART2_BITS,
   .stopbits2      = CONFIG_UART2_2STOP,
 };
@@ -356,7 +351,6 @@ static struct imx_uart_s g_uart3priv =
   .baud           = IMX_UART3_VBASE,
   .irq            = IMX_IRQ_UART3,
   .parity         = CONFIG_UART3_PARITY,
-  .lock           = SP_UNLOCKED
   .bits           = CONFIG_UART3_BITS,
   .stopbits2      = CONFIG_UART3_2STOP,
 };
@@ -385,7 +379,6 @@ static struct imx_uart_s g_uart4priv =
   .baud           = IMX_UART4_VBASE,
   .irq            = IMX_IRQ_UART4,
   .parity         = CONFIG_UART4_PARITY,
-  .lock           = SP_UNLOCKED
   .bits           = CONFIG_UART4_BITS,
   .stopbits2      = CONFIG_UART4_2STOP,
 };
@@ -414,7 +407,6 @@ static struct imx_uart_s g_uart5priv =
   .baud           = IMX_UART5_VBASE,
   .irq            = IMX_IRQ_UART5,
   .parity         = CONFIG_UART5_PARITY,
-  .lock           = SP_UNLOCKED
   .bits           = CONFIG_UART5_BITS,
   .stopbits2      = CONFIG_UART5_2STOP,
 };
@@ -883,7 +875,7 @@ static int imx_ioctl(struct file *filep, int cmd, unsigned long arg)
              * implement TCSADRAIN / TCSAFLUSH
              */
 
-            flags  = spin_lock_irqsave(&priv->lock);
+            flags  = spin_lock_irqsave(NULL);
             imx_disableuartint(priv, &ie);
             ret = imx_setup(dev);
 
@@ -891,7 +883,7 @@ static int imx_ioctl(struct file *filep, int cmd, unsigned long arg)
 
             imx_restoreuartint(priv, ie);
             priv->ie = ie;
-            spin_unlock_irqrestore(&priv->lock, flags);
+            spin_unlock_irqrestore(NULL, flags);
           }
       }
       break;
@@ -1122,7 +1114,7 @@ void arm_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
   struct imx_uart_s *priv = (struct imx_uart_s *)CONSOLE_DEV.priv;
   uint32_t ier;
@@ -1132,8 +1124,20 @@ void up_putc(int ch)
    */
 
   imx_disableuartint(priv, &ier);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      imx_lowputc('\r');
+    }
+
   imx_lowputc(ch);
   imx_restoreuartint(priv, ier);
+
+  return ch;
 }
 
 #else /* USE_SERIALDRIVER */
@@ -1182,12 +1186,25 @@ static inline void imx_waittxready(void)
  * Public Functions
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef IMX_CONSOLE_VBASE
   imx_waittxready();
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      putreg32((uint16_t)'\r', IMX_CONSOLE_VBASE + UART_TXD_OFFSET);
+      imx_waittxready();
+    }
+
   putreg32((uint16_t)ch, IMX_CONSOLE_VBASE + UART_TXD_OFFSET);
 #endif
+
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/hc/src/m9s12/m9s12_gpio.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -33,7 +31,6 @@
 
 #include <nuttx/irq.h>
 #include <nuttx/arch.h>
-#include <nuttx/spinlock.h>
 
 #include "hc_internal.h"
 #include "m9s12.h"
@@ -135,8 +132,6 @@ struct mebi_portaddr_s
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-static spinlock_t g_configgpio_lock = SP_UNLOCKED;
 
 static const struct mebi_portaddr_s mebi_portaddr[HCS12_MEBI_NPORTS] =
 {
@@ -446,7 +441,7 @@ void hcs12_gpiowrite(uint16_t pinset, bool value)
 {
   uint8_t    portndx = HCS12_PORTNDX(pinset);
   uint8_t    pin     = HCS12_PIN(pinset);
-  irqstate_t flags   = spin_lock_irqsave(&g_configgpio_lock);
+  irqstate_t flags   = enter_critical_section();
 
   DEBUGASSERT((pinset & GPIO_DIRECTION) == GPIO_OUTPUT);
   if (HCS12_PIMPORT(pinset))
@@ -458,7 +453,7 @@ void hcs12_gpiowrite(uint16_t pinset, bool value)
       mebi_gpiowrite(portndx, pin, value);
     }
 
-  spin_unlock_irqrestore(&g_configgpio_lock, flags);
+  leave_critical_section(flags);
 }
 
 /****************************************************************************

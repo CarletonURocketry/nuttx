@@ -1,8 +1,6 @@
 /**************************************************************************
  * arch/x86_64/src/intel64/intel64_fullcontextrestore.S
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -132,12 +130,9 @@ x86_64_fullcontextrestore:
 
 	movq    (8*REG_RAX)(%rdi), %rax
 
-	/* Restore the correct value of RDI */
+	/* Restore the correct value of EAX and then return */
 
 	popq    %rdi
-
-	/* Pops 5 things at once: RIP, CS, RFLAGS RSP and SS */
-
 	iretq
 	.size x86_64_fullcontextrestore, . - x86_64_fullcontextrestore
 	.end

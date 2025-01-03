@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/cxd56xx/cxd56_hostif.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -149,9 +147,7 @@ static const struct file_operations g_hif_fops =
   hif_ioctl,   /* ioctl */
   NULL,        /* mmap */
   NULL,        /* truncate */
-  hif_poll,    /* poll */
-  NULL,        /* readv */
-  NULL         /* writev */
+  hif_poll     /* poll */
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
   , hif_unlink /* unlink */
 #endif

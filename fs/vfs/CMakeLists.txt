@@ -1,8 +1,6 @@
 # ##############################################################################
 # fs/vfs/CMakeLists.txt
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -44,7 +42,6 @@ set(SRCS
     fs_stat.c
     fs_sendfile.c
     fs_statfs.c
-    fs_uio.c
     fs_unlink.c
     fs_write.c
     fs_dir.c

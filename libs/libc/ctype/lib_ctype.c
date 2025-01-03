@@ -32,7 +32,7 @@
  * Macro Definitions
  ****************************************************************************/
 
-#ifndef CONFIG_LIBCXXTOOLCHAIN
+#if defined(_MSC_VER)
 
 /* MSVC seems to conflict with theses macro if defined in the public area.
  * As such, they are defined in the private section to let NuttX build
@@ -47,7 +47,7 @@
 #define _X  0100
 #define _B  0200
 
-#else
+#endif
 
 /****************************************************************************
  * Private Types
@@ -98,6 +98,3 @@ const char _ctype_[] =
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
-
-#endif
-

@@ -1,8 +1,6 @@
 /****************************************************************************
  * arch/arm/src/eoss3/eoss3_serial.c
  *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -583,16 +581,28 @@ void arm_serialinit(void)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
 #ifdef CONFIG_UART_SERIAL_CONSOLE
   struct eoss3_uart_s *priv = (struct eoss3_uart_s *)g_uartport.priv;
   uint32_t ie;
 
   eoss3_disableuartint(priv, &ie);
+
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      arm_lowputc('\r');
+    }
+
   arm_lowputc(ch);
   eoss3_restoreuartint(priv, ie);
 #endif
+
+  return ch;
 }
 
 #else /* USE_SERIALDRIVER */
@@ -605,11 +615,21 @@ void up_putc(int ch)
  *
  ****************************************************************************/
 
-void up_putc(int ch)
+int up_putc(int ch)
 {
+  /* Check for LF */
+
+  if (ch == '\n')
+    {
+      /* Add CR */
+
+      arm_lowputc('\r');
+    }
+
   /* Output the character */
 
   arm_lowputc(ch);
+  return ch;
 }
 
 #endif /* USE_SERIALDRIVER */

@@ -147,7 +147,8 @@ int nxtask_terminate(pid_t pid)
       CPU_SET(dtcb->cpu, &dtcb->affinity);
 
       ret = nxsched_smp_call_single(dtcb->cpu, terminat_handler,
-                                    (FAR void *)(uintptr_t)pid);
+                                    (FAR void *)(uintptr_t)pid,
+                                    true);
 
       if (ret < 0)
         {
