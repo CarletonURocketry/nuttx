@@ -62,4 +62,18 @@ config SIM_RNDIS_MACADDR
 		software-assigned MAC address MAC address must provided
 		with this selection.
 
+config SIM_FAKE_BARO
+	bool "Fake Barometic Sensor"
+	depends on SENSORS_FAKESENSOR
+	default n
+	---help---
+		Create a fakesensor for barometric data
+
+config FAKE_BARO_FILENAME
+	string "Fake Barometric Sensor Input File"
+	depends on SIM_FAKE_BARO
+	default "/usr/local/share/baro.csv"
+	---help---
+		The file to read fake barometric sensor data from
+
 endif

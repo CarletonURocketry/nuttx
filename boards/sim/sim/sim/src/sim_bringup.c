@@ -46,6 +46,7 @@
 #include <nuttx/sensors/fakesensor.h>
 #include <nuttx/sensors/mpu60x0.h>
 #include <nuttx/sensors/wtgahrs2.h>
+#include <nuttx/sensors/sensor.h>
 #include <nuttx/serial/uart_rpmsg.h>
 #include <nuttx/timers/oneshot.h>
 #include <nuttx/video/fb.h>
@@ -543,6 +544,14 @@ int sim_bringup(void)
   mac[4] = (CONFIG_SIM_RNDIS_MACADDR >> (8 * 1)) & 0xff;
   mac[5] = (CONFIG_SIM_RNDIS_MACADDR >> (8 * 0)) & 0xff;
   usbdev_rndis_initialize(mac);
+#endif
+
+#if defined(CONFIG_SIM_FAKE_BARO)
+  ret = fakesensor_init(SENSOR_TYPE_BAROMETER, CONFIG_FAKE_BARO_FILENAME, 0, 1);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "ERROR: fakesensor_init() failed: %d\n", ret);
+    }
 #endif
 
   return ret;
