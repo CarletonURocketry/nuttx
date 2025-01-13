@@ -1,10 +1,10 @@
-#include <nuttx/config.h>
+#include <nuttx/nuttx.h>
 
 #include <stdio.h>
 #include <assert.h>
 #include <errno.h>
 #include <time.h>
-#include "pac195x.h"; //temp
+#include "pac195x.h" //temp
 #include <nuttx/kmalloc.h>
 #include <nuttx/mutex.h>
 #include <nuttx/sensors/pac195x.h>
@@ -152,10 +152,12 @@ static int pac195x_send_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr)
 
     msg.frequency = CONFIG_PAC195x_I2C_FREQUENCY;
     msg.addr = priv->addr;
-    msg.buffer = reg_addr;
+    msg.buffer = &reg_addr;
     msg.length = 1;
 
-    ret = i2c_send_t(priv->i2c, msg, 1);
+    ret = I2C_TRANSFER(priv->i2c, &msg, 1);
+
+    return ret;
 }
 
 static int pac195x_write_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr, FAR uint8_t *data)
@@ -173,7 +175,7 @@ static int pac195x_write_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr, 
     msg.buffer = buffer;
     msg.length = 2;
 
-    ret = i2c_send_t(priv->i2c, msg, 1);
+    ret = I2C_TRANSFER(priv->i2c, &msg, 1);
 
     return ret;
 }
@@ -188,7 +190,7 @@ static int pac195x_receive_byte(FAR struct pac195x_dev_s *priv, FAR uint8_t *dat
     msg.buffer = data;
     msg.length = 1;
 
-    ret = i2c_send_t(priv->i2c, msg, 1);
+    ret = I2C_TRANSFER(priv->i2c, &msg, 1);
     return_err(ret);
 
     return ret;
@@ -211,7 +213,7 @@ static int pac195x_read_byte(FAR struct pac195x_dev_s *priv, uint8_t reg_addr, F
     msg[1].buffer = data;
     msg[1].length = 1;
 
-    ret = i2c_send_t(priv->i2c, msg, 2);
+    ret = I2C_TRANSFER(priv->i2c, msg, 2);
 
     return ret;
 }
@@ -233,7 +235,7 @@ static int pac195x_block_read(FAR struct pac195x_dev_s *priv, uint8_t reg_addr, 
     msg[1].buffer = data;
     msg[1].length = nbytes;
 
-    ret = i2c_send_t(priv->i2c, msg, 2);
+    ret = I2C_TRANSFER(priv->i2c, msg, 2);
 
     return ret;
 }
@@ -252,7 +254,7 @@ static int pac195x_block_write(FAR struct pac195x_dev_s *priv, uint8_t reg_addr,
     msg.buffer = buffer;
     msg.length = 2;
 
-    ret = i2c_send_t(priv->i2c, msg, 1);
+    ret = I2C_TRANSFER(priv->i2c, &msg, 1);
 
     return ret;
 }
@@ -312,6 +314,19 @@ static int pac195x_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 }
 
 /****************************************************************************
+ * Name: pac195x_get_prod_id
+ *
+ * Description:
+ *    Reads the product ID from the PAC195X into `id`. The value is chip model dependent.
+ *
+ ****************************************************************************/
+
+int pac195x_get_prod_id(FAR struct pac195x_dev_s *priv, uint8_t *id)
+{
+    return pac195x_read_byte(priv, PRODUCT_ID, id);
+}
+
+/****************************************************************************
  * Name: pac195x_read
  *
  * Description:
@@ -336,7 +351,8 @@ static ssize_t pac195x_read(FAR struct file *filep, FAR char *buffer,
     err = nxmutex_lock(&priv->devlock);
     return_err(err);
 
-    uint8_t whoami = pac195x_get_prod_id(priv, PRODUCT_ID);
+    uint8_t whoami;
+    whoami = pac195x_get_prod_id(priv, &whoami);
 
     length = snprintf(buffer, buflen, "WHOAMI: %02x\n", whoami);
 
@@ -361,19 +377,6 @@ static ssize_t pac195x_read(FAR struct file *filep, FAR char *buffer,
 int pac195x_get_manu_id(FAR struct pac195x_dev_s *priv, uint8_t *id)
 {
     return pac195x_read_byte(priv, MANUFACTURER_ID, id);
-}
-
-/****************************************************************************
- * Name: pac195x_get_manu_id
- *
- * Description:
- *    Reads the product ID from the PAC195X into `id`. The value is chip model dependent.
- *
- ****************************************************************************/
-
-int pac195x_get_prod_id(FAR struct pac195x_dev_s *priv, uint8_t *id)
-{
-    return pac195x_read_byte(priv, PRODUCT_ID, id);
 }
 
 /****************************************************************************
@@ -426,13 +429,15 @@ int pac195x_refresh_v(FAR struct pac195x_dev_s *priv)
 int pac195x_set_sample_mode(FAR struct pac195x_dev_s *priv, pac195x_sm_e mode)
 {
     uint8_t ctrl_reg;
-    int err = pac195x_read_byte(priv, CTRL, &ctrl_reg);
-    return_err(err);
+    int ret;
+
+    // read control register for sample mode
+    ret = pac195x_read_byte(priv, CTRL, &ctrl_reg);
 
     ctrl_reg &= ~(0xF0); // Clear upper 4 bits
     ctrl_reg |= mode;    // Set the mode
-    err = pac195x_write_byte(priv, CTRL, ctrl_reg);
-    return err;
+    ret = pac195x_write_byte(priv, CTRL, &ctrl_reg);
+    return ret;
 }
 
 /****************************************************************************
@@ -480,7 +485,7 @@ static int pac195x_get_16b_channel(FAR struct pac195x_dev_s *priv,
     if (n > 4 || n < 1)
         return EINVAL; // Invalid channel number
 
-    int8_t buf[2]; // Buffer for the 16-bit response
+    uint8_t buf[2]; // Buffer for the 16-bit response
     // Read 2 bytes from the given address (starting at reg_addr for channel n)
     int err = pac195x_block_read(priv, addr + (n - 1), 2, buf);
     return_err(err);
@@ -541,8 +546,8 @@ int pac195x_get_vbusnavg(FAR struct pac195x_dev_s *priv, uint8_t n,
  *
  ****************************************************************************/
 
-int pac195x_get_vsensen(FAR struct pac195x_dev_s *priv, uint8_t n,
-                        uint16_t *val)
+int pac195x_get_vsensenavg(FAR struct pac195x_dev_s *priv, uint8_t n,
+                           uint16_t *val)
 {
     return pac195x_get_16b_channel(priv, VSENSEN_AVG, n, val);
 }
@@ -577,8 +582,8 @@ int pac195x_register(FAR const char *devpath, FAR struct i2c_master_s *i2c,
     priv = kmm_zalloc(sizeof(struct pac195x_dev_s));
     if (priv == NULL)
     {
-        snerr("ERROR: Failed to allocate instance\n");
-        return -ENOMEM;
+        printf("ERROR: Failed to allocate instance\n");
+        return 0;
     }
     priv->i2c = i2c;
     priv->addr = addr;
@@ -600,7 +605,7 @@ int pac195x_register(FAR const char *devpath, FAR struct i2c_master_s *i2c,
     ret = register_driver(devpath, &g_pac195xfops, 0666, priv);
     if (ret < 0)
     {
-        snerr("ERROR: Failed to register driver: %d\n", ret);
+        printf("ERROR: Failed to register driver: \n");
         nxmutex_destroy(&priv->devlock);
         kmm_free(priv);
     }
