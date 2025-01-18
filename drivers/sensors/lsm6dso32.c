@@ -140,6 +140,37 @@ static int lsm6dso32_unlink(FAR struct inode *inode);
  * Private Data
  ****************************************************************************/
 
+/*Bit Masks for Setting Sample Rates*/
+static const uint8_t ODR_BIT_MASKS[12][2] =
+{
+  {0b00000000, 0b00001111},  //[LSM6DSO32_OFF] 
+  {0b00010000, 0b00011111},  //[LSM6DSO32_12_5HZ] 
+  {0b00100000, 0b00101111},  //[LSM6DSO32_26HZ] 
+  {0b00110000, 0b00111111},  //[LSM6DSO32_52HZ] 
+  {0b01000000, 0b01001111},  //[LSM6DSO32_104HZ] 
+  {0b01010000, 0b01011111},  //[LSM6DSO32_208HZ] 
+  {0b01100000, 0b01101111},  //[LSM6DSO32_416HZ] 
+  {0b01110000, 0b01111111},  //[LSM6DSO32_833HZ] 
+  {0b10000000, 0b10001111},  //[LSM6DSO32_1660HZ] 
+  {0b10010000, 0b10011111},  //[LSM6DSO32_3330HZ] 
+  {0b10100000, 0b10101111},  //[LSM6DSO32_6660HZ] 
+  {0b10110000, 0b10111111}   //[LSM6DSO32_1_6HZ] 
+};
+
+/*Bit Masks for Setting Resolutions*/
+static const uint8_t FSR_BIT_MASKS[5][2] =
+{ 
+  {0b00000000, 0b11110001},   //[LSM6DSO32_GYRO_250DPS] 
+  {0b00000100, 0b11110101},   //[LSM6DSO32_GYRO_500DPS] 
+  {0b00001000, 0b11111001},   //[LSM6DSO32_GYRO_1000DPS]
+  {0b00001100, 0b11111101},   //[LSM6DSO32_GYRO_2000DPS]
+  {0b00000010, 0b11110011}    //[LSM6DSO32_GYRO_125DPS] 
+};
+
+/*Store the current FSR levels for conversion of raw data*/
+static int gyro_fsr_level = 2;
+static int accel_fsr_level = 1;
+
 static const struct file_operations g_lsm6dso32fops = {
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
     .open = lsm6dso32_open,
@@ -252,6 +283,107 @@ static int lsm6dso32_read_bytes(struct lsm6dso32_dev_s *priv, uint8_t addr,
   return I2C_TRANSFER(priv->i2c, cmd, 2);
 }
 
+/****************************************************************************
+ * Name: lsm6dso32_set_bits
+ *
+ * Description:
+ *   Read current value of desired register and change specified bits
+ *   while preserving previous ones.
+ *
+ * Input Parameters:
+ *   priv    - The instance of the LSM6DSO32 sensor.
+ *   addr    - The register address being changed.
+ *   set_bits - A mask of the bits to be set to 1.
+ *   clear_bits  - A mask of the bits to be set to 0.
+ *
+ * Returned Value:
+ *   Zero (OK) on success; a negated errno value on failure.
+ *
+ ****************************************************************************/
+
+static int lsm6dso32_set_bits(struct lsm6dso32_dev_s *priv, uint8_t addr,
+                                uint8_t set_bits, uint8_t clear_bits)
+{
+  int err;
+  uint8_t reg;
+  err = lsm6dso32_read_bytes(priv, addr, &reg, sizeof(reg));
+  if (err < 0)
+    {
+      return err;
+    }
+  reg = (reg & clear_bits) | set_bits;
+  err = lsm6dso32_write_bytes(priv, addr, &reg, sizeof(reg));
+  if (err < 0)
+    {
+      return err;
+    }
+  return 0;
+}
+
+/****************************************************************************
+ * Name: lsm6dso32_read_raw_data
+ *
+ * Description:
+ *   Read raw acceleration and rotational data of the sensor.
+ *
+ * Input Parameters:
+ *   priv    - The instance of the LSM6DSO32 sensor.
+ *   raw_data    - The structure to store the data in.
+ *
+ * Returned Value:
+ *   Zero (OK) on success; a negated errno value on failure.
+ *
+ ****************************************************************************/
+
+static int lsm6dso32_read_raw_data(struct lsm6dso32_dev_s *priv, struct lsm6dso32_data_raw_s *raw_data)
+{
+  int err;
+  uint8_t register_data[12];
+  // Read all data registers into array
+  err = lsm6dso32_read_bytes(priv, OUTX_L_G, &register_data, sizeof(register_data));
+  if (err < 0)
+    {
+      return err;
+    }
+  raw_data->pitch_raw = register_data[0] | (register_data[1]<<8);
+  raw_data->roll_raw = register_data[2] | (register_data[3]<<8);
+  raw_data->yaw_raw = register_data[4] | (register_data[5]<<8);
+  raw_data->x_accel_raw = register_data[6] | (register_data[7]<<8);
+  raw_data->y_accel_raw = register_data[8] | (register_data[9]<<8);
+  raw_data->z_accel_raw = register_data[10] | (register_data[11]<<8);
+  return 0;
+}
+
+/****************************************************************************
+ * Name: lsm6dso32_convert_raw_data
+ *
+ * Description:
+ *   Convert raw acceleration and rotational data of the sensor to actual values.
+ *
+ * Input Parameters:
+ *   raw_data    - The structure containing the raw data.
+ *   conv_data   - The structure to store the converted data.
+ *
+ ****************************************************************************/
+
+static void lsm6dso32_convert_raw_data(struct lsm6dso32_data_raw_s *raw_data, struct lsm6dso32_data_s *conv_data)
+{
+  conv_data->pitch = (raw_data->pitch_raw)*4.375*gyro_fsr_level;
+  conv_data->roll = (raw_data->roll_raw)*4.375*gyro_fsr_level;
+  conv_data->yaw = (raw_data->yaw_raw)*4.375*gyro_fsr_level;
+  conv_data->x_accel = (raw_data->x_accel_raw)*0.122*accel_fsr_level;
+  conv_data->y_accel = (raw_data->y_accel_raw)*0.122*accel_fsr_level;
+  conv_data->z_accel = (raw_data->z_accel_raw)*0.122*accel_fsr_level;
+  return;
+}
+
+/****************************************************************************
+ * Name: lsm6dso32_open
+ *
+ * Description:
+ *   This function is called whenever the lsm6dso32 device is opened.
+ *
+ ****************************************************************************/
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
 static int lsm6dso32_open(FAR struct file *filep)
 {
@@ -276,6 +408,14 @@ static int lsm6dso32_open(FAR struct file *filep)
   return 0;
 }
 #endif // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
+
+/****************************************************************************
+ * Name: lsm6dso32_close
+ *
+ * Description:
+ *   This function is called whenever the lsm6dso32 device is closed.
+ *
+ ****************************************************************************/
 
 #ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
 static int lsm6dso32_close(FAR struct file *filep)
@@ -311,6 +451,13 @@ static int lsm6dso32_close(FAR struct file *filep)
 }
 #endif // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
 
+/****************************************************************************
+ * Name: lsm6dso32_write
+ *
+ * Description:
+ *     Not implemented.
+ ****************************************************************************/
+
 static ssize_t lsm6dso32_write(FAR struct file *filep, FAR const char *buffer,
                                size_t buflen)
 {
@@ -318,6 +465,13 @@ static ssize_t lsm6dso32_write(FAR struct file *filep, FAR const char *buffer,
   return -ENOSYS;
 }
 
+/****************************************************************************
+ * Name: lsm6dso32_read
+ *
+ * Description:
+ *     Character driver interface to sensor for debugging.
+ *
+ ****************************************************************************/
 static ssize_t lsm6dso32_read(FAR struct file *filep, FAR char *buffer,
                               size_t buflen)
 {
@@ -352,19 +506,31 @@ static ssize_t lsm6dso32_read(FAR struct file *filep, FAR char *buffer,
       return 0;
     }
 #endif
-
-  // TODO: implementation of returning some data (probably accel and gyro
-  // values)
-  // For now returning WHO_AM_I
-  uint8_t whoami = 0;
-  err = lsm6dso32_read_bytes(priv, WHO_AM_I, &whoami, sizeof(whoami));
+  //Configure Accelerometer and Gyroscope to normal mode (104Hz)
+  int8_t control = 0x40;
+  err = lsm6dso32_write_bytes(priv, CTRL1_XL, &control, sizeof(control));
   if (err < 0)
     {
       nxmutex_unlock(&priv->devlock);
       return err;
     }
-
-  length = snprintf(buffer, buflen, "WHOAMI: %02x\n", whoami);
+  gyro_fsr_level = 2;
+  err = lsm6dso32_write_bytes(priv, CTRL2_G, &control, sizeof(control));
+  if (err < 0)
+    {
+      nxmutex_unlock(&priv->devlock);
+      return err;
+    }
+  accel_fsr_level = 1;
+  //read and convert data
+  extern struct lsm6dso32_data_raw_s raw_data;
+  extern struct lsm6dso32_data_s data;
+  lsm6dso32_read_raw_data(priv, &raw_data);
+  lsm6dso32_convert_raw_data(&raw_data, &data);
+  
+  length = snprintf(buffer, buflen, 
+  "X: %dmg Y: %dmg Z: %dmg Pitch: %dmd/s Roll: %dmd/s Yaw: %dmd/s\n", 
+  data.x_accel, data.y_accel, data.z_accel, data.pitch, data.roll, data.yaw);
   if (length > buflen)
     {
       length = buflen;
@@ -408,7 +574,48 @@ static int lsm6dso32_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       err = lsm6dso32_read_bytes(priv, WHO_AM_I, (uint8_t *)(arg),
                                  sizeof(uint8_t));
       break;
-
+    case SNIOC_SETSAMPLERATE:
+      if (arg > 11 && arg <= 22){
+        err = lsm6dso32_set_bits(priv, CTRL2_G, ODR_BIT_MASKS[arg-12][0],
+                                 ODR_BIT_MASKS[arg-12][1]);
+      } else if (arg >= 0) {
+        err = lsm6dso32_set_bits(priv, CTRL1_XL, ODR_BIT_MASKS[arg][0],
+                                 ODR_BIT_MASKS[arg][1]);
+      } else {
+        err = -EINVAL;
+      }
+      break;
+    case SNIOC_SET_RESOLUTION:
+      if (arg > 4 && arg <= 8){
+        err = lsm6dso32_set_bits(priv, CTRL1_XL, FSR_BIT_MASKS[arg-5][0],
+                                 FSR_BIT_MASKS[arg-5][1]);
+        if (err == 0) {
+          accel_fsr_level = arg - 4;
+        }
+      } else if (arg >= 0) {
+        err = lsm6dso32_set_bits(priv, CTRL2_G, FSR_BIT_MASKS[arg][0],
+                                 FSR_BIT_MASKS[arg][1]);
+        if (err == 0) {
+          if (arg == 4) {
+            gyro_fsr_level = 1;
+          } else {
+            gyro_fsr_level = arg + 2;
+          }
+        }
+      } else {
+        err = -EINVAL;
+      }
+      break;
+    case SNIOC_READ_RAW_DATA:
+      err = lsm6dso32_read_raw_data(priv, ((FAR struct lsm6dso32_data_raw_s *)(arg)));
+      break;
+    case SNIOC_READ_CONVERT_DATA:
+      {
+        extern struct lsm6dso32_data_raw_s raw_data;
+        err = lsm6dso32_read_raw_data(priv, &raw_data);
+        lsm6dso32_convert_raw_data(&raw_data, ((FAR struct lsm6dso32_data_s *)(arg)));
+      }
+      break;
     default:
       err = -EINVAL;
       break;
