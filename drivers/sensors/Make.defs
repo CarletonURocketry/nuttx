@@ -282,7 +282,7 @@ ifeq ($(CONFIG_SENSORS_SHT4X),y)
 endif
 
 ifeq ($(CONFIG_SENSORS_LSM6DSO32),y)
-  CSRCS += lsm6dso32.c
+  CSRCS += lsm6dso32_uorb.c
 endif
 
 ifeq ($(CONFIG_SENSORS_SPS30),y)

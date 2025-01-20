@@ -55,41 +55,6 @@ struct lsm6dso32_data_raw_s
   int16_t z_accel_raw;
 };
 
-/* Accelerometer Sample Rate Levels for IOCTL commands. */
-
-enum lsm6dso32_Accel_ODR_levels_e
-{
-  LSM6DSO32_ACCEL_OFF = 0,  /* Sensor Deactivated */
-  LSM6DSO32_ACCEL_12_5HZ = 1, /* 12.5Hz Rate. */
-  LSM6DSO32_ACCEL_26HZ = 1, /* 26Hz Rate. */
-  LSM6DSO32_ACCEL_52HZ = 3, /* 52Hz Rate. */
-  LSM6DSO32_ACCEL_104HZ = 4, /* 104Hz Rate */
-  LSM6DSO32_ACCEL_208HZ = 5, /* 208Hz Rate */
-  LSM6DSO32_ACCEL_416HZ = 6, /* 416Hz Rate */
-  LSM6DSO32_ACCEL_833HZ = 7, /* 833Hz Rate */
-  LSM6DSO32_ACCEL_1660HZ = 8, /* 1.66kHz Rate */
-  LSM6DSO32_ACCEL_3330HZ = 9, /* 3.33kHz Rate */
-  LSM6DSO32_ACCEL_6660HZ = 10, /* 6.66kHz Rate */
-  LSM6DSO32_ACCEL_1_6HZ = 11,  /* 1.6Hz Rate */
-};
-
-/* Gyroscope Sample Rate Levels for IOCTL commands. */
-
-enum lsm6dso32_Gyro_ODR_levels_e
-{
-  LSM6DSO32_GYRO_OFF = 12,  /* Sensor Deactivated */
-  LSM6DSO32_GYRO_12_5HZ = 13, /* 12.5Hz Rate. */
-  LSM6DSO32_GYRO_26HZ = 14, /* 26Hz Rate. */
-  LSM6DSO32_GYRO_52HZ = 15, /* 52Hz Rate. */
-  LSM6DSO32_GYRO_104HZ = 16, /* 104Hz Rate */
-  LSM6DSO32_GYRO_208HZ = 17, /* 208Hz Rate */
-  LSM6DSO32_GYRO_416HZ = 18, /* 416Hz Rate */
-  LSM6DSO32_GYRO_833HZ = 19, /* 833Hz Rate */
-  LSM6DSO32_GYRO_1660HZ = 20, /* 1.66kHz Rate */
-  LSM6DSO32_GYRO_3330HZ = 21, /* 3.33kHz Rate */
-  LSM6DSO32_GYRO_6660HZ = 22, /* 6.66kHz Rate */
-};
-
 /* Gyroscope Resolution Levels for IOCTL commands. */
 
 enum lsm6dso32_Gyro_FSR_levels_e
@@ -98,7 +63,7 @@ enum lsm6dso32_Gyro_FSR_levels_e
   LSM6DSO32_GYRO_500DPS = 1,  /* +-500dps Precision */
   LSM6DSO32_GYRO_1000DPS = 2, /* +-1000dps Precision */
   LSM6DSO32_GYRO_2000DPS = 3, /* +-2000dps Precision */
-  LSM6DSO32_GYRO_125DPS = 4, /* +-125dps Precision */
+  LSM6DSO32_GYRO_125DPS = 4,  /* +-125dps Precision */
 };
 
 /* Accelerometer Resolution Levels for IOCTL commands. */
@@ -106,8 +71,8 @@ enum lsm6dso32_Gyro_FSR_levels_e
 enum lsm6dso32_Accel_FSR_levels_e
 {
   LSM6DSO32_ACCEL_4g = 5,  /* +-4g Precision */
-  LSM6DSO32_ACCEL_32g = 6,  /* +-32g Precision */
-  LSM6DSO32_ACCEL_8g = 7, /* +-8g Precision. */
+  LSM6DSO32_ACCEL_32g = 6, /* +-32g Precision */
+  LSM6DSO32_ACCEL_8g = 7,  /* +-8g Precision. */
   LSM6DSO32_ACCEL_16g = 8, /* +-16g Precision. */
 };
 

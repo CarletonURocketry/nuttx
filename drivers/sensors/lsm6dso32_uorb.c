@@ -1,5 +1,5 @@
 /****************************************************************************
- * drivers/sensors/lsm6dso32.c
+ * drivers/sensors/lsm6dso32_uorb.c
  *
  * Contributed by Carleton University InSpace
  *
@@ -24,47 +24,62 @@
  * Included Files
  ****************************************************************************/
 
-#include <debug.h>
+#include <cassert>
 #include <nuttx/config.h>
+#include <nuttx/nuttx.h>
+
+#include <debug.h>
+
 #include <nuttx/fs/fs.h>
 #include <nuttx/i2c/i2c_master.h>
 #include <nuttx/kmalloc.h>
+#include <nuttx/kthread.h>
 #include <nuttx/mutex.h>
 #include <nuttx/random.h>
+#include <nuttx/semaphore.h>
 #include <nuttx/sensors/lsm6dso32.h>
-
-#include <stdio.h>
-#include <unistd.h>
-
-#define CONFIG_I2C
-#define CONFIG_SENSORS_LSM6DSO32
-#if defined(CONFIG_I2C) && defined(CONFIG_SENSORS_LSM6DSO32)
+#include <nuttx/sensors/sensor.h>
+#include <nuttx/signal.h>
+#include <sys/types.h>
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
 /* The value that should be in the WHO_AM_I register. */
+
 #define WHO_AM_I_VAL 0x6c
 
 #ifndef CONFIG_LSM6DSO32_I2C_FREQUENCY
-#define CONFIG_LSM6DSO32_I2C_FREQUENCY 40000
+#define CONFIG_LSM6DSO32_I2C_FREQUENCY 400000
 #endif // CONFIG_LSM6DSO32_I2C_FREQUENCY
 
 /****************************************************************************
  * Private
  ****************************************************************************/
 
+/* Represents a lower half sensor driver of the LSM6DSO32 */
+
+struct lsm6dso32_sens_s
+{
+  FAR struct sensor_lowerhalf_s lower; /* Lower-half sensor driver */
+  FAR struct lsm6dso32_dev_s *dev;     /* Reference to parent device */
+  bool enabled;                        /* If this sensor is enabled */
+  uint32_t interval;                   /* Measurement interval of this
+                                        * sensor */
+  uint32_t fsr;                        /* Full scale range of this sensor */
+  FAR struct lsm6dso32_dev_s *dev;     /* Reference to parent device */
+};
+
+/* Represents the LSM6DSO23 IMU device */
+
 struct lsm6dso32_dev_s
 {
-  FAR struct i2c_master_s *i2c; /* I2C interface. */
-  uint8_t addr;                 /* I2C address. */
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-  bool unlinked; /* True, driver has been unlinked. */
-#endif           // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-  int16_t crefs; /* Number of open references. */
-#endif           // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
+  struct lsm6dso32_sens_s gyro;  /* Gyroscope */
+  struct lsm6dso32_sens_s accel; /* Accelerometer lower half */
+  struct lsm6dso32_sens_s temp;  /* Temperature lower half */
+  FAR struct i2c_master_s *i2c;  /* I2C interface. */
+  uint8_t addr;                  /* I2C address. */
   mutex_t devlock;
 };
 
@@ -122,73 +137,88 @@ enum lsm6dso32_reg
                      * for linear acceleration. */
 };
 
+/* ODRs common to the accelerometer and the gyroscope */
+
+enum lsm6dso32_odr_e
+{
+  ODR_OFF = 0x0,    /* Sensor Deactivated */
+  ODR_12_5HZ = 0x1, /* 12.5Hz Rate. */
+  ODR_26HZ = 0x2,   /* 26Hz Rate. */
+  ODR_52HZ = 0x3,   /* 52Hz Rate. */
+  ODR_104HZ = 0x4,  /* 104Hz Rate */
+  ODR_208HZ = 0x5,  /* 208Hz Rate */
+  ODR_416HZ = 0x6,  /* 416Hz Rate */
+  ODR_833HZ = 0x7,  /* 833Hz Rate */
+  ODR_1660HZ = 0x8, /* 1.66kHz Rate */
+  ODR_3330HZ = 0x9, /* 3.33kHz Rate */
+  ODR_6660HZ = 0xa, /* 6.66kHz Rate */
+  ODR_1_6HZ = 0xb,  /* 1.6Hz Rate */
+};
+
 /****************************************************************************
  * Private Function Prototypes
  ****************************************************************************/
 
-static int lsm6dso32_open(FAR struct file *filep);
-static int lsm6dso32_close(FAR struct file *filep);
-static ssize_t lsm6dso32_write(FAR struct file *filep, FAR const char *buffer,
-                               size_t buflen);
-static ssize_t lsm6dso32_read(FAR struct file *filep, FAR char *buffer,
-                              size_t buflen);
-static int lsm6dso32_ioctl(FAR struct file *filep, int cmd,
-                           unsigned long arg);
-static int lsm6dso32_unlink(FAR struct inode *inode);
+static int lsm6dso32_control(FAR struct file *filep, int cmd,
+                             unsigned long arg);
+static int lsm6dso32_activate(FAR struct sensor_lowerhalf_s *lower,
+                              FAR struct file *filep, bool enable);
+static int lsm6dso32_set_interval(FAR struct sensor_lowerhalf_s *lower,
+                                  FAR struct file *filep,
+                                  FAR uint32_t *period_us);
+static int lsm6dso32_fetch(FAR struct sensor_lowerhalf_s *lower,
+                           FAR struct file *filep, FAR char *buffer,
+                           size_t buflen);
+static int lsm6dso32_selftest(FAR struct sensor_lowerhalf_s *lower,
+                              FAR struct file *filep, unsigned long arg);
+static int lsm6dso32_set_calibvalue(FAR struct sensor_lowerhalf_s *lower,
+                                    FAR struct file *filep,
+                                    unsigned long arg);
+static int lsm6dso32_calibrate(FAR struct sensor_lowerhalf_s *lower,
+                               FAR struct file *filep, unsigned long arg);
+static int lsm6dso32_get_info(FAR struct sensor_lowerhalf_s *lower,
+                              FAR struct file *filep,
+                              FAR struct sensor_device_info_s *info);
 
 /****************************************************************************
  * Private Data
  ****************************************************************************/
 
-/*Bit Masks for Setting Sample Rates*/
-static const uint8_t ODR_BIT_MASKS[12][2] =
-{
-  {0b00000000, 0b00001111},  //[LSM6DSO32_OFF] 
-  {0b00010000, 0b00011111},  //[LSM6DSO32_12_5HZ] 
-  {0b00100000, 0b00101111},  //[LSM6DSO32_26HZ] 
-  {0b00110000, 0b00111111},  //[LSM6DSO32_52HZ] 
-  {0b01000000, 0b01001111},  //[LSM6DSO32_104HZ] 
-  {0b01010000, 0b01011111},  //[LSM6DSO32_208HZ] 
-  {0b01100000, 0b01101111},  //[LSM6DSO32_416HZ] 
-  {0b01110000, 0b01111111},  //[LSM6DSO32_833HZ] 
-  {0b10000000, 0b10001111},  //[LSM6DSO32_1660HZ] 
-  {0b10010000, 0b10011111},  //[LSM6DSO32_3330HZ] 
-  {0b10100000, 0b10101111},  //[LSM6DSO32_6660HZ] 
-  {0b10110000, 0b10111111}   //[LSM6DSO32_1_6HZ] 
+/* Bit masks for setting sample rates */
+
+static const uint8_t ODR_BIT_MASKS[12][2] = {
+    {0b00000000, 0b00001111}, //[LSM6DSO32_OFF]
+    {0b00010000, 0b00011111}, //[LSM6DSO32_12_5HZ]
+    {0b00100000, 0b00101111}, //[LSM6DSO32_26HZ]
+    {0b00110000, 0b00111111}, //[LSM6DSO32_52HZ]
+    {0b01000000, 0b01001111}, //[LSM6DSO32_104HZ]
+    {0b01010000, 0b01011111}, //[LSM6DSO32_208HZ]
+    {0b01100000, 0b01101111}, //[LSM6DSO32_416HZ]
+    {0b01110000, 0b01111111}, //[LSM6DSO32_833HZ]
+    {0b10000000, 0b10001111}, //[LSM6DSO32_1660HZ]
+    {0b10010000, 0b10011111}, //[LSM6DSO32_3330HZ]
+    {0b10100000, 0b10101111}, //[LSM6DSO32_6660HZ]
+    {0b10110000, 0b10111111}  //[LSM6DSO32_1_6HZ]
 };
 
-/*Bit Masks for Setting Resolutions*/
-static const uint8_t FSR_BIT_MASKS[5][2] =
-{ 
-  {0b00000000, 0b11110001},   //[LSM6DSO32_GYRO_250DPS] 
-  {0b00000100, 0b11110101},   //[LSM6DSO32_GYRO_500DPS] 
-  {0b00001000, 0b11111001},   //[LSM6DSO32_GYRO_1000DPS]
-  {0b00001100, 0b11111101},   //[LSM6DSO32_GYRO_2000DPS]
-  {0b00000010, 0b11110011}    //[LSM6DSO32_GYRO_125DPS] 
+/* Bit masks for setting resolutions */
+
+static const uint8_t FSR_BIT_MASKS[5][2] = {
+    {0b00000000, 0b11110001}, //[LSM6DSO32_GYRO_250DPS]
+    {0b00000100, 0b11110101}, //[LSM6DSO32_GYRO_500DPS]
+    {0b00001000, 0b11111001}, //[LSM6DSO32_GYRO_1000DPS]
+    {0b00001100, 0b11111101}, //[LSM6DSO32_GYRO_2000DPS]
+    {0b00000010, 0b11110011}  //[LSM6DSO32_GYRO_125DPS]
 };
 
-/*Store the current FSR levels for conversion of raw data*/
-static int gyro_fsr_level = 2;
-static int accel_fsr_level = 1;
-
-static const struct file_operations g_lsm6dso32fops = {
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-    .open = lsm6dso32_open,
-    .close = lsm6dso32_close,
-#else
-    .open = NULL,
-    .close = NULL,
-#endif
-    .read = lsm6dso32_read,
-    .write = lsm6dso32_write,
-    .seek = NULL,
-    .ioctl = lsm6dso32_ioctl,
-    .mmap = NULL,
-    .truncate = NULL,
-    .poll = NULL,
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-    .unlink = lsm6dso32_unlink,
-#endif
+static const struct sensor_ops_s g_sensor_ops = {
+    .fetch = NULL, // TODO optionally null
+    .control = lsm6dso32_control,
+    .set_interval = lsm6dso32_set_interval,
+    .selftest = lsm6dso32_selftest,
+    .set_calibvalue = lsm6dso32_set_calibvalue,
+    .calibrate = lsm6dso32_calibrate,
+    .get_info = lsm6dso32_get_info,
 };
 
 /****************************************************************************
@@ -302,7 +332,7 @@ static int lsm6dso32_read_bytes(struct lsm6dso32_dev_s *priv, uint8_t addr,
  ****************************************************************************/
 
 static int lsm6dso32_set_bits(struct lsm6dso32_dev_s *priv, uint8_t addr,
-                                uint8_t set_bits, uint8_t clear_bits)
+                              uint8_t set_bits, uint8_t clear_bits)
 {
   int err;
   uint8_t reg;
@@ -335,22 +365,24 @@ static int lsm6dso32_set_bits(struct lsm6dso32_dev_s *priv, uint8_t addr,
  *
  ****************************************************************************/
 
-static int lsm6dso32_read_raw_data(struct lsm6dso32_dev_s *priv, struct lsm6dso32_data_raw_s *raw_data)
+static int lsm6dso32_read_raw_data(struct lsm6dso32_dev_s *priv,
+                                   struct lsm6dso32_data_raw_s *raw_data)
 {
   int err;
   uint8_t register_data[12];
   // Read all data registers into array
-  err = lsm6dso32_read_bytes(priv, OUTX_L_G, &register_data, sizeof(register_data));
+  err = lsm6dso32_read_bytes(priv, OUTX_L_G, &register_data,
+                             sizeof(register_data));
   if (err < 0)
     {
       return err;
     }
-  raw_data->pitch_raw = register_data[0] | (register_data[1]<<8);
-  raw_data->roll_raw = register_data[2] | (register_data[3]<<8);
-  raw_data->yaw_raw = register_data[4] | (register_data[5]<<8);
-  raw_data->x_accel_raw = register_data[6] | (register_data[7]<<8);
-  raw_data->y_accel_raw = register_data[8] | (register_data[9]<<8);
-  raw_data->z_accel_raw = register_data[10] | (register_data[11]<<8);
+  raw_data->pitch_raw = register_data[0] | (register_data[1] << 8);
+  raw_data->roll_raw = register_data[2] | (register_data[3] << 8);
+  raw_data->yaw_raw = register_data[4] | (register_data[5] << 8);
+  raw_data->x_accel_raw = register_data[6] | (register_data[7] << 8);
+  raw_data->y_accel_raw = register_data[8] | (register_data[9] << 8);
+  raw_data->z_accel_raw = register_data[10] | (register_data[11] << 8);
   return 0;
 }
 
@@ -358,7 +390,8 @@ static int lsm6dso32_read_raw_data(struct lsm6dso32_dev_s *priv, struct lsm6dso3
  * Name: lsm6dso32_convert_raw_data
  *
  * Description:
- *   Convert raw acceleration and rotational data of the sensor to actual values.
+ *   Convert raw acceleration and rotational data of the sensor to actual
+ *values.
  *
  * Input Parameters:
  *   raw_data    - The structure containing the raw data.
@@ -366,103 +399,215 @@ static int lsm6dso32_read_raw_data(struct lsm6dso32_dev_s *priv, struct lsm6dso3
  *
  ****************************************************************************/
 
-static void lsm6dso32_convert_raw_data(struct lsm6dso32_data_raw_s *raw_data, struct lsm6dso32_data_s *conv_data)
+static void lsm6dso32_convert_raw_data(struct lsm6dso32_data_raw_s *raw_data,
+                                       struct lsm6dso32_data_s *conv_data)
 {
-  conv_data->pitch = (raw_data->pitch_raw)*4.375*gyro_fsr_level;
-  conv_data->roll = (raw_data->roll_raw)*4.375*gyro_fsr_level;
-  conv_data->yaw = (raw_data->yaw_raw)*4.375*gyro_fsr_level;
-  conv_data->x_accel = (raw_data->x_accel_raw)*0.122*accel_fsr_level;
-  conv_data->y_accel = (raw_data->y_accel_raw)*0.122*accel_fsr_level;
-  conv_data->z_accel = (raw_data->z_accel_raw)*0.122*accel_fsr_level;
+  conv_data->pitch = (raw_data->pitch_raw) * 4.375 * gyro_fsr_level;
+  conv_data->roll = (raw_data->roll_raw) * 4.375 * gyro_fsr_level;
+  conv_data->yaw = (raw_data->yaw_raw) * 4.375 * gyro_fsr_level;
+  conv_data->x_accel = (raw_data->x_accel_raw) * 0.122 * accel_fsr_level;
+  conv_data->y_accel = (raw_data->y_accel_raw) * 0.122 * accel_fsr_level;
+  conv_data->z_accel = (raw_data->z_accel_raw) * 0.122 * accel_fsr_level;
   return;
 }
 
 /****************************************************************************
- * Name: lsm6dso32_open
+ * Name: lsm6dso32_activate
+ ****************************************************************************/
+
+static int lsm6dso32_activate(FAR struct sensor_lowerhalf_s *lower,
+                              FAR struct file *filep, bool enable)
+{
+  FAR struct lsm6dso32_sens_s *sens =
+      container_of(lower, FAR struct lsm6dso32_sens_s, lower);
+  FAR struct lsm6dso32_dev_s *dev = sens->dev;
+  int err;
+}
+
+/****************************************************************************
+ * Name: accel_set_odr
  *
  * Description:
- *   This function is called whenever the lsm6dso32 device is opened.
- *
+ *      Sets the accelerometer ODR.
  ****************************************************************************/
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-static int lsm6dso32_open(FAR struct file *filep)
+
+static int accel_set_odr(FAR struct lsm6dso32_dev_s *dev,
+                         enum lsm6dso32_odr_e odr)
 {
-  // TODO: implementation
-
-  FAR struct inode *inode = filep->f_inode;
-  FAR struct lsm6dso32_dev_s *priv = inode->i_private;
   int err;
+  uint8_t ctrl = 0;
 
-  err = nxmutex_lock(&priv->devlock);
+  err = lsm6dso32_read_bytes(dev, CTRL1_XL, &ctrl, sizeof(ctrl));
+
   if (err < 0)
     {
       return err;
     }
 
-  /* Increment the count of open references on the driver */
+  /* Modify register */
 
-  priv->crefs++;
-  DEBUGASSERT(priv->crefs > 0);
+  ctrl &= 0x0F;       /* Clear ODR bits */
+  ctrl &= (odr << 4); /* Set ODR bits */
 
-  nxmutex_unlock(&priv->devlock);
-  return 0;
+  return lsm6dso32_write_bytes(dev, CTRL1_XL, &ctrl, sizeof(ctrl));
 }
-#endif // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
 
 /****************************************************************************
- * Name: lsm6dso32_close
+ * Name: gyro_set_odr
  *
  * Description:
- *   This function is called whenever the lsm6dso32 device is closed.
- *
+ *      Sets the gyroscope ODR.
  ****************************************************************************/
 
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-static int lsm6dso32_close(FAR struct file *filep)
+static int gyro_set_odr(FAR struct lsm6dso32_dev_s *dev,
+                        enum lsm6dso32_odr_e odr)
 {
-  FAR struct inode *inode = filep->f_inode;
-  FAR struct lsm6dso32_dev_s *priv = inode->i_private;
-  int err;
+  DEBUGASSERT(odr != ODR_1_6HZ); /* Invalid setting for gyroscope */
 
-  err = nxmutex_lock(&priv->devlock);
+  int err;
+  uint8_t ctrl = 0;
+
+  err = lsm6dso32_read_bytes(dev, CTRL2_G, &ctrl, sizeof(ctrl));
+
   if (err < 0)
     {
       return err;
     }
 
-  /* Decrement the count of open references on the driver */
+  /* Modify register */
 
-  DEBUGASSERT(priv->crefs > 0);
-  priv->crefs--;
+  ctrl &= 0x0F;       /* Clear ODR bits */
+  ctrl &= (odr << 4); /* Set ODR bits */
 
-  /* If the count has decremented to zero and the driver has been unlinked,
-   * then free memory now.
-   */
-
-  if (priv->crefs <= 0 && priv->unlinked)
-    {
-      nxmutex_destroy(&priv->devlock);
-      kmm_free(priv);
-      return 0;
-    }
-
-  nxmutex_unlock(&priv->devlock);
-  return 0;
+  return lsm6dso32_write_bytes(dev, CTRL2_G, &ctrl, sizeof(ctrl));
 }
-#endif // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
 
 /****************************************************************************
- * Name: lsm6dso32_write
- *
- * Description:
- *     Not implemented.
+ * Name: lsm6dso32_set_interval
  ****************************************************************************/
 
-static ssize_t lsm6dso32_write(FAR struct file *filep, FAR const char *buffer,
-                               size_t buflen)
+static int lsm6dso32_set_interval(FAR struct sensor_lowerhalf_s *lower,
+                                  FAR struct file *filep,
+                                  FAR uint32_t *period_us)
 {
-  // TODO: implementation (is one necessary?)
-  return -ENOSYS;
+  FAR struct lsm6dso32_sens_s *sens =
+      container_of(lower, FAR struct lsm6dso32_sens_s, lower);
+  FAR struct lsm6dso32_dev_s *dev = sens->dev;
+  int err;
+  enum lsm6dso32_odr_e odr;
+
+  if (*period_us >= 625000 && lower->type == SENSOR_TYPE_ACCELEROMETER)
+    {
+
+      /* 1.6Hz is requested and this is the accelerometer: if we're low power
+       * mode 1.6Hz will apply, but if we're in high performance mode then the
+       * nearest rate of 12.5Hz will be chosen.
+       */
+    }
+  else if (*period_us >= 80000)
+    {
+      odr = ODR_12_5HZ;
+      *period_us = 80000;
+    }
+  else if (*period_us >= 38462 && *period_us < 80000)
+    {
+      odr = ODR_26HZ;
+      *period_us = 38462;
+    }
+  else if (*period_us >= 19231 && *period_us < 38462)
+    {
+      odr = ODR_52HZ;
+      *period_us = 19231;
+    }
+  else if (*period_us >= 9615 && *period_us < 19231)
+    {
+      odr = ODR_104HZ;
+      *period_us = 9615;
+    }
+  else if (*period_us >= 4808 && *period_us < 9615)
+    {
+      odr = ODR_208HZ;
+      *period_us = 4808;
+    }
+  else if (*period_us >= 2404 && *period_us < 4808)
+    {
+      odr = ODR_416HZ;
+      *period_us = 2404;
+    }
+  else if (*period_us >= 1200 && *period_us < 2404)
+    {
+      odr = ODR_833HZ;
+      *period_us = 1200;
+    }
+  else if (*period_us >= 602 && *period_us < 1200)
+    {
+      odr = ODR_1660HZ;
+      *period_us = 602;
+    }
+  else if (*period_us >= 300 && *period_us < 602)
+    {
+      odr = ODR_3330HZ;
+      *period_us = 300;
+    }
+  else
+    {
+      odr = ODR_6660HZ;
+      *period_us = 150;
+    }
+
+  if (lower->type == SENSOR_TYPE_ACCELEROMETER)
+    {
+      err = accel_set_odr(dev, odr);
+    }
+  else if (lower->type == SENSOR_TYPE_GYROSCOPE)
+    {
+      err = gyro_set_odr(dev, odr);
+    }
+
+  /* Only set the interval value if successful */
+
+  if (err == 0)
+    {
+      sens->interval = *period_us;
+    }
+
+  return err;
+}
+
+/****************************************************************************
+ * Name: lsm6dso32_set_info
+ ****************************************************************************/
+
+static int lsm6dso32_get_info(FAR struct sensor_lowerhalf_s *lower,
+                              FAR struct file *filep,
+                              FAR struct sensor_device_info_s *info)
+{
+  FAR struct lsm6dso32_sens_s *sens =
+      container_of(lower, FAR struct lsm6dso32_sens_s, lower);
+
+  info->version = 0;
+  info->power = 0.55f; /* 0.55mA in high performance */
+  memcpy(info->name, "LSM6DSO32", sizeof("LSM6DSO32"));
+  memcpy(info->vendor, "STM", sizeof("STM"));
+
+  // TODO fifo
+
+  if (lower->type == SENSOR_TYPE_GYROSCOPE)
+    {
+      // TODO max range from FSR
+      // TODO resolution from FSR
+    }
+  else if (lower->type == SENSOR_TYPE_ACCELEROMETER)
+    {
+      // TODO max range from FSR
+      // TODO resolution from FSR
+    }
+  else if (lower->type == SENSOR_TYPE_AMBIENT_TEMPERATURE)
+    {
+      // TODO resolution
+      sensor->min_delay = 19230.77f; /* 52Hz */
+      sensor->max_delay = 19230.77f; /* 52Hz */
+    }
 }
 
 /****************************************************************************
@@ -472,6 +617,7 @@ static ssize_t lsm6dso32_write(FAR struct file *filep, FAR const char *buffer,
  *     Character driver interface to sensor for debugging.
  *
  ****************************************************************************/
+
 static ssize_t lsm6dso32_read(FAR struct file *filep, FAR char *buffer,
                               size_t buflen)
 {
@@ -506,7 +652,7 @@ static ssize_t lsm6dso32_read(FAR struct file *filep, FAR char *buffer,
       return 0;
     }
 #endif
-  //Configure Accelerometer and Gyroscope to normal mode (104Hz)
+  // Configure Accelerometer and Gyroscope to normal mode (104Hz)
   int8_t control = 0x40;
   err = lsm6dso32_write_bytes(priv, CTRL1_XL, &control, sizeof(control));
   if (err < 0)
@@ -522,15 +668,17 @@ static ssize_t lsm6dso32_read(FAR struct file *filep, FAR char *buffer,
       return err;
     }
   accel_fsr_level = 1;
-  //read and convert data
+  // read and convert data
   extern struct lsm6dso32_data_raw_s raw_data;
   extern struct lsm6dso32_data_s data;
   lsm6dso32_read_raw_data(priv, &raw_data);
   lsm6dso32_convert_raw_data(&raw_data, &data);
-  
-  length = snprintf(buffer, buflen, 
-  "X: %dmg Y: %dmg Z: %dmg Pitch: %dmd/s Roll: %dmd/s Yaw: %dmd/s\n", 
-  data.x_accel, data.y_accel, data.z_accel, data.pitch, data.roll, data.yaw);
+
+  length = snprintf(
+      buffer, buflen,
+      "X: %dmg Y: %dmg Z: %dmg Pitch: %dmd/s Roll: %dmd/s Yaw: %dmd/s\n",
+      data.x_accel, data.y_accel, data.z_accel, data.pitch, data.roll,
+      data.yaw);
   if (length > buflen)
     {
       length = buflen;
@@ -541,7 +689,12 @@ static ssize_t lsm6dso32_read(FAR struct file *filep, FAR char *buffer,
   return length;
 }
 
-static int lsm6dso32_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
+/****************************************************************************
+ * Name: lsm6dso32_control
+ ****************************************************************************/
+
+static int lsm6dso32_control(FAR struct file *filep, int cmd,
+                             unsigned long arg)
 {
 
   FAR struct inode *inode = filep->f_inode;
@@ -554,18 +707,6 @@ static int lsm6dso32_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       return err;
     }
 
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-  if (priv->unlinked)
-    {
-      /* Do not allow operations on unlinked sensors. This allows
-       * sensor use on hot swappable I2C bus.
-       */
-
-      nxmutex_unlock(&priv->devlock);
-      return -ENODEV;
-    }
-#endif
-
   switch (cmd)
     {
 
@@ -575,45 +716,63 @@ static int lsm6dso32_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
                                  sizeof(uint8_t));
       break;
     case SNIOC_SETSAMPLERATE:
-      if (arg > 11 && arg <= 22){
-        err = lsm6dso32_set_bits(priv, CTRL2_G, ODR_BIT_MASKS[arg-12][0],
-                                 ODR_BIT_MASKS[arg-12][1]);
-      } else if (arg >= 0) {
-        err = lsm6dso32_set_bits(priv, CTRL1_XL, ODR_BIT_MASKS[arg][0],
-                                 ODR_BIT_MASKS[arg][1]);
-      } else {
-        err = -EINVAL;
-      }
+      if (arg > 11 && arg <= 22)
+        {
+          err = lsm6dso32_set_bits(priv, CTRL2_G, ODR_BIT_MASKS[arg - 12][0],
+                                   ODR_BIT_MASKS[arg - 12][1]);
+        }
+      else if (arg >= 0)
+        {
+          err = lsm6dso32_set_bits(priv, CTRL1_XL, ODR_BIT_MASKS[arg][0],
+                                   ODR_BIT_MASKS[arg][1]);
+        }
+      else
+        {
+          err = -EINVAL;
+        }
       break;
-    case SNIOC_SET_RESOLUTION:
-      if (arg > 4 && arg <= 8){
-        err = lsm6dso32_set_bits(priv, CTRL1_XL, FSR_BIT_MASKS[arg-5][0],
-                                 FSR_BIT_MASKS[arg-5][1]);
-        if (err == 0) {
-          accel_fsr_level = arg - 4;
+
+    case SNIOC_SETFULLSCALE:
+      if (arg > 4 && arg <= 8)
+        {
+          err = lsm6dso32_set_bits(priv, CTRL1_XL, FSR_BIT_MASKS[arg - 5][0],
+                                   FSR_BIT_MASKS[arg - 5][1]);
+          if (err == 0)
+            {
+              accel_fsr_level = arg - 4;
+            }
         }
-      } else if (arg >= 0) {
-        err = lsm6dso32_set_bits(priv, CTRL2_G, FSR_BIT_MASKS[arg][0],
-                                 FSR_BIT_MASKS[arg][1]);
-        if (err == 0) {
-          if (arg == 4) {
-            gyro_fsr_level = 1;
-          } else {
-            gyro_fsr_level = arg + 2;
-          }
+      else if (arg >= 0)
+        {
+          err = lsm6dso32_set_bits(priv, CTRL2_G, FSR_BIT_MASKS[arg][0],
+                                   FSR_BIT_MASKS[arg][1]);
+          if (err == 0)
+            {
+              if (arg == 4)
+                {
+                  gyro_fsr_level = 1;
+                }
+              else
+                {
+                  gyro_fsr_level = arg + 2;
+                }
+            }
         }
-      } else {
-        err = -EINVAL;
-      }
+      else
+        {
+          err = -EINVAL;
+        }
       break;
     case SNIOC_READ_RAW_DATA:
-      err = lsm6dso32_read_raw_data(priv, ((FAR struct lsm6dso32_data_raw_s *)(arg)));
+      err = lsm6dso32_read_raw_data(
+          priv, ((FAR struct lsm6dso32_data_raw_s *)(arg)));
       break;
     case SNIOC_READ_CONVERT_DATA:
       {
         extern struct lsm6dso32_data_raw_s raw_data;
         err = lsm6dso32_read_raw_data(priv, &raw_data);
-        lsm6dso32_convert_raw_data(&raw_data, ((FAR struct lsm6dso32_data_s *)(arg)));
+        lsm6dso32_convert_raw_data(&raw_data,
+                                   ((FAR struct lsm6dso32_data_s *)(arg)));
       }
       break;
     default:
@@ -625,10 +784,6 @@ static int lsm6dso32_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
   return err;
 }
 
-#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-static int lsm6dso32_unlink(FAR struct inode *inode) { return -ENOSYS; }
-#endif // CONFIG_DISABLE_PSEUDOFS_OPERATIONS
-
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
@@ -637,27 +792,29 @@ static int lsm6dso32_unlink(FAR struct inode *inode) { return -ENOSYS; }
  * Name: lsm6dso32_register
  *
  * Description:
- *   Register the LSM6DSO32 character device as 'devpath'
+ *   Register the LSM6DSO32 character device as a UORB sensor with accel, gyro
+ *   and temperature
  *
  * Input Parameters:
- *   devpath - The full path to the driver to register. E.g., "/dev/imu0"
  *   i2c     - An instance of the I2C interface to use to communicate with
  *             the LSM6DSO32
  *   addr    - The I2C address of the LSM6DSO32.
+ *   devno   - The device number for the UORB topics registered (i.e.
+ *             sensor_accel<n>)
  *
  * Returned Value:
  *   Zero (OK) on success; a negated errno value on failure.
  *
  ****************************************************************************/
 
-int lsm6dso32_register(FAR const char *devpath, FAR struct i2c_master_s *i2c,
-                       uint8_t addr)
+int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
+                       uint8_t devno)
 {
   FAR struct lsm6dso32_dev_s *priv;
   int err;
 
   DEBUGASSERT(i2c != NULL);
-  // TODO: assert address is one of the valid LSM6DSO32 addresses
+  DEBUGASSERT(addr == 0x6b || addr == 0x6c);
 
   /* Initialize the device structure */
 
@@ -671,6 +828,8 @@ int lsm6dso32_register(FAR const char *devpath, FAR struct i2c_master_s *i2c,
   priv->i2c = i2c;
   priv->addr = addr;
 
+  /* Create mutex */
+
   err = nxmutex_init(&priv->devlock);
   if (err < 0)
     {
@@ -679,17 +838,70 @@ int lsm6dso32_register(FAR const char *devpath, FAR struct i2c_master_s *i2c,
       return err;
     }
 
-  /* Register the character driver */
+  /* Create gyro lower half */
 
-  err = register_driver(devpath, &g_lsm6dso32fops, 0666, priv);
+  priv->gyro.lower.type = SENSOR_TYPE_GYROSCOPE;
+  priv->gyro.lower.ops = &g_sensor_ops;
+  priv->gyro.lower.nbuffer = -1;
+  priv->gyro.lower.uncalibrated = false;
+  priv->gyro.lower.enabled = false;
+  priv->gyro.dev = priv;
+
+  err = sensor_register(&priv->gyro.lower, devno);
+  if (err < 0)
+    {
+      snerr("Failed to register LSM6DSO32 gyroscope lower half: %d\n", err);
+      goto del_mutex;
+    }
+
+  /* Create accel lower half */
+
+  priv->accel.lower.type = SENSOR_TYPE_ACCELEROMETER;
+  priv->accel.lower.ops = &g_sensor_ops;
+  priv->accel.lower.nbuffer = -1;
+  priv->accel.lower.uncalibrated = false;
+  priv->accel.lower.enabled = false;
+  priv->accel.dev = priv;
+
+  err = sensor_register(&priv->accel.lower, devno);
+  if (err < 0)
+    {
+      snerr("Failed to register LSM6DSO32 accelerometer lower half: %d\n",
+            err);
+      goto unreg_gyro;
+    }
+
+  /* Create temperature lower half */
+
+  priv->temp.lower.type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
+  priv->temp.lower.ops = &g_sensor_ops;
+  priv->temp.lower.nbuffer = -1;
+  priv->temp.lower.uncalibrated = false;
+  priv->temp.lower.enabled = false;
+  priv->temp.dev = priv;
+
+  err = sensor_register(&priv->temp.lower, devno);
+  if (err < 0)
+    {
+      snerr("Failed to register LSM6DSO32 temperature lower half: %d\n", err);
+      goto unreg_accel;
+    }
+
+  /* Register interrupt TODO */
+
   if (err < 0)
     {
       snerr("ERROR: Failed to register LSM6DSO32 driver: %d\n", err);
+    unreg_temp:
+      sensor_unregister(&priv->temp.lower, devno);
+    unreg_accel:
+      sensor_unregister(&priv->accel.lower, devno);
+    unreg_gyro:
+      sensor_unregister(&priv->gyro.lower, devno);
+    del_mutex:
       nxmutex_destroy(&priv->devlock);
       kmm_free(priv);
     }
 
   return err;
 }
-
-#endif // defined(CONFIG_I2C) && defined(CONFIG_SENSORS_LSM6DSO32)
