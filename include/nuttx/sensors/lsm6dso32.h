@@ -55,25 +55,25 @@ struct lsm6dso32_data_raw_s
   int16_t z_accel_raw;
 };
 
-/* Gyroscope Resolution Levels for IOCTL commands. */
+/* Gyroscope FSRs */
 
-enum lsm6dso32_Gyro_FSR_levels_e
+enum lsm6dso32_gyro_fsr_e
 {
-  LSM6DSO32_GYRO_250DPS = 0,  /* +-250dps Precision */
-  LSM6DSO32_GYRO_500DPS = 1,  /* +-500dps Precision */
-  LSM6DSO32_GYRO_1000DPS = 2, /* +-1000dps Precision */
-  LSM6DSO32_GYRO_2000DPS = 3, /* +-2000dps Precision */
-  LSM6DSO32_GYRO_125DPS = 4,  /* +-125dps Precision */
+  LSM6DSO32_GYRO_250DPS = 0x0,  /* +-250dps Precision */
+  LSM6DSO32_GYRO_500DPS = 0x2,  /* +-500dps Precision */
+  LSM6DSO32_GYRO_1000DPS = 0x4, /* +-1000dps Precision */
+  LSM6DSO32_GYRO_2000DPS = 0x6, /* +-2000dps Precision */
+  LSM6DSO32_GYRO_125DPS = 0x1,  /* +-125dps Precision */
 };
 
-/* Accelerometer Resolution Levels for IOCTL commands. */
+/* Accelerometer FSRs */
 
-enum lsm6dso32_Accel_FSR_levels_e
+enum lsm6dso32_accel_fsr_levels_e
 {
-  LSM6DSO32_ACCEL_4g = 5,  /* +-4g Precision */
-  LSM6DSO32_ACCEL_32g = 6, /* +-32g Precision */
-  LSM6DSO32_ACCEL_8g = 7,  /* +-8g Precision. */
-  LSM6DSO32_ACCEL_16g = 8, /* +-16g Precision. */
+  LSM6DSO32_ACCEL_4G = 5,  /* +-4g Precision */
+  LSM6DSO32_ACCEL_32G = 6, /* +-32g Precision */
+  LSM6DSO32_ACCEL_8G = 7,  /* +-8g Precision. */
+  LSM6DSO32_ACCEL_16G = 8, /* +-16g Precision. */
 };
 
 /****************************************************************************

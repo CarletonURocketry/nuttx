@@ -496,6 +496,12 @@ static int lsm6dso32_set_interval(FAR struct sensor_lowerhalf_s *lower,
   int err;
   enum lsm6dso32_odr_e odr;
 
+  if (lower->type == SENSOR_TYPE_AMBIENT_TEMPERATURE)
+    {
+      *period_us = 19231; /* 52Hz fixed */
+      return 0;
+    }
+
   if (*period_us >= 625000 && lower->type == SENSOR_TYPE_ACCELEROMETER)
     {
 
@@ -843,8 +849,8 @@ int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
   priv->gyro.lower.type = SENSOR_TYPE_GYROSCOPE;
   priv->gyro.lower.ops = &g_sensor_ops;
   priv->gyro.lower.nbuffer = -1;
-  priv->gyro.lower.uncalibrated = false;
   priv->gyro.lower.enabled = false;
+  priv->gyro.interval = 0; /* Default off */
   priv->gyro.dev = priv;
 
   err = sensor_register(&priv->gyro.lower, devno);
@@ -859,8 +865,8 @@ int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
   priv->accel.lower.type = SENSOR_TYPE_ACCELEROMETER;
   priv->accel.lower.ops = &g_sensor_ops;
   priv->accel.lower.nbuffer = -1;
-  priv->accel.lower.uncalibrated = false;
   priv->accel.lower.enabled = false;
+  priv->accel.interval = 0; /* Default off */
   priv->accel.dev = priv;
 
   err = sensor_register(&priv->accel.lower, devno);
@@ -876,8 +882,8 @@ int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
   priv->temp.lower.type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
   priv->temp.lower.ops = &g_sensor_ops;
   priv->temp.lower.nbuffer = -1;
-  priv->temp.lower.uncalibrated = false;
   priv->temp.lower.enabled = false;
+  priv->temp.interval = 19231; /* Fixed 52Hz */
   priv->temp.dev = priv;
 
   err = sensor_register(&priv->temp.lower, devno);
