@@ -39,11 +39,11 @@ struct i2c_master_s; /* Forward reference */
 
 enum lsm6dso32_fsr_gyro_e
 {
-  LSM6DSO32_GYRO_250DPS = 0x0,  /* +-250dps */
-  LSM6DSO32_GYRO_125DPS = 0x1,  /* +-125dps */
-  LSM6DSO32_GYRO_500DPS = 0x2,  /* +-500dps */
-  LSM6DSO32_GYRO_1000DPS = 0x4, /* +-1000dps */
-  LSM6DSO32_GYRO_2000DPS = 0x6, /* +-2000dps */
+  LSM6DSO32_FSR_GY_250DPS = 0x0,  /* +-250dps */
+  LSM6DSO32_FSR_GY_125DPS = 0x1,  /* +-125dps */
+  LSM6DSO32_FSR_GY_500DPS = 0x2,  /* +-500dps */
+  LSM6DSO32_FSR_GY_1000DPS = 0x4, /* +-1000dps */
+  LSM6DSO32_FSR_GY_2000DPS = 0x6, /* +-2000dps */
 };
 
 /* Accelerometer FSRs */

@@ -193,11 +193,11 @@ static const float FSR_XL_SENS[] = {
 /* Gyro FSR sensitivities in rad/s per LSB */
 
 static const float FSR_GYRO_SENS[] = {
-    [LSM6DSO32_GYRO_250DPS] = 4.375f * DPS_TO_RADS,
-    [LSM6DSO32_GYRO_125DPS] = 8.75f * DPS_TO_RADS,
-    [LSM6DSO32_GYRO_500DPS] = 17.50f * DPS_TO_RADS,
-    [LSM6DSO32_GYRO_1000DPS] = 35.0f * DPS_TO_RADS,
-    [LSM6DSO32_GYRO_2000DPS] = 70.0f * DPS_TO_RADS,
+    [LSM6DSO32_FSR_GY_250DPS] = 4.375f * DPS_TO_RADS,
+    [LSM6DSO32_FSR_GY_125DPS] = 8.75f * DPS_TO_RADS,
+    [LSM6DSO32_FSR_GY_500DPS] = 17.50f * DPS_TO_RADS,
+    [LSM6DSO32_FSR_GY_1000DPS] = 35.0f * DPS_TO_RADS,
+    [LSM6DSO32_FSR_GY_2000DPS] = 70.0f * DPS_TO_RADS,
 };
 
 /* Sensor operations */
@@ -524,71 +524,6 @@ static int lsm6dso32_read_accel(FAR struct lsm6dso32_dev_s *dev,
 }
 
 /****************************************************************************
- * Name: lsm6dso32_read_raw_data
- *
- * Description:
- *   Read raw acceleration and rotational data of the sensor.
- *
- * Input Parameters:
- *   priv    - The instance of the LSM6DSO32 sensor.
- *   raw_data    - The structure to store the data in.
- *
- * Returned Value:
- *   Zero (OK) on success; a negated errno value on failure.
- *
- ****************************************************************************/
-
-static int lsm6dso32_read_raw_data(struct lsm6dso32_dev_s *priv,
-                                   struct lsm6dso32_data_raw_s *raw_data)
-{
-  int err;
-  uint8_t register_data[12];
-
-  /* Read all data registers into array */
-
-  err = lsm6dso32_read_bytes(priv, OUTX_L_G, &register_data,
-                             sizeof(register_data));
-  if (err < 0)
-    {
-      return err;
-    }
-
-  raw_data->pitch_raw = register_data[0] | (register_data[1] << 8);
-  raw_data->roll_raw = register_data[2] | (register_data[3] << 8);
-  raw_data->yaw_raw = register_data[4] | (register_data[5] << 8);
-  raw_data->x_accel_raw = register_data[6] | (register_data[7] << 8);
-  raw_data->y_accel_raw = register_data[8] | (register_data[9] << 8);
-  raw_data->z_accel_raw = register_data[10] | (register_data[11] << 8);
-
-  return 0;
-}
-
-/****************************************************************************
- * Name: lsm6dso32_convert_raw_data
- *
- * Description:
- *   Convert raw acceleration and rotational data of the sensor to actual
- *values.
- *
- * Input Parameters:
- *   raw_data    - The structure containing the raw data.
- *   conv_data   - The structure to store the converted data.
- *
- ****************************************************************************/
-
-static void lsm6dso32_convert_raw_data(struct lsm6dso32_data_raw_s *raw_data,
-                                       struct lsm6dso32_data_s *conv_data)
-{
-  conv_data->pitch = (raw_data->pitch_raw) * 4.375 * gyro_fsr_level;
-  conv_data->roll = (raw_data->roll_raw) * 4.375 * gyro_fsr_level;
-  conv_data->yaw = (raw_data->yaw_raw) * 4.375 * gyro_fsr_level;
-  conv_data->x_accel = (raw_data->x_accel_raw) * 0.122 * accel_fsr_level;
-  conv_data->y_accel = (raw_data->y_accel_raw) * 0.122 * accel_fsr_level;
-  conv_data->z_accel = (raw_data->z_accel_raw) * 0.122 * accel_fsr_level;
-  return;
-}
-
-/****************************************************************************
  * Name: lsm6dso32_activate
  ****************************************************************************/
 
@@ -846,7 +781,8 @@ int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
   priv->gyro.lower.ops = &g_sensor_ops;
   priv->gyro.lower.nbuffer = -1;
   priv->gyro.lower.enabled = false;
-  priv->gyro.interval = 0; /* Default off */
+  priv->gyro.odr = ODR_OFF;                 /* Default off */
+  priv->gyro.fsr = LSM6DSO32_FSR_GY_125DPS; /* Default 125dps */
   priv->gyro.dev = priv;
 
   err = sensor_register(&priv->gyro.lower, devno);
@@ -862,7 +798,8 @@ int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
   priv->accel.lower.ops = &g_sensor_ops;
   priv->accel.lower.nbuffer = -1;
   priv->accel.lower.enabled = false;
-  priv->accel.interval = 0; /* Default off */
+  priv->accel.odr = ODR_OFF;             /* Default off */
+  priv->accel.fsr = LSM6DSO32_FSR_XL_4G; /* Default 4g */
   priv->accel.dev = priv;
 
   err = sensor_register(&priv->accel.lower, devno);
