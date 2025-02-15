@@ -19,8 +19,6 @@
 #include <nuttx/signal.h>
 #include <nuttx/wqueue.h>
 
-
-
 typedef struct {
     struct sensor_lowerhalf_s lower; 
     FAR struct i2c_master_s *i2c;
@@ -36,10 +34,14 @@ typedef struct {
 
 // The NAU7802 supports two modes, 0-100kHz and 0-400kHz
 #ifndef CONFIG_SENSORS_NAU7802_I2C_FREQUENCY
-    #define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 100000 // is this 100kHz? we'll find out I guess 
+#define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 400000// is this 100kHz? we'll find out I guess 
 #endif
 
-#define REG_PU_CTRL 0x00;
+#ifndef CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE
+    #define CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE 10000 // ACTUAL TODO THIS IS THE FIRST NUMBER I CAN THINK OF
+#endif
+
+#define REG_PU_CTRL 0x00
 #define REG_CTRL_1 0x01
 #define REG_CTRL_2 0x02
 
@@ -63,7 +65,7 @@ static const uint32_t ODR_TO_INTERVAL[] = {
     [ODR_40HZ] = 25000,
     [ODR_80HZ] = 12500,
     [ODR_80HZ] = 3125 
-}
+};
 
 static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, bool enable);
 static int nau7802_set_interval(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR uint32_t *period_us);
@@ -71,19 +73,6 @@ static int nau7802_selftest(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
 static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR struct sensor_device_info_s *info);
 static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, int cmd,unsigned long arg);
 // static int nau7802_set_calibvalue(FAR struct sensor_lowerhalf_s *lower,FAR struct file *filep, unsigned long arg);
-
-
-static const struct sensor_ops_s g_sensor_ops =
-{
-  .activate = nau7802_activate,
-  .set_interval = nau7802_set_interval,
-  .selftest = nau7802_selftest,
-  .get_info = nau7802_get_info,
-  .control = nau7802_control,
-//   .set_calibvalue = nau7802_set_calibvalue, // not happening 
-};
-
-
 
 static int nau7802_read_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, uint8_t nbytes) {
     struct i2c_msg_s readcmd[2] = {
@@ -102,7 +91,7 @@ static int nau7802_read_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, uin
           .length = nbytes,
       },
 
-    }
+    };
 
     return I2C_TRANSFER(dev->i2c, readcmd, 2);
 }
@@ -128,10 +117,10 @@ static int nau7802_write_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, ui
   return I2C_TRANSFER(dev->i2c, writecmd, 2);
 }
 
-static int nau7802_read_data(FAR nau7802_dev_s *dev, FAR struct sensor_force *data){ // why is the second FAR needed here?
+static int nau7802_read_data(FAR nau7802_dev_s *dev, FAR struct sensor_force *data){
     int8_t raw_data[3];
-    err = nau7802_read_reg(dev, REG_ADC_DATA_0, &adc_data, sizeof(raw_data));
     int err = 0;
+    err = nau7802_read_reg(dev, REG_ADC_DATA_0, &raw_data, sizeof(raw_data));
     if(err < 0){
         return err;
     }
@@ -139,53 +128,6 @@ static int nau7802_read_data(FAR nau7802_dev_s *dev, FAR struct sensor_force *da
     data->timestamp = sensor_get_timestamp();
     data->event = 0;
     data->force = raw_data[0] << 16 + raw_data[1] << 8 + raw_data[2]; // this better work
-
-    return err;
-}
-
-static int nau7802_data_available(FAR nau7802_dev_s *dev, bool *data_ready){
-    uint8_t reg_data;
-    int err = 0;
-    err = nau7802_read_reg(dev, REG_DRDY, &reg_data, 1);
-    if(err < 0){
-        return err;
-    }
-
-    data_ready = (*reg_data >> 5) & 1 == 1; // if the 5th bits is 1 then the data is ready
-
-    return err;
-}
-
-static int nau7802_push_data(FAR nau7802_dev_s *dev){
-    int err = 0;
-    struct sensor_force data;
-
-    err = nxmutex_lock(&dev->devlock);
-    if(err < 0){
-        return err;
-    }
-
-    if(!dev->enabled){
-        err = -EAGAIN; // why is it EAGAIN and not like failure?
-        goto unlock_ret;
-    }
-
-    bool data_ready;
-    err = nau7802_data_available(FAR nau7802_dev_s *dev, bool &data_ready);
-    if(err < 0){
-        goto unlock_ret;
-    }
-
-    err = nau7802_read_data(dev, &data);
-    if(err < 0){
-        goto unlock_ret;
-    }
-
-    dev->lower.push_event(dev->lower.priv, &data, sizeof(data));
-
-    // I LOVE GOTO TRAPS GLORY TO GOTO
-    unlock_ret:
-        nxmutex_unlock(&dev->devlock);
 
     return err;
 }
@@ -209,14 +151,98 @@ static int nau7802_set_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, bo
     return nau7802_write_reg(dev, addr, &reg_val, sizeof(reg_val));
 }
 
+static int nau7802_data_available(FAR nau7802_dev_s *dev, bool *data_ready){
+    uint8_t reg_data;
+    int err = 0;
+    err = nau7802_read_reg(dev, REG_PU_CTRL, &reg_data, 1);
+    if(err < 0){
+        return err;
+    }
+
+    data_ready = (reg_data >> 5) & 1 == 1; // if the 5th bits is 1 then the data is ready
+
+    return err;
+}
+
+static int nau7802_push_data(FAR nau7802_dev_s *dev){
+    int err = 0;
+    struct sensor_force data;
+
+    err = nxmutex_lock(&dev->devlock);
+    if(err < 0){
+        return err;
+    }
+
+    if(!dev->enabled){
+        err = -EAGAIN; // why is it EAGAIN and not like failure?
+        goto unlock_ret;
+    }
+
+    bool data_ready;
+    err = nau7802_data_available(dev, &data_ready);
+    if(err < 0){
+        goto unlock_ret;
+    }
+
+    err = nau7802_read_data(dev, &data);
+    if(err < 0){
+        goto unlock_ret;
+    }
+
+    dev->lower.push_event(dev->lower.priv, &data, sizeof(data));
+
+    // I LOVE GOTO TRAPS GLORY TO GOTO
+    unlock_ret:
+        nxmutex_unlock(&dev->devlock);
+
+    return err;
+}
+
+
+
 // static int nau7802_set_odr()
 // static int nau7802_set_mode()
 // static int nau7802_low_power() // not priotity
 // static int nau7802_offset_enable() // probably also not priority
 // static int nau7802_enable_interrupts() // TODO after
+static const struct sensor_ops_s g_sensor_ops =
+{
+  .activate = nau7802_activate,
+  .set_interval = nau7802_set_interval,
+  .selftest = nau7802_selftest,
+  .get_info = nau7802_get_info,
+  .control = nau7802_control,
+//   .set_calibvalue = nau7802_set_calibvalue, // not happening 
+};
+
+static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, bool enable)
+{
+  FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
+  bool start_thread = false;
+  int err = 0;
+
+  /* Start the collection thread if not already enabled */
+
+  if (enable && !dev->enabled)
+    {
+      start_thread = true;
+
+
+    }
+
+  dev->enabled = enable; /* Mark state */
+
+  /* Start thread */
+  if (start_thread)
+    {
+      return nxsem_post(&dev->run);
+    }
+
+  return 0;
+}
 
 static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR struct sensor_device_info_s *info){
-  FAR nau7802_dev_s *dev = container_of(lower, FAR struct nau7802_dev_s, lower); // I don't know what this is honestly
+  FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower); // I don't know what this is honestly
 
   info->version = 0;
   info->power = 0; 
@@ -234,63 +260,67 @@ static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
 }
 
 
-static int nau7802_thread(int argc, FAR char *argv[]){
-  FAR struct nau7802_dev_s *priv =
-      (FAR struct nau7802_dev_s *)((uintptr_t)strtoul(argv[1], NULL, 16));
-  int err = 0;
-  
-  while(true){
-    if(!priv->enabled){
-        err = nxsem_wait(&dev->run);
-        if(err < 0){
-            continue;
-        }
-    }
 
-    err = nau7802_push_data(priv);
-    if(err < 0){
-        return err;
-    }
+
+
+static int nau7802_thread(int argc, FAR char *argv[]){
+    FAR nau7802_dev_s *dev = (FAR nau7802_dev_s *)((uintptr_t)strtoul(argv[1], NULL, 16));
+    int err = 0;
     
-    nxsig_usleep(priv->odr); // 100ms which becomes 10 samples / second TODO CHANGE THIS
-  }
+    while(true){
+        if(!dev->enabled){
+            err = nxsem_wait(&dev->run);
+            if(err < 0){
+                continue;
+            }
+        }
+
+        err = nau7802_push_data(dev);
+        if(err < 0){
+            return err;
+        }
+        
+        nxsig_usleep(dev->odr); 
+    }
 }
 
-int nau7802_register(FAR struct i2c_master *i2c, int devno, uint6_t add, nau7802_attach attach){
-    // FAR nau7802_dev_s *priv;
+
+typedef int (*nau7802_attach)(xcpt_t, FAR void *arg); //???
+
+int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
+                     nau7802_attach attach){
     int err;
-    
-    FAR nau7802_dev_s priv = kmm_zalloc(sizeof(nau7802_dev_s));
+    FAR nau7802_dev_s* priv = kmm_zalloc(sizeof(nau7802_dev_s));
+
     if(priv == NULL){
-        snerr("Failed to allocate nau7802 instance\n")
+        snerr("Failed to allocate nau7802 instance\n");
         return -ENOMEM;
     }
 
-    // memset not needed I think because zalloc is supposed to zero the memory already
-
     err = nxmutex_init(&priv->devlock);
     if(err < 0){
-        snerr("Failed to register nau7802 driver: %d\n")
+        snerr("Failed to register nau7802 driver: %d\n");
         goto del_mem;
     }
 
+    // I don't know what this semaphore is for
     err = nxsem_init(&priv->run, 0, 0);
     if(err < 0){
-        snerr("Failed to register nau7802 driver: %d\n")
+        snerr("Failed to register nau7802 driver: %d\n");
         goto del_mutex;
     }
     
     priv->i2c = i2c;
     priv->addr = addr;
     priv->lower.ops = &g_sensor_ops;
-    priv->lower.type = SENSOR_TYPE_FORCE// TODO: Ask which sensor type is right for whatever this is
+    priv->lower.type = SENSOR_TYPE_FORCE; // TODO: Ask which sensor type is right for whatever this is
     priv->enabled = false;
     priv->interrupts = false;
     priv->odr = 100; // time to sleep in ms TODO CHANGE THIS
 
-    err = sensor_register(&priv->power, devno);
+    err = sensor_register(&priv->lower, devno);
     if(err < 0){
-        snerr("Failed to register nau7802 driver: %d\n")
+        snerr("Failed to register nau7802 driver: %d\n");
         goto del_sem;
     }
 
@@ -303,7 +333,7 @@ int nau7802_register(FAR struct i2c_master *i2c, int devno, uint6_t add, nau7802
     argv[1] = NULL;
 
     err = kthread_create("nau7802_thread", SCHED_PRIORITY_DEFAULT,
-                        CONFIG_SENSORS_nau7802_THREAD_STACKSIZE, // TODO: set this config somewhere
+                        CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE, // TODO: set this config somewhere
                         nau7802_thread, argv);
     if (err < 0) {
         snerr("Failed to create the nau7802 notification kthread\n");
