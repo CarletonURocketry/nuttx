@@ -19,22 +19,9 @@
 #include <nuttx/signal.h>
 #include <nuttx/wqueue.h>
 
-typedef struct {
-    struct sensor_lowerhalf_s lower; 
-    FAR struct i2c_master_s *i2c;
-    uint8_t addr;
-    sem_t run;
-    mutex_t devlock;
-    bool enabled;
-    bool interrupts;
-    uint32_t odr; // output data rate
-
-} nau7802_dev_s;
-
-
 // The NAU7802 supports two modes, 0-100kHz and 0-400kHz
 #ifndef CONFIG_SENSORS_NAU7802_I2C_FREQUENCY
-#define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 400000// is this 100kHz? we'll find out I guess 
+    #define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 400000// is this 100kHz? we'll find out I guess 
 #endif
 
 #ifndef CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE
@@ -44,10 +31,42 @@ typedef struct {
 #define REG_PU_CTRL 0x00
 #define REG_CTRL_1 0x01
 #define REG_CTRL_2 0x02
+#define REG_OCAL1_B2 0x03
+#define REG_OCAL1_B1 0x04
+#define REG_OCAL1_B0 0x05
+#define REG_GCAL1_B3 0x06
+#define REG_GCAL1_B2 0x07
+#define REG_GCAL1_B1 0x08
+#define REG_GCAL1_B0 0x09
+#define REG_OCAL2_B2 0x0A
+#define REG_OCAL2_B1 0x0B
+#define REG_OCAL2_B0 0x0C
+#define REG_GCAL2_B3 0x0D
+#define REG_GCAL2_B2 0x0E
+#define REG_GCAL2_B1 0x0F
+#define REG_GCAL2_B0 0x10
+#define REG_I2C_CONTROL 0x11
+#define REG_ADCO_B2 0x12 // data bit 23 to 16
+#define REG_ADCO_B1 0x13 // data bit 15 to 8
+#define REG_ADCO_B0 0x14 // data bit 7 to 0
+#define REG_OTP_B1 0x15
+#define REG_OTP_B0 0x16
 
+// TODO REMOVE
 #define REG_ADC_DATA_0 0x12 // data bit 23 to 16
 #define REG_ADC_DATA_1 0x13 // data bit 15 to 8
 #define REG_ADC_DATA_2 0x14 // data bit 7 to 0 
+
+typedef struct {
+    struct sensor_lowerhalf_s lower; 
+    FAR struct i2c_master_s *i2c;
+    uint8_t addr;
+    sem_t run;
+    mutex_t devlock;
+    bool enabled;
+    bool interrupts;
+    uint32_t odr; // output data rate
+} nau7802_dev_s;
 
 // ODR = Ouput Data Rate
 enum nau7802_ord_e {
@@ -72,7 +91,6 @@ static int nau7802_set_interval(FAR struct sensor_lowerhalf_s *lower, FAR struct
 static int nau7802_selftest(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, unsigned long arg);
 static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR struct sensor_device_info_s *info);
 static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, int cmd,unsigned long arg);
-// static int nau7802_set_calibvalue(FAR struct sensor_lowerhalf_s *lower,FAR struct file *filep, unsigned long arg);
 
 static int nau7802_read_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, uint8_t nbytes) {
     struct i2c_msg_s readcmd[2] = {
@@ -198,7 +216,25 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev){
     return err;
 }
 
+static int nau7802_on(FAR nau7802_dev_s *dev) {
+    // TODO, if this works you can convert this to call the set bit func
+    int err;
+    uint8_t regval;
 
+    err = nau7802_read_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
+    if (err < 0) {
+        return err;
+    }
+
+    regval |= 0x06; // setting bits 1 and 2 to 1
+
+    return lis2mdl_write_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
+}
+
+static int nau7802_set_streaming_mode(FAR nau7802_dev_s *dev){
+    // there is 2 streaming modes, the first one is the standard, the second one isn't compatible
+    return nau7802_set_bit(dev, REG_I2C_CONTROL, 7, 1);
+}
 
 // static int nau7802_set_odr()
 // static int nau7802_set_mode()
@@ -208,37 +244,42 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev){
 static const struct sensor_ops_s g_sensor_ops =
 {
   .activate = nau7802_activate,
-  .set_interval = nau7802_set_interval,
-  .selftest = nau7802_selftest,
+//   .set_interval = nau7802_set_interval,
+//   .selftest = nau7802_selftest,
   .get_info = nau7802_get_info,
-  .control = nau7802_control,
+//   .control = nau7802_control,
 //   .set_calibvalue = nau7802_set_calibvalue, // not happening 
 };
 
 static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, bool enable)
 {
-  FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
-  bool start_thread = false;
-  int err = 0;
+    FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
+    bool start_thread = false;
+    int err = 0;
 
-  /* Start the collection thread if not already enabled */
+    /* Start the collection thread if not already enabled */
+    if (enable && !dev->enabled) {
+        start_thread = true;
 
-  if (enable && !dev->enabled)
-    {
-      start_thread = true;
+        err = nau7802_on(dev);
+        if(err){
+            return err;
+        }
 
-
+        err = nau7802_set_streaming_mode(dev);
+        if(err){
+            return err;
+        }
     }
 
-  dev->enabled = enable; /* Mark state */
+    dev->enabled = enable; 
 
-  /* Start thread */
-  if (start_thread)
+    if (start_thread)
     {
-      return nxsem_post(&dev->run);
+        return nxsem_post(&dev->run);
     }
 
-  return 0;
+    return 0;
 }
 
 static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR struct sensor_device_info_s *info){
@@ -258,10 +299,6 @@ static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
 
   return 0;
 }
-
-
-
-
 
 static int nau7802_thread(int argc, FAR char *argv[]){
     FAR nau7802_dev_s *dev = (FAR nau7802_dev_s *)((uintptr_t)strtoul(argv[1], NULL, 16));
@@ -284,8 +321,6 @@ static int nau7802_thread(int argc, FAR char *argv[]){
     }
 }
 
-
-typedef int (*nau7802_attach)(xcpt_t, FAR void *arg); //???
 
 int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
                      nau7802_attach attach){
@@ -316,7 +351,7 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
     priv->lower.type = SENSOR_TYPE_FORCE; // TODO: Ask which sensor type is right for whatever this is
     priv->enabled = false;
     priv->interrupts = false;
-    priv->odr = 100; // time to sleep in ms TODO CHANGE THIS
+    priv->odr = ODR_TO_INTERVAL[ODR_10HZ]; // time to sleep in ms TODO CHANGE THIS
 
     err = sensor_register(&priv->lower, devno);
     if(err < 0){
@@ -341,7 +376,6 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
     }
 
     sninfo("Registered nau7802 driver with kernel polling thread\n");
-    
 
     if (err < 0) {
         sensor_unreg:
