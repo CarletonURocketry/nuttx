@@ -105,6 +105,12 @@
 #include "rp2040_spi.h"
 #endif
 
+#if defined(CONFIG_ADC) && defined(CONFIG_ADC_ADS1115)
+#include <nuttx/analog/ads1115.h>
+#include <nuttx/analog/adc.h>
+#include "rp2040_i2c.h"
+#endif
+
 #if defined(CONFIG_RP2040_BOARD_HAS_WS2812) && defined(CONFIG_WS2812)
 #include "rp2040_ws2812.h"
 #endif
@@ -483,6 +489,28 @@ int rp2040_common_bringup(void)
   if (ret < 0)
     {
       syslog(LOG_ERR, "Failed to register MCP3008 device driver: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_ADC_ADS1115
+  /* Register ADS1115 ADC. */
+
+  struct i2c_master_s *i2c = rp2040_i2cbus_initialize(0);
+  if (i2c == NULL)
+    {
+      syslog(LOG_ERR, "Failed to initialize I2C bus 0\n");
+    }
+
+  struct adc_dev_s *ads1115 = ads1115_initialize(i2c, CONFIG_ADC_ADS1115_ADDR);
+  if (ads1115 == NULL)
+    {
+      syslog(LOG_ERR, "Failed to initialize ADS1115\n");
+    }
+
+  ret = adc_register("/dev/adc1", ads1115);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "Failed to register ADS1115 device driver: %d\n", ret);
     }
 #endif
 

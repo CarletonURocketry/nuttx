@@ -257,6 +257,35 @@ config ADC_MCP3008_DIFFERENTIAL
 
 endif # ADC_MCP3008
 
+config ADC_ADS1115
+	bool "ADS1115 support"
+	default n
+	select I2C
+	---help---
+		Enable driver support for the Texas Instruments ADS1115 16-bit ADC.
+
+if ADC_ADS1115 
+
+config ADC_ADS1115_I2C_FREQUENCY
+	int "ADS1115 I2C frequency"
+	default 100000
+	---help---
+		ADS1115 I2C frequency. Maximum is 400000.
+
+config ADC_ADS1115_ADDR
+	hex "ADS1115 I2C address"
+	default 0x48
+	---help---
+		ADS1115 I2C address. Default is 0x48.
+
+config ADC_ADS1115_DEFAULT_CONFIG
+	hex "ADS1115 default configuration"
+	default 0x8683
+	---help---
+		ADS1115 default configuration register value.
+
+endif # ADC_ADS1115
+
 endif # ADC
 
 config COMP
