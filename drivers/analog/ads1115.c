@@ -56,7 +56,7 @@
 #endif
 
 #ifndef CONFIG_ADC_ADS1115_DEFAULT_CONFIG
-#define CONFIG_ADC_ADS1115_DEFEAULT_CONFIG 0x8183
+#define CONFIG_ADC_ADS1115_DEFEAULT_CONFIG 0x0183
 #endif
 
 #define ADS1115_NUM_CHANNELS 8
@@ -261,6 +261,9 @@ static int ads1115_read_current_register(FAR struct ads1115_dev_s *priv,
  *  reading is stored.
  *
  * NOTE:
+ *  When switching between channels in continous mode, old data may be read.
+ *  Using the ALERT/RDY pin can avoid this.
+ *
  *  Each channel corrseponds to a differing mux configuration as defined in the
  *  datasheet.
  *
@@ -280,29 +283,47 @@ static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
                                FAR struct adc_msg_s *msg) {
   int ret = OK;
 
-  if (priv == NULL || msg == NULL) {
+  if (priv == NULL || msg == NULL || msg->am_channel >= ADS1115_NUM_CHANNELS) {
     ret = -EINVAL;
   } else {
     uint16_t buf;
     uint16_t channel_bits = msg->am_channel << ADS1115_MUX_SHIFT;
-    priv->cmdbyte &= ~(ADS1115_MUX_MASK); /* Clear the current mux bits */
-    priv->cmdbyte |= channel_bits;        /* Set the new mux bits */
-    priv->cmdbyte |= ADS1115_OS_SHIFT; /* Set the OS bit to start conversion */
 
-    ainfo("cmdbyte: %x\n", priv->cmdbyte);
-    ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
-                                 htobe16(priv->cmdbyte));
+    bool one_shot = ((priv->cmdbyte & ADS1115_MODE_MASK) == ADS1115_MODE_MASK);
+    bool new_channel = ((priv->cmdbyte & ADS1115_MUX_MASK) != channel_bits);
 
-    /* Read the configuration register until OS has been set to 1 */
-    do {
-      ret = ads1115_read_current_register(priv, &buf);
-    } while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0);
-    ainfo("config register: %x\n", (be16toh(buf)));
+    /* check if our current channel is the same as the one that
+     * is set or if in one shot mode */
+    if (new_channel || one_shot) {
+      /* Clear the current mux bits */
+      priv->cmdbyte &= ~(ADS1115_MUX_MASK);
+      /* Set the new mux bits */
+      priv->cmdbyte |= channel_bits;
+      /* Set the OS bit to start conversion */
+      priv->cmdbyte |= ADS1115_OS_SHIFT;
+
+      /* Write to the configuration register */
+      ainfo("cmdbyte: %x\n", priv->cmdbyte);
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
+    }
+
+    if (one_shot) {
+      /* Read the configuration register until OS has been set to 1 */
+      do {
+        ret = ads1115_read_current_register(priv, &buf);
+      } while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0);
+      ainfo("config register: %x\n", (be16toh(buf)));
+    }
+
+    /* How do we deal with old data in continous mode due to channel switching?
+     * do we just make the user deal with it?*/
 
     /* Read the conversion register */
     ret = ads1115_read_register(priv, ADS1115_CONVERSION_REGISTER, &buf);
     ainfo("output: %d\n", (int16_t)betoh16(buf));
     msg->am_data = (uint32_t)betoh16(buf);
+
     priv->cmdbyte &= ~(ADS1115_OS_SHIFT); /* Clear the OS bit */
   }
   return ret;
@@ -330,13 +351,17 @@ static int ads1115_bind(FAR struct adc_dev_s *dev,
  * Name: ads1115_reset
  *
  * Description:
- *   Reset the ADC device. This is called when the ADC device is closed.
+ *   Reset the ADC device. Called early to initialize the hardware. This
+ *   is called, before ao_setup() and on error conditions.
  *
  ****************************************************************************/
+
 static void ads1115_reset(FAR struct adc_dev_s *dev) {
   FAR struct ads1115_dev_s *priv = (FAR struct ads1115_dev_s *)dev->ad_priv;
 
   priv->cmdbyte = CONFIG_ADC_ADS1115_DEFAULT_CONFIG;
+  ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                         htobe16(CONFIG_ADC_ADS1115_DEFAULT_CONFIG));
 }
 
 /****************************************************************************
@@ -344,19 +369,40 @@ static void ads1115_reset(FAR struct adc_dev_s *dev) {
  *
  * Description:
  *   Configure the ADC. This method is called the first time that the ADC
- *   device is opened.
+ *   device is opened. This method will write the default configuration into the
+ *   configuration register.
  *
  ****************************************************************************/
-static int ads1115_setup(FAR struct adc_dev_s *dev) { return OK; }
+
+static int ads1115_setup(FAR struct adc_dev_s *dev) {
+  FAR struct ads1115_dev_s *priv = (FAR struct ads1115_dev_s *)dev->ad_priv;
+
+  priv->cmdbyte = CONFIG_ADC_ADS1115_DEFAULT_CONFIG;
+  int ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(CONFIG_ADC_ADS1115_DEFAULT_CONFIG));
+  return ret;
+}
 
 /****************************************************************************
  * Name: ads1115_shutdown
  *
  * Description:
- *   Disable the ADC. This method is called when the ADC device is closed.
+ *   Disable the ADC. This method is called when the ADC device is closed. This
+ *   method should reverse the operation of the setup method. The ADS1115 can be
+ *   put into a power-down state by setting the mode bit to single-shot. This
+ *   will stop the ADC from converting and reduce power consumption. If
+ *   continuous mode is required, modify the mode bit in the default
+ *   configuration to be continous to ensure the ADC will restart in continous
+ *   mode.
  *
  ****************************************************************************/
-static void ads1115_shutdown(FAR struct adc_dev_s *dev) {}
+
+static void ads1115_shutdown(FAR struct adc_dev_s *dev) {
+  FAR struct ads1115_dev_s *priv = (FAR struct ads1115_dev_s *)dev->ad_priv;
+
+  priv->cmdbyte |= ADS1115_MODE_MASK;
+  ads1115_write_register(priv, ADS1115_CONFIG_REGISTER, htobe16(priv->cmdbyte));
+}
 
 /****************************************************************************
  * Name: ads1115_rxint
