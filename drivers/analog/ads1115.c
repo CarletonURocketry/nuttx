@@ -56,7 +56,7 @@
 #endif
 
 #ifndef CONFIG_ADC_ADS1115_DEFAULT_CONFIG
-#define CONFIG_ADC_ADS1115_DEFEAULT_CONFIG 0x583
+#define CONFIG_ADC_ADS1115_DEFEAULT_CONFIG 0x8083
 #endif
 
 #define ADS1115_NUM_CHANNELS 8
@@ -138,6 +138,7 @@ static const struct adc_ops_s g_ads1115ops = {
  *
  *
  ****************************************************************************/
+
 static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
                                FAR struct adc_msg_s *msg) {
   int ret = OK;
@@ -145,50 +146,40 @@ static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
   if (priv == NULL || msg == NULL) {
     ret = -EINVAL;
   } else {
-    struct i2c_msg_s i2cmsg[3];
-    uint8_t channel = msg->am_channel;
+    struct i2c_msg_s i2cmsg[2];
+    struct i2c_msg_s i2cmsg_read[1];
 
+    uint8_t channel = msg->am_channel;
     uint16_t channel_bits = channel << ADS1115_CMD_BYTES_MUX_SHIFT;
     priv->cmdbyte &= ~(ADS1115_CMD_BYTES_MUX_MASK);
     priv->cmdbyte |= channel_bits;
-    priv->cmdbyte |= ADS1115_CMD_BYTES_OS;
 
-    /* ainfo("b: %d\n\n", priv->cmdbyte); */
+    uint16_t cmdbyte = htobe16(priv->cmdbyte);
+
+    ainfo("cmdbyte: %d\n", priv->cmdbyte);
 
     uint8_t config_register = ADS1115_CONFIG_REGISTER;
 
-    /* We want to write into the address pointer */
+    /* Write the configuration register into the address pointer */
     i2cmsg[0].frequency = CONFIG_ADS1115_I2C_FREQUENCY;
     i2cmsg[0].addr = priv->addr;
     i2cmsg[0].flags = 0;
     i2cmsg[0].buffer = (FAR uint8_t *)(&config_register);
     i2cmsg[0].length = sizeof(config_register);
 
-    /* We want to write our cmdbyte into the config register */
+    /* Actually write into the register */
     i2cmsg[1].frequency = CONFIG_ADS1115_I2C_FREQUENCY;
     i2cmsg[1].addr = priv->addr;
     i2cmsg[1].flags = I2C_M_NOSTART;
-    i2cmsg[1].buffer = (FAR uint8_t *)&priv->cmdbyte;
-    i2cmsg[1].length = sizeof(priv->cmdbyte);
-
-    uint8_t conversion_register = ADS1115_CONVERSION_REGISTER;
-    /* We want to read from the conversion register*/
-    i2cmsg[2].frequency = CONFIG_ADS1115_I2C_FREQUENCY;
-    i2cmsg[2].addr = priv->addr;
-    i2cmsg[2].flags = 0;
-    i2cmsg[2].buffer = (FAR uint8_t *)(&conversion_register);
-    i2cmsg[2].length = sizeof(conversion_register);
+    i2cmsg[1].buffer = (FAR uint8_t *)&cmdbyte;
+    i2cmsg[1].length = sizeof(cmdbyte);
 
     ret = I2C_TRANSFER(priv->i2c, i2cmsg, 2);
     if (ret < 0) {
       aerr("ADS1115 I2C transfer failed: %d\n", ret);
     }
 
-    /* nxsig_usleep(25); */
-
-    struct i2c_msg_s i2cmsg_read[1];
-
-    /* We want to read the conversion register */
+    /* We want to read the configuration register */
     i2cmsg_read[0].frequency = CONFIG_ADS1115_I2C_FREQUENCY;
     i2cmsg_read[0].addr = priv->addr;
     i2cmsg_read[0].flags = I2C_M_READ;
@@ -197,17 +188,48 @@ static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
     i2cmsg_read[0].buffer = (FAR uint8_t *)(&buf);
     i2cmsg_read[0].length = sizeof(buf);
 
-    ret = I2C_TRANSFER(priv->i2c, i2cmsg_read, 0);
+    do {
+      ret = I2C_TRANSFER(priv->i2c, i2cmsg_read, 1);
+      if (ret < 0) {
+        aerr("ADS1115 I2C transfer failed: %d\n", ret);
+      }
+    } while ((betoh16(buf) & ADS1115_CMD_BYTES_OS) == 0);
+
+    ainfo("config register: %d\n", betoh16(buf));
+
+    uint8_t conversion_register = ADS1115_CONVERSION_REGISTER;
+
+    struct i2c_msg_s i2cmsg2[2];
+
+    /* Write the conversion register to the address pointer */
+    i2cmsg2[0].frequency = CONFIG_ADS1115_I2C_FREQUENCY;
+    i2cmsg2[0].addr = priv->addr;
+    i2cmsg2[0].flags = 0;
+    i2cmsg2[0].buffer = (FAR uint8_t *)(&conversion_register);
+    i2cmsg2[0].length = sizeof(conversion_register);
+
+    ret = I2C_TRANSFER(priv->i2c, i2cmsg2, 1);
     if (ret < 0) {
       aerr("ADS1115 I2C transfer failed: %d\n", ret);
     }
 
-    /* while ((buf & (1 << 15)) >> 15 == 0) {
+    int16_t buf2;
 
+    /* We want to read the conversion register */
+    i2cmsg_read[0].frequency = CONFIG_ADS1115_I2C_FREQUENCY;
+    i2cmsg_read[0].addr = priv->addr;
+    i2cmsg_read[0].flags = I2C_M_READ;
+    i2cmsg_read[0].buffer = (FAR uint8_t *)(&buf2);
+    i2cmsg_read[0].length = sizeof(buf2);
+
+    ret = I2C_TRANSFER(priv->i2c, i2cmsg_read, 1);
+    if (ret < 0) {
+      aerr("ADS1115 I2C transfer failed: %d\n", ret);
     }
-    */
-    ainfo("buffer: %d\n\n", buf);
-    msg->am_data = be16toh(buf);
+
+    ainfo("output: %d\n", betoh16(buf2));
+
+    msg->am_data = (uint32_t)betoh16(buf2);
   }
   return ret;
 }
@@ -290,9 +312,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
 
     for (uint8_t i = 0; i < ADS1115_NUM_CHANNELS && (ret == 0); i++) {
       msg.am_channel = i;
+      ainfo("Channel: %d\n", i);
       ret = ads1115_readchannel(priv, &msg);
       if (ret == 0) {
         priv->cb->au_receive(dev, i, msg.am_data);
+      } else {
+        aerr("Error reading channel %d with error %d \n", i, ret);
       }
     }
   } break;
