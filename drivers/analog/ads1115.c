@@ -449,6 +449,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
     } else {
       ret = -EINVAL;
     }
+
+    /* TODO: make this logic less ugly */
+    if (ret == OK) {
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
+    }
   } break;
 
   case ANIOC_ADS1115_SET_MODE: {
@@ -459,6 +465,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
     } else {
       ret = -EINVAL;
     }
+
+    /* TODO: make this logic less ugly */
+    if (ret == OK) {
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
+    }
   } break;
 
   case ANIOC_ADS1115_SET_DR: {
@@ -467,6 +479,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
       priv->cmdbyte |= arg << ADS1115_DR_SHIFT;
     } else {
       ret = -EINVAL;
+    }
+
+    /* TODO: make this logic less ugly */
+    if (ret == OK) {
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
     }
   } break;
 
@@ -478,6 +496,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
     } else {
       ret = -EINVAL;
     }
+
+    /* TODO: make this logic less ugly */
+    if (ret == OK) {
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
+    }
   } break;
 
   case ANIOC_ADS1115_SET_COMP_MODE: {
@@ -487,6 +511,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
       priv->cmdbyte |= ADS1115_COMP_MODE_MASK;
     } else {
       ret = -EINVAL;
+    }
+
+    /* TODO: make this logic less ugly */
+    if (ret == OK) {
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
     }
   } break;
 
@@ -498,6 +528,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
     } else {
       ret = -EINVAL;
     }
+
+    /* TODO: make this logic less ugly */
+    if (ret == OK) {
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
+    }
   } break;
 
   case ANIOC_ADS1115_SET_COMP_QUEUE: {
@@ -506,6 +542,12 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
       priv->cmdbyte |= arg << ADS1115_COMP_QUE_SHIFT;
     } else {
       ret = -EINVAL;
+    }
+
+    /* TODO: make this logic less ugly */
+    if (ret == OK) {
+      ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                   htobe16(priv->cmdbyte));
     }
   } break;
 
