@@ -424,6 +424,16 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
     }
   } break;
 
+  case ANIOC_ADS1115_SET_COMP_POL: {
+    if (arg == ADS1115_COMP_POL1) {
+      priv->cmdbyte &= ~ADS1115_COMP_POL_MASK;
+    } else if (arg == ADS1115_COMP_POL2) {
+      priv->cmdbyte |= ADS1115_COMP_POL_MASK;
+    } else {
+      ret = -EINVAL;
+    }
+  } break;
+
   case ANIOC_ADS1115_SET_COMP_MODE: {
     if (arg == ADS1115_COMP_MODE1) {
       priv->cmdbyte &= ~ADS1115_COMP_MODE_MASK;

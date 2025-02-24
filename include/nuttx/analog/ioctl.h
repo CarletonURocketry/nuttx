@@ -119,7 +119,7 @@
 /* See include/nuttx/analog/ads1115.h */
 
 #define AN_ADS1115_FIRST (AN_MCP3008_FIRST + AN_MCP3008_NCMDS)
-#define AN_ADS1115_NCMDS 11
+#define AN_ADS1115_NCMDS 10
 
 /****************************************************************************
  * Public Function Prototypes
