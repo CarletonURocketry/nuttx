@@ -283,26 +283,27 @@ static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
   if (priv == NULL || msg == NULL) {
     ret = -EINVAL;
   } else {
+    uint16_t buf;
     uint16_t channel_bits = msg->am_channel << ADS1115_MUX_SHIFT;
     priv->cmdbyte &= ~(ADS1115_MUX_MASK); /* Clear the current mux bits */
     priv->cmdbyte |= channel_bits;        /* Set the new mux bits */
     priv->cmdbyte |= ADS1115_OS_SHIFT; /* Set the OS bit to start conversion */
 
     ainfo("cmdbyte: %x\n", priv->cmdbyte);
-
     ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
                                  htobe16(priv->cmdbyte));
 
-    uint16_t buf;
     /* Read the configuration register until OS has been set to 1 */
     do {
       ret = ads1115_read_current_register(priv, &buf);
     } while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0);
     ainfo("config register: %x\n", (be16toh(buf)));
 
+    /* Read the conversion register */
     ret = ads1115_read_register(priv, ADS1115_CONVERSION_REGISTER, &buf);
     ainfo("output: %d\n", (int16_t)betoh16(buf));
     msg->am_data = (uint32_t)betoh16(buf);
+    priv->cmdbyte &= ~(ADS1115_OS_SHIFT); /* Clear the OS bit */
   }
   return ret;
 }
