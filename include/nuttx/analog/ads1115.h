@@ -1,5 +1,5 @@
 /****************************************************************************
- * include/nuttx/sensors/ads1115.h
+ * include/nuttx/analog/ads1115.h
  *
  * Contributed by Jia Lin
  *
@@ -37,7 +37,7 @@
  ****************************************************************************/
 
 /* IOCTL Commands
- *
+ * 
  */
 
 #define ANIOC_ADS1115_SET_OS _ANIOC(AN_ADS1115_FIRST + 0)
@@ -49,6 +49,8 @@
 #define ANIOC_ADS1115_SET_COMP_LAT _ANIOC(AN_ADS1115_FIRST + 6)
 #define ANIOC_ADS1115_SET_COMP_QUEUE _ANIOC(AN_ADS1115_FIRST + 7)
 #define ANIOC_ADS1115_READ_CHANNEL _ANIOC(AN_ADS1115_FIRST + 8)
+#define ANIOC_ADS1115_SET_HI_THRESH _ANIOC(AN_ADS1115_FIRST + 9)
+#define ANIOC_ADS1115_SET_LO_THRESH _ANIOC(AN_ADS1115_FIRST + 10)
 
 /* Operational status / Single-shot conversion start*/
 

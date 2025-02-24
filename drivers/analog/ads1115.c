@@ -1,5 +1,5 @@
 /****************************************************************************
- * drivers/sensors/mcp9600_uorb.c
+ * drivers/analog/ads1115.c
  *
  * Contributed by Jia Lin
  *
@@ -263,7 +263,7 @@ static int ads1115_read_current_register(FAR struct ads1115_dev_s *priv,
  * NOTE:
  *  Each channel corrseponds to a differing mux configuration as defined in the
  *  datasheet.
- *  
+ *
  *  msg->am_channel  MUX Configuration
  *  0               AINP = AIN0, AINN = AIN1
  *  1               AINP = AIN0, AINN = AIN3
@@ -286,20 +286,22 @@ static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
     uint16_t channel_bits = msg->am_channel << ADS1115_MUX_SHIFT;
     priv->cmdbyte &= ~(ADS1115_MUX_MASK); /* Clear the current mux bits */
     priv->cmdbyte |= channel_bits;        /* Set the new mux bits */
-    uint16_t cmdbyte = htobe16(priv->cmdbyte);
+    priv->cmdbyte |= ADS1115_OS_SHIFT; /* Set the OS bit to start conversion */
+
     ainfo("cmdbyte: %x\n", priv->cmdbyte);
 
-    ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER, cmdbyte);
+    ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
+                                 htobe16(priv->cmdbyte));
 
     uint16_t buf;
     /* Read the configuration register until OS has been set to 1 */
     do {
       ret = ads1115_read_current_register(priv, &buf);
     } while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0);
-    ainfo("config register: %x\n", buf);
+    ainfo("config register: %x\n", (be16toh(buf)));
 
     ret = ads1115_read_register(priv, ADS1115_CONVERSION_REGISTER, &buf);
-    ainfo("output: %x\n", betoh16(buf));
+    ainfo("output: %d\n", (int16_t)betoh16(buf));
     msg->am_data = (uint32_t)betoh16(buf);
   }
   return ret;
@@ -393,18 +395,8 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
     }
   } break;
 
-  case ANIOC_ADS1115_SET_OS: {
-    if (arg == ADS1115_OS1) {
-      priv->cmdbyte |= ADS1115_OS_SHIFT;
-    } else if (arg == ADS1115_OS2) {
-      priv->cmdbyte &= ~ADS1115_OS_SHIFT;
-    } else {
-      ret = -EINVAL;
-    }
-  } break;
-
   case ANIOC_ADS1115_SET_PGA: {
-    if (arg > ADS1115_PGA1 && arg < ADS1115_PGA8) {
+    if (arg >= ADS1115_PGA1 && arg <= ADS1115_PGA8) {
       priv->cmdbyte &= ~ADS1115_PGA_MASK;
       priv->cmdbyte |= arg << ADS1115_PGA_SHIFT;
     } else {
@@ -452,7 +444,7 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
   } break;
 
   case ANIOC_ADS1115_SET_COMP_QUEUE: {
-    if (arg > ADS1115_COMP_QUEUE1 && arg < ADS1115_COMP_QUEUE4) {
+    if (arg >= ADS1115_COMP_QUEUE1 && arg <= ADS1115_COMP_QUEUE4) {
       priv->cmdbyte &= ~ADS1115_COMP_QUE_MASK;
       priv->cmdbyte |= arg << ADS1115_COMP_QUE_SHIFT;
     } else {
@@ -465,8 +457,33 @@ static int ads1115_ioctl(FAR struct adc_dev_s *dev, int cmd,
     ret = ads1115_readchannel(priv, msg);
   } break;
 
-  
+  case ANIOC_ADS1115_SET_HI_THRESH: {
+    if (arg > 0 && arg < UINT16_MAX) {
+      ret = ads1115_write_register(priv, ADS1115_HI_THRESH_REGISTER,
+                                   htobe16(arg));
+    } else {
+      ret = -EINVAL;
+    }
+  } break;
+
+  case ANIOC_ADS1115_SET_LO_THRESH: {
+    if (arg > 0 && arg < UINT16_MAX) {
+      ret = ads1115_write_register(priv, ADS1115_LO_THRESH_REGISTER,
+                                   htobe16(arg));
+    } else {
+      ret = -EINVAL;
+    }
+  } break;
+
+  case ANIOC_GET_NCHANNELS: {
+    ret = ADS1115_NUM_CHANNELS;
+  } break;
+
+  default:
+    ret = -ENOTTY;
+    break;
   }
+
   return ret;
 }
 
