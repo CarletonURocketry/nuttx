@@ -280,7 +280,7 @@ config ADC_ADS1115_ADDR
 
 config ADC_ADS1115_DEFAULT_CONFIG
 	hex "ADS1115 default configuration"
-	default 0x8683
+	default 0x8183
 	---help---
 		ADS1115 default configuration register value.
 
