@@ -60,6 +60,6 @@
   *
   ****************************************************************************/
  
- int lis2mdl_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
+ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
                       nau7802_attach attach);
  

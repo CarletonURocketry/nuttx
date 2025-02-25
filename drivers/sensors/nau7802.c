@@ -52,11 +52,6 @@
 #define REG_OTP_B1 0x15
 #define REG_OTP_B0 0x16
 
-// TODO REMOVE
-#define REG_ADC_DATA_0 0x12 // data bit 23 to 16
-#define REG_ADC_DATA_1 0x13 // data bit 15 to 8
-#define REG_ADC_DATA_2 0x14 // data bit 7 to 0 
-
 typedef struct {
     struct sensor_lowerhalf_s lower; 
     FAR struct i2c_master_s *i2c;
@@ -83,14 +78,14 @@ static const uint32_t ODR_TO_INTERVAL[] = {
     [ODR_20HZ] = 50000,
     [ODR_40HZ] = 25000,
     [ODR_80HZ] = 12500,
-    [ODR_80HZ] = 3125 
+    [ODR_320HZ] = 3125 
 };
 
 static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, bool enable);
-static int nau7802_set_interval(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR uint32_t *period_us);
-static int nau7802_selftest(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, unsigned long arg);
+// static int nau7802_set_interval(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR uint32_t *period_us);
+// static int nau7802_selftest(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, unsigned long arg);
 static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR struct sensor_device_info_s *info);
-static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, int cmd,unsigned long arg);
+// static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, int cmd,unsigned long arg);
 
 static int nau7802_read_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, uint8_t nbytes) {
     struct i2c_msg_s readcmd[2] = {
@@ -136,16 +131,17 @@ static int nau7802_write_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, ui
 }
 
 static int nau7802_read_data(FAR nau7802_dev_s *dev, FAR struct sensor_force *data){
+    snerr("Reading data\n");
     int8_t raw_data[3];
     int err = 0;
-    err = nau7802_read_reg(dev, REG_ADC_DATA_0, &raw_data, sizeof(raw_data));
+    err = nau7802_read_reg(dev, REG_ADCO_B2, &raw_data, sizeof(raw_data));
     if(err < 0){
         return err;
     }
 
     data->timestamp = sensor_get_timestamp();
     data->event = 0;
-    data->force = raw_data[0] << 16 + raw_data[1] << 8 + raw_data[2]; // this better work
+    data->force = (raw_data[0] << 16) + (raw_data[1] << 8) + raw_data[2]; // this better work
 
     return err;
 }
@@ -177,7 +173,7 @@ static int nau7802_data_available(FAR nau7802_dev_s *dev, bool *data_ready){
         return err;
     }
 
-    data_ready = (reg_data >> 5) & 1 == 1; // if the 5th bits is 1 then the data is ready
+    *data_ready = ((reg_data >> 5) & 1) == 1; // if the 5th bits is 1 then the data is ready
 
     return err;
 }
@@ -228,7 +224,7 @@ static int nau7802_on(FAR nau7802_dev_s *dev) {
 
     regval |= 0x06; // setting bits 1 and 2 to 1
 
-    return lis2mdl_write_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
+    return nau7802_write_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
 }
 
 static int nau7802_set_streaming_mode(FAR nau7802_dev_s *dev){
@@ -288,7 +284,7 @@ static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
   info->version = 0;
   info->power = 0; 
   memcpy(info->name, "NAU7802", sizeof("NAU7802")); // why not strlen?
-  memcpy(info->name, "Nuvoton", sizeof("Nuvoton"));
+  memcpy(info->vendor, "Nuvoton", sizeof("Nuvoton"));
 
   info->min_delay = ODR_TO_INTERVAL[ODR_10HZ];
   info->max_delay = ODR_TO_INTERVAL[ODR_10HZ];
@@ -334,14 +330,14 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
 
     err = nxmutex_init(&priv->devlock);
     if(err < 0){
-        snerr("Failed to register nau7802 driver: %d\n");
+        snerr("Failed to register nau7802 driver: %d\n", err);
         goto del_mem;
     }
 
     // I don't know what this semaphore is for
     err = nxsem_init(&priv->run, 0, 0);
     if(err < 0){
-        snerr("Failed to register nau7802 driver: %d\n");
+        snerr("Failed to register nau7802 driver: %d\n", err);
         goto del_mutex;
     }
     
@@ -355,8 +351,11 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
 
     err = sensor_register(&priv->lower, devno);
     if(err < 0){
-        snerr("Failed to register nau7802 driver: %d\n");
+        snerr("Failed to register nau7802 driver: %d\n", err);
         goto del_sem;
+    }
+    else{
+        snerr("REGISTERED NAU7802 DRIVER\n");
     }
 
     // attach is null for now because interrupt mode is in progress

@@ -75,6 +75,11 @@
 #include "rp2040_i2c.h"
 #endif
 
+#ifdef CONFIG_SENSORS_NAU7802
+#include <nuttx/sensors/nau7802.h>
+#include "rp2040_i2c.h"
+#endif
+
 #ifdef CONFIG_SENSORS_MCP9600
 #include <nuttx/sensors/mcp9600.h>
 #include "rp2040_i2c.h"
@@ -536,6 +541,19 @@ int rp2040_common_bringup(void)
     }
 #endif
 
+#ifdef CONFIG_SENSORS_NAU7802
+
+  /* Try to register NAU7802 device on I2C0 */
+
+  ret = nau7802_register(rp2040_i2cbus_initialize(0), 0,
+                       0x2A, NULL);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "ERROR: couldn't initialize NAU7802: %d\n", ret);
+    }
+#endif
+
+// #define CONFIG_SENSORS_SHT4X 10
 #ifdef CONFIG_SENSORS_SHT4X
 
   /* Try to register SHT4X device on I2C0 */
