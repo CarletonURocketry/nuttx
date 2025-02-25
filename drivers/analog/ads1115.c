@@ -55,10 +55,6 @@
 #define CONFIG_ADC_ADS1115_I2C_FREQUENCY 100000
 #endif
 
-#ifndef CONFIG_ADC_ADS1115_DEFAULT_CONFIG
-#define CONFIG_ADC_ADS1115_DEFEAULT_CONFIG 0x0183
-#endif
-
 #define ADS1115_NUM_CHANNELS 8
 
 #define ADS1115_OS_SHIFT (1 << 15)
@@ -359,9 +355,38 @@ static int ads1115_bind(FAR struct adc_dev_s *dev,
 static void ads1115_reset(FAR struct adc_dev_s *dev) {
   FAR struct ads1115_dev_s *priv = (FAR struct ads1115_dev_s *)dev->ad_priv;
 
-  priv->cmdbyte = CONFIG_ADC_ADS1115_DEFAULT_CONFIG;
-  ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
-                         htobe16(CONFIG_ADC_ADS1115_DEFAULT_CONFIG));
+  priv->cmdbyte = 0;
+
+  /* Set the default channel */
+  priv->cmdbyte = CONFIG_ADC_ADS1115_CHANNEL << ADS1115_MUX_SHIFT;
+
+  /* Set the default pga setting */
+  priv->cmdbyte |= CONFIG_ADC_ADS1115_PGA << ADS1115_PGA_SHIFT;
+
+  /* Set the default mode */
+  #ifndef CONFIG_ADC_ADS1115_CONTINOUS
+  priv->cmdbyte |= ADS1115_MODE_MASK;
+  #endif
+  /* Set the default data rate */
+  priv->cmdbyte |= CONFIG_ADC_ADS1115_DR << ADS1115_DR_SHIFT;
+
+  /* Set the default comparator mode*/
+  #ifdef CONFIG_ADC_ADS1115_COMP_MODE
+  priv->cmdbyte |= ADS1115_COMP_MODE_MASK;
+  #endif
+
+  /* Set the default comparator polarity */
+  #ifdef CONFIG_ADC_ADS1115_COMP_POL
+  priv->cmdbyte |= ADS1115_COMP_POL_MASK;
+  #endif
+  
+  /* Set the default comparator latching*/
+  #ifdef CONFIG_ADC_ADS1115_COMP_LAT
+  priv->cmdbyte |= ADS1115_COMP_LAT_MASK;
+  #endif
+
+  /* Set the comparator queue */
+  priv->cmdbyte |= CONFIG_ADC_ADS1115_COMP_QUE << ADS1115_COMP_QUE_SHIFT;
 }
 
 /****************************************************************************
@@ -377,9 +402,8 @@ static void ads1115_reset(FAR struct adc_dev_s *dev) {
 static int ads1115_setup(FAR struct adc_dev_s *dev) {
   FAR struct ads1115_dev_s *priv = (FAR struct ads1115_dev_s *)dev->ad_priv;
 
-  priv->cmdbyte = CONFIG_ADC_ADS1115_DEFAULT_CONFIG;
   int ret = ads1115_write_register(priv, ADS1115_CONFIG_REGISTER,
-                                   htobe16(CONFIG_ADC_ADS1115_DEFAULT_CONFIG));
+                                   htobe16(priv->cmdbyte));
   return ret;
 }
 
@@ -622,7 +646,37 @@ FAR struct adc_dev_s *ads1115_initialize(FAR struct i2c_master_s *i2c,
   priv->cb = NULL;
   priv->i2c = i2c;
   priv->addr = addr;
-  priv->cmdbyte = CONFIG_ADC_ADS1115_DEFAULT_CONFIG;
+  priv->cmdbyte = 0;
+  /* Set the default channel */
+  priv->cmdbyte = CONFIG_ADC_ADS1115_CHANNEL << ADS1115_MUX_SHIFT;
+
+  /* Set the default pga setting */
+  priv->cmdbyte |= CONFIG_ADC_ADS1115_PGA << ADS1115_PGA_SHIFT;
+
+  /* Set the default mode */
+  #ifndef CONFIG_ADC_ADS1115_CONTINOUS
+  priv->cmdbyte |= ADS1115_MODE_MASK;
+  #endif
+  /* Set the default data rate */
+  priv->cmdbyte |= CONFIG_ADC_ADS1115_DR << ADS1115_DR_SHIFT;
+
+  /* Set the default comparator mode*/
+  #ifdef CONFIG_ADC_ADS1115_COMP_MODE
+  priv->cmdbyte |= ADS1115_COMP_MODE_MASK;
+  #endif
+
+  /* Set the default comparator polarity */
+  #ifdef CONFIG_ADC_ADS1115_COMP_POL
+  priv->cmdbyte |= ADS1115_COMP_POL_MASK;
+  #endif
+  
+  /* Set the default comparator latching*/
+  #ifdef CONFIG_ADC_ADS1115_COMP_LAT
+  priv->cmdbyte |= ADS1115_COMP_LAT_MASK;
+  #endif
+
+  /* Set the comparator queue */
+  priv->cmdbyte |= CONFIG_ADC_ADS1115_COMP_QUE << ADS1115_COMP_QUE_SHIFT;
 
   adcdev = kmm_malloc(sizeof(struct adc_dev_s));
   if (adcdev == NULL) {

@@ -278,11 +278,59 @@ config ADC_ADS1115_ADDR
 	---help---
 		ADS1115 I2C address. Default is 0x48.
 
-config ADC_ADS1115_DEFAULT_CONFIG
-	hex "ADS1115 default configuration"
-	default 0x0183
+config ADC_ADS1115_CHANNEL
+	int "ADS1115 channel"
+	default 0
+	range 0 7
 	---help---
-		ADS1115 default configuration register value.
+		ADS1115 default channel/mux configuration. Default is 0.
+
+config ADC_ADS1115_PGA 
+	int "ADS1115 PGA"
+	default 2
+	range 0 7
+	---help---
+		ADS1115 default PGA configuration. Default is 2.
+
+config ADC_ADS1115_CONTINOUS 
+	bool "ADS1115 continuous mode"
+	default n
+	---help---
+		ADS1115 continuous mode. Default is off.
+
+config ADC_ADS1115_DR
+	int "ADS1115 data rate"
+	default 4
+	range 0 7
+	---help---
+		ADS1115 data rate. Default is 4.
+
+config ADC_ADS1115_COMP_MODE
+	bool "ADS1115 window comparator mode"
+	default n
+	---help---
+		ADS1115 comparator mode. 
+
+config ADC_ADS1115_COMP_POL
+	bool "ADS1115 comparator polarity"
+	default n
+	---help---
+		ADS1115 comparator polarity. n is active low, y is active high.
+
+config ADC_ADS1115_COMP_LAT
+	bool "ADS1115 comparator latching"
+	default n
+	---help---
+		ADS1115 comparator latching. n is non-latching, y is latching.
+
+config ADC_ADS1115_COMP_QUE
+	int "ADS1115 comparator queue"
+	default 3
+	range 0 3
+	---help---
+		ADS1115 comparator queue. 0 is assert after 1 conversion, 1, is 
+		assert after 2 conversions, 3 is assert after 4 conversions, 3 
+		is disable comparator, and set ALERT/RDY to high-impedence. 
 
 endif # ADC_ADS1115
 
