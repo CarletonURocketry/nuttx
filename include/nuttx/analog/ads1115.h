@@ -1,8 +1,6 @@
 /****************************************************************************
  * include/nuttx/analog/ads1115.h
  *
- * Contributed by Jia Lin
- *
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
