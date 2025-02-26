@@ -495,13 +495,8 @@ int rp2040_common_bringup(void)
 #ifdef CONFIG_ADC_ADS1115
   /* Register ADS1115 ADC. */
 
-  struct i2c_master_s *i2c = rp2040_i2cbus_initialize(0);
-  if (i2c == NULL)
-    {
-      syslog(LOG_ERR, "Failed to initialize I2C bus 0\n");
-    }
-
-  struct adc_dev_s *ads1115 = ads1115_initialize(i2c, CONFIG_ADC_ADS1115_ADDR);
+  struct adc_dev_s *ads1115 = ads1115_initialize(rp2040_i2cbus_initialize(0),
+                                                 CONFIG_ADC_ADS1115_ADDR);
   if (ads1115 == NULL)
     {
       syslog(LOG_ERR, "Failed to initialize ADS1115\n");
