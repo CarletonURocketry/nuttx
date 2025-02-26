@@ -65,8 +65,10 @@
  * Public Types
  ****************************************************************************/
 
-/* Input Multiplexer configuration */
-enum ads1115_mux_e {
+/* Input Multiplexer configuration. */
+
+enum ads1115_mux_e
+{
   ADS1115_MUX1 = 0u, /* AINP = AIN0 and AINN = AIN1 (default) */
   ADS1115_MUX2,      /* AINP = AIN0 and AINN = AIN3 */
   ADS1115_MUX3,      /* AINP = AIN1 and AINN = AIN3 */
@@ -78,7 +80,9 @@ enum ads1115_mux_e {
 };
 
 /* Programmable gain amplifier configuration */
-enum ads1115_pga_e {
+
+enum ads1115_pga_e
+{
   ADS1115_PGA1 = 0u, /* FSR = ±6.144V */
   ADS1115_PGA2,      /* FSR = ±4.096V */
   ADS1115_PGA3,      /* FSR = ±2.048V (default) */
@@ -90,13 +94,17 @@ enum ads1115_pga_e {
 };
 
 /* Device Operating Mode */
-enum ads1115_mode_e {
+
+enum ads1115_mode_e
+{
   ADS1115_MODE1 = 0u, /* Continuous conversion mode */
   ADS1115_MODE2       /* Power-down single-shot mode (default) */
 };
 
 /* Data rate */
-enum ads1115_dr_e {
+
+enum ads1115_dr_e
+{
   ADS1115_DR1 = 0u, /* 8 SPS */
   ADS1115_DR2,      /* 16 SPS */
   ADS1115_DR3,      /* 32 SPS */
@@ -108,31 +116,39 @@ enum ads1115_dr_e {
 };
 
 /* Comparator mode */
-enum ads1115_comp_mode_e {
+
+enum ads1115_comp_mode_e
+{
   ADS1115_COMP_MODE1 = 0u, /* Traditional comparator (default) */
   ADS1115_COMP_MODE2       /* Window comparator */
 };
 
 /* Comparator Polarity */
-enum ads1115_comp_pol_e {
+
+enum ads1115_comp_pol_e
+{
   ADS1115_COMP_POL1 = 0u, /* Active low (default) */
   ADS1115_COMP_POL2       /* Active high */
 };
 
 /* Latching comparator */
-enum ads1115_comp_lat_e {
-  ADS1115_COMP_LAT1 = 0u, /* Nonlatching comparator. The ALERT/RDY pin does not
-                              latch when asserted (default) */
-  ADS1115_COMP_LAT2       /* Latching comparator. See datasheet.*/
+
+enum ads1115_comp_lat_e
+{
+  ADS1115_COMP_LAT1 = 0u, /* Nonlatching comparator. The ALERT/RDY pin does
+                           * not latch when asserted (default) */
+  ADS1115_COMP_LAT2       /* Latching comparator. See datasheet. */
 };
 
 /* Comparator queue and disable */
-enum ads1115_comp_queue_e {
+
+enum ads1115_comp_queue_e
+{
   ADS1115_COMP_QUEUE1 = 0u, /* Assert after one conversion */
   ADS1115_COMP_QUEUE2,      /* Assert after two conversions */
   ADS1115_COMP_QUEUE3,      /* Assert after four conversions */
   ADS1115_COMP_QUEUE4,      /* Disable comparator and set ALERT/RDY pin to
-                                       high-impedance (default) */
+                             * high-impedance (default) */
 };
 
 /****************************************************************************

@@ -270,7 +270,7 @@ config ADC_ADS1115_I2C_FREQUENCY
 	int "ADS1115 I2C frequency"
 	default 100000
 	---help---
-		ADS1115 I2C frequency. Maximum is 400000.
+		ADS1115 I2C frequency. 
 
 config ADC_ADS1115_ADDR
 	hex "ADS1115 I2C address"
@@ -283,33 +283,35 @@ config ADC_ADS1115_CHANNEL
 	default 0
 	range 0 7
 	---help---
-		ADS1115 default channel/mux configuration. Default is 0.
+		ADS1115 channel/mux configuration. See datasheet 
+		or ads1115.h for more info. 
 
 config ADC_ADS1115_PGA 
 	int "ADS1115 PGA"
 	default 2
 	range 0 7
 	---help---
-		ADS1115 default PGA configuration. Default is 2.
+		ADS1115 PGA configuration. See datahseet or ads1115.h 
+		for more info. 
 
 config ADC_ADS1115_CONTINOUS 
 	bool "ADS1115 continuous mode"
 	default n
 	---help---
-		ADS1115 continuous mode. Default is off.
+		ADS1115 continuous mode. 
 
 config ADC_ADS1115_DR
 	int "ADS1115 data rate"
 	default 4
 	range 0 7
 	---help---
-		ADS1115 data rate. Default is 4.
+		ADS1115 data rate. See datasheet or ads1115.h for more info.
 
 config ADC_ADS1115_COMP_MODE
 	bool "ADS1115 window comparator mode"
 	default n
 	---help---
-		ADS1115 comparator mode. 
+		ADS1115 window comparator mode. 
 
 config ADC_ADS1115_COMP_POL
 	bool "ADS1115 comparator polarity"
