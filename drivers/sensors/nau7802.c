@@ -21,7 +21,7 @@
 
 // The NAU7802 supports two modes, 0-100kHz and 0-400kHz
 #ifndef CONFIG_SENSORS_NAU7802_I2C_FREQUENCY
-    #define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 400000// is this 100kHz? we'll find out I guess 
+    #define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 100000// is this 100kHz? we'll find out I guess 
 #endif
 
 #ifndef CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE
@@ -194,7 +194,8 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev){
 
     bool data_ready;
     err = nau7802_data_available(dev, &data_ready);
-    if(err < 0){
+    if(err < 0 || !data_ready){
+        snerr("Data not ready\n");
         goto unlock_ret;
     }
 
@@ -224,12 +225,24 @@ static int nau7802_on(FAR nau7802_dev_s *dev) {
 
     regval |= 0x06; // setting bits 1 and 2 to 1
 
-    return nau7802_write_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
-}
+    err = nau7802_write_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
+    if (err < 0) {
+        return err;
+    }
 
-static int nau7802_set_streaming_mode(FAR nau7802_dev_s *dev){
-    // there is 2 streaming modes, the first one is the standard, the second one isn't compatible
-    return nau7802_set_bit(dev, REG_I2C_CONTROL, 7, 1);
+    // check if the device is on
+    err = nau7802_read_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
+    if (err < 0) {
+        return err;
+    }
+
+    if (((regval >> 3) & 1) == 1) {
+        snerr("Device is on\n");
+    }
+    else {
+        snerr("Device is off\n");
+    }
+    return err;
 }
 
 // static int nau7802_set_odr()
@@ -259,11 +272,7 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
 
         err = nau7802_on(dev);
         if(err){
-            return err;
-        }
-
-        err = nau7802_set_streaming_mode(dev);
-        if(err){
+            snerr("Could not turn on the sensor\n");
             return err;
         }
     }
