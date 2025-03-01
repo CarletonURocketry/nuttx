@@ -1,6 +1,6 @@
 /****************************************************************************
  * drivers/analog/ads1115.c
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -352,7 +352,7 @@ static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
             {
               ret = ads1115_read_current_register(priv, &buf);
             }
-          while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0);
+          while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0 && ret == OK);
           ainfo("config register: %x\n", (be16toh(buf)));
         }
 

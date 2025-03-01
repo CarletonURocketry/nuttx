@@ -29,6 +29,7 @@
 
 #include <nuttx/analog/ioctl.h>
 #include <nuttx/config.h>
+#include <nuttx/i2c/i2c_master.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -153,7 +154,7 @@ enum ads1115_comp_queue_e
  * Public Function Prototypes
  ****************************************************************************/
 
-FAR struct adc_dev_s *ads1115_initialize(FAR struct i2c_master_s *i2c,
+FAR struct adc_dev_s *ads1115_initialize(struct i2c_master_s *i2c,
                                          uint8_t addr);
 
 #endif /* __INCLUDE_NUTTX_ANALOG_ADS1115_H */
