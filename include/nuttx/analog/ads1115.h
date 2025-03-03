@@ -36,7 +36,6 @@
  ****************************************************************************/
 
 /* IOCTL Commands
- * Cmd: ANIOC_ADS1115_SET_OS          Arg: enum ads1115_os_e
  * Cmd: ANIOC_ADS1115_SET_PGA         Arg: enum ads1115_pga_e
  * Cmd: ANIOC_ADS1115_SET_MODE        Arg: enum ads1115_mode_e
  * Cmd: ANIOC_ADS1115_SET_DR          Arg: enum ads1115_dr_e

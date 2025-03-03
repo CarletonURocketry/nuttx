@@ -348,12 +348,24 @@ static int ads1115_readchannel(FAR struct ads1115_dev_s *priv,
         {
           /* Read the configuration register until OS has been set to 1. */
 
+          int count = 0;
           do
             {
+              /* ADS1115 takes ~25 usec to wake up */
+
+              nxsig_usleep(25);
               ret = ads1115_read_current_register(priv, &buf);
+              count++;
             }
-          while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0 && ret == OK);
+          while ((be16toh(buf) & ADS1115_OS_SHIFT) == 0 && ret == OK &&
+                  count < 3);
           ainfo("config register: %x\n", (be16toh(buf)));
+
+          if (count >= 3)
+            {
+              aerr("ADS1115 timed out waiting for conversion to finish\n");
+              return -ETIMEDOUT;
+            }
         }
 
       /* Read the conversion register. */

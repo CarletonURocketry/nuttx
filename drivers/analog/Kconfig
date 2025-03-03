@@ -283,29 +283,36 @@ config ADC_ADS1115_CHANNEL
 	default 0
 	range 0 7
 	---help---
-		ADS1115 channel/mux configuration. See datasheet 
-		or ads1115.h for more info. 
+		ADS1115 channel/mux configuration. 
+		0-3 are the differential channels. 
+		4-7 are the single ended channels for A0 to A3
+		See the datasheet or ads1115.h for more info.
 
 config ADC_ADS1115_PGA 
 	int "ADS1115 PGA"
 	default 2
 	range 0 7
 	---help---
-		ADS1115 PGA configuration. See datahseet or ads1115.h 
-		for more info. 
+		ADS1115 PGA configuration.
+		0 is +/-6.144V, 1 is +/-4.096V, 2 is +/-2.048V, 3 is +/-1.024V,
+		4 is +/-0.512V, 5 is +/-0.256V, 6 is +/-0.256V, 7 is +/-0.256V.
 
 config ADC_ADS1115_CONTINOUS 
 	bool "ADS1115 continuous mode"
 	default n
 	---help---
-		ADS1115 continuous mode. 
+		ADS1115 continuous mode. The ADS1115 will repeatedly take conversions.
+		If changing channels in this mode, there is a chance of old data being
+		read. To avoid this, use one shot mode or use the ALERT/RDY pin.
 
 config ADC_ADS1115_DR
 	int "ADS1115 data rate"
 	default 4
 	range 0 7
 	---help---
-		ADS1115 data rate. See datasheet or ads1115.h for more info.
+		ADS1115 data rate. 
+		0 is 8sps, 1 is 16sps, 2 is 32sps, 3 is 64sps,
+		4 is 128sps, 5 is 250sps, 6 is 475sps, 7 is 860sps.
 
 config ADC_ADS1115_COMP_MODE
 	bool "ADS1115 window comparator mode"
