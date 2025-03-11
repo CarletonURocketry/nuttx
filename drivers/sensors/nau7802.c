@@ -384,9 +384,23 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
             return err;
         }
 
+        // disabling ADC chopper??? 
+        err = nau7802_mask_bits(dev, REG_ADC, 0x30, 0x3);
+        if(err < 0){
+            return err;
+        }
 
+        // use low ESR caps
         err = nau7802_set_bit(dev, REG_PGA, 6, 0);
+        if(err < 0){
+            return err;
+        }
 
+        // PGA stabilizer cap on output
+        err = nau7802_set_bit(dev, REG_POWER, 7, 1);
+        if(err < 0){
+            return err;
+        }
 
     }
 
