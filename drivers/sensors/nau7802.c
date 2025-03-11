@@ -19,39 +19,6 @@
 #include <nuttx/signal.h>
 #include <nuttx/wqueue.h>
 
-// The NAU7802 supports two modes, 0-100kHz and 0-400kHz
-#ifndef CONFIG_SENSORS_NAU7802_I2C_FREQUENCY
-    #define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 100000// is this 100kHz? we'll find out I guess 
-#endif
-
-#ifndef CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE
-    #define CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE 10000 // ACTUAL TODO THIS IS THE FIRST NUMBER I CAN THINK OF
-#endif
-
-#define REG_PU_CTRL 0x00
-#define REG_CTRL_1 0x01
-#define REG_CTRL_2 0x02
-#define REG_OCAL1_B2 0x03
-#define REG_OCAL1_B1 0x04
-#define REG_OCAL1_B0 0x05
-#define REG_GCAL1_B3 0x06
-#define REG_GCAL1_B2 0x07
-#define REG_GCAL1_B1 0x08
-#define REG_GCAL1_B0 0x09
-#define REG_OCAL2_B2 0x0A
-#define REG_OCAL2_B1 0x0B
-#define REG_OCAL2_B0 0x0C
-#define REG_GCAL2_B3 0x0D
-#define REG_GCAL2_B2 0x0E
-#define REG_GCAL2_B1 0x0F
-#define REG_GCAL2_B0 0x10
-#define REG_I2C_CONTROL 0x11
-#define REG_ADCO_B2 0x12 // data bit 23 to 16
-#define REG_ADCO_B1 0x13 // data bit 15 to 8
-#define REG_ADCO_B0 0x14 // data bit 7 to 0
-#define REG_OTP_B1 0x15
-#define REG_OTP_B0 0x16
-
 typedef struct {
     struct sensor_lowerhalf_s lower; 
     FAR struct i2c_master_s *i2c;
@@ -62,30 +29,6 @@ typedef struct {
     bool interrupts;
     uint32_t odr; // output data rate
 } nau7802_dev_s;
-
-// ODR = Ouput Data Rate
-enum nau7802_ord_e {
-    ODR_10HZ = 0b000,
-    ODR_20HZ = 0b001,
-    ODR_40HZ = 0b010,
-    ODR_80HZ = 0b011,
-    ODR_320HZ = 0b111
-};
-
-// ODR to time delay in micro-seconds
-static const uint32_t ODR_TO_INTERVAL[] = {
-    [ODR_10HZ] = 100000,
-    [ODR_20HZ] = 50000,
-    [ODR_40HZ] = 25000,
-    [ODR_80HZ] = 12500,
-    [ODR_320HZ] = 3125 
-};
-
-static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, bool enable);
-// static int nau7802_set_interval(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR uint32_t *period_us);
-// static int nau7802_selftest(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, unsigned long arg);
-static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR struct sensor_device_info_s *info);
-// static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, int cmd,unsigned long arg);
 
 static int nau7802_read_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, uint8_t nbytes) {
     struct i2c_msg_s readcmd[2] = {
@@ -130,23 +73,23 @@ static int nau7802_write_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, ui
   return I2C_TRANSFER(dev->i2c, writecmd, 2);
 }
 
-static int nau7802_read_data(FAR nau7802_dev_s *dev, FAR struct sensor_force *data){
-    snerr("Reading data\n");
-    int8_t raw_data[3];
+static int nau7802_set_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, uint8_t bit_value) {
     int err = 0;
-    err = nau7802_read_reg(dev, REG_ADCO_B2, &raw_data, sizeof(raw_data));
-    if(err < 0){
+    uint8_t reg_val;
+
+    err = nau7802_read_reg(dev, addr, &reg_val, sizeof(reg_val));
+    if(err < 0) {
         return err;
     }
 
-    data->timestamp = sensor_get_timestamp();
-    data->event = 0;
-    data->force = (raw_data[0] << 16) + (raw_data[1] << 8) + raw_data[2]; // this better work
+    // Clear the bit first, then set it to the desired value
+    reg_val &= ~(1 << bit);
+    reg_val |= ((bit_value & 1) << bit);
 
-    return err;
+    return nau7802_write_reg(dev, addr, &reg_val, sizeof(reg_val));
 }
 
-static int nau7802_set_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, bool val){
+static int nau7802_read_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, bool *val){
     int err = 0;
     uint8_t reg_val;
 
@@ -155,26 +98,177 @@ static int nau7802_set_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, bo
         return err;
     }
 
-    if(val){
-        reg_val = reg_val | (1 << bit); // set the bit
+    *val = (reg_val >> bit) & 1;
+    return err;
+}
+
+static int nau7802_mask_bits(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t mask, uint8_t value) {
+    int err = 0;
+    uint8_t reg_val;
+
+    err = nau7802_read_reg(dev, addr, &reg_val, sizeof(reg_val));
+    if(err < 0) {
+        return err;
     }
-    else{
-        reg_val = reg_val & ~(1 << bit); // clear the bit
-    }
+
+    reg_val = (reg_val & ~mask) | (value & mask);
 
     return nau7802_write_reg(dev, addr, &reg_val, sizeof(reg_val));
 }
 
-static int nau7802_data_available(FAR nau7802_dev_s *dev, bool *data_ready){
-    uint8_t reg_data;
+static int nau7802_reset(FAR nau7802_dev_s *dev){
     int err = 0;
-    err = nau7802_read_reg(dev, REG_PU_CTRL, &reg_data, 1);
+    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_RR, 1);
+    if(err < 0){
+        snerr("Could not set reset bit to 1 during reset\n");
+        return err;
+    }
+
+    usleep(10000);
+
+    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_RR, 0);
+    if(err < 0){
+        snerr("Could not set reset bit to 0 during reset\n");
+        return err;
+    }
+
+    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUD, 1);
+    if(err < 0){
+        snerr("Could not set set the PUD bit to 1 during reset\n");
+        return err;
+    }
+
+    usleep(200); // waiting 200 micoroseconds for the power up
+
+    uint8_t reg_val;
+    err = nau7802_read_reg(dev, REG_PU_CTRL, &reg_val, sizeof(reg_val));
+    if(err < 0){
+        snerr("Could not read the power up control register during reset\n");
+        return err;
+    }
+
+    if(((reg_val >> 3) & 1) == 1){
+        snerr("Power up succesfull\n");
+        return 0;
+    }
+    else{
+        snerr("Power up failed\n");
+        return -1;
+    }
+}
+
+static int nau7802_enable(FAR nau7802_dev_s *dev, bool enable){
+    int err = 0;
+    if(!enable){
+        err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUA, 0);
+        if(err < 0){
+            return err;
+        }
+        err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUD, 0);
+        if(err < 0){
+            return err;
+        }
+        return err;
+    }
+
+    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUA, 1);
+    if(err < 0){
+        return err;
+    }
+    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUD, 1);
     if(err < 0){
         return err;
     }
 
-    *data_ready = ((reg_data >> 5) & 1) == 1; // if the 5th bits is 1 then the data is ready
+    usleep(600000); 
 
+    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_CS, 1);
+    if(err < 0){
+        return err;
+    }
+
+    bool reg_val;
+    err = nau7802_read_bit(dev, REG_PU_CTRL, BIT_PUR, &reg_val);
+    if(err < 0 || !reg_val){
+        return err;
+    }
+    return err;
+}
+
+static int nau7802_data_available(FAR nau7802_dev_s *dev, bool *val){
+    return nau7802_read_bit(dev, REG_PU_CTRL, BIT_CR, val);
+}
+
+static int nau7802_read_data(FAR nau7802_dev_s *dev, FAR struct sensor_force *data){
+    uint8_t msb, mid, lsb;
+    int32_t value;
+    
+    nau7802_read_reg(dev, REG_ADCO_B2, &msb, sizeof(msb));
+    nau7802_read_reg(dev, REG_ADCO_B1, &mid, sizeof(mid));
+    nau7802_read_reg(dev, REG_ADCO_B0, &lsb, sizeof(lsb));
+    
+    // Combine into 24-bit value and sign extend to 32-bit
+    value = (int32_t)((uint32_t)msb << 16 | (uint32_t)mid << 8 | lsb);
+    
+    // Sign extend if negative (MSB is set)
+    if (value & 0x800000) {
+        value |= 0xFF000000;
+    }
+
+
+    data->timestamp = sensor_get_timestamp();
+    data->event = 0;
+    data->force = value;
+    return 0;
+}
+
+static int nau7802_set_ldo(FAR nau7802_dev_s *dev, nau7802_ldo_voltage_enum voltage){
+    if(voltage == LDO_V_EXTERNAL){
+        return nau7802_set_bit(dev, REG_PU_CTRL, BIT_AVVDS, 0);
+    }
+    
+    int err = 0;
+    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_AVVDS, 1);
+    if(err < 0){
+        return err;
+    }
+
+    return nau7802_mask_bits(dev, REG_CTRL_1, 0x38, voltage);
+}
+
+static int nau7802_set_gain(FAR nau7802_dev_s *dev, nau7802_gain_e gain){
+    return nau7802_mask_bits(dev, REG_CTRL_1, 0x7, gain);
+}
+
+static int nau7802_set_sample_rate(FAR nau7802_dev_s *dev, nau7802_sample_rate_e rate){
+    return nau7802_mask_bits(dev, REG_CTRL_2, 0x60, rate);
+}
+
+static int nau7802_calibrate(FAR nau7802_dev_s *dev, nau7802_calibration_mode_e mode){
+    int err = 0;
+    err = nau7802_mask_bits(dev, REG_CTRL_2, 0x3, mode);
+    if(err < 0){
+        return err;
+    }
+    
+    err = nau7802_set_bit(dev, REG_CTRL_2, CAL_START, 1); // setting calibration start bit
+    if(err < 0){
+        return err;
+    }
+
+    bool reg_val;
+    while(1){
+        err = nau7802_read_bit(dev, REG_CTRL_2, CAL_START, &reg_val); 
+        if(err < 0){
+            return err;
+        }
+        usleep(10000);
+    }
+
+    err = nau7802_read_bit(dev, REG_CTRL_2, CAL_ERR, &reg_val);
+    if(err < 0 || !reg_val){
+        return err;
+    }
     return err;
 }
 
@@ -213,55 +307,41 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev){
     return err;
 }
 
-static int nau7802_on(FAR nau7802_dev_s *dev) {
-    // TODO, if this works you can convert this to call the set bit func
-    int err;
-    uint8_t regval;
+static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, int cmd, unsigned long arg) {
+    FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
+    int err = 0;
 
-    err = nau7802_read_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
-    if (err < 0) {
+    err = nxmutex_lock(&dev->devlock);
+    if (err){
         return err;
     }
 
-    regval |= 0x06; // setting bits 1 and 2 to 1
+    switch (cmd) {
+        // /* Set low power mode if `arg` is truthy */
+        // case SNIOC_SET_POWER_MODE:
+        //     err = nau7802_standby(dev, arg);
+        //     break;
 
-    err = nau7802_write_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
-    if (err < 0) {
-        return err;
+        // // /* Soft reset */
+        // case SNIOC_RESET:
+        //     err = nau7802_reset(dev);
+        //     break;
+
+        // case SNIOC_SET_GAIN:
+        //     err = nau7802_set_gain(dev, arg);
+        //     break;
+
+        default:
+            err = -EINVAL;
+            snerr("Unknown command for LIS2MDL: lu\n", cmd);
+            break;
     }
 
-    // check if the device is on
-    err = nau7802_read_reg(dev, REG_PU_CTRL, &regval, sizeof(regval));
-    if (err < 0) {
-        return err;
-    }
-
-    if (((regval >> 3) & 1) == 1) {
-        snerr("Device is on\n");
-    }
-    else {
-        snerr("Device is off\n");
-    }
+    nxmutex_unlock(&dev->devlock);
     return err;
 }
 
-// static int nau7802_set_odr()
-// static int nau7802_set_mode()
-// static int nau7802_low_power() // not priotity
-// static int nau7802_offset_enable() // probably also not priority
-// static int nau7802_enable_interrupts() // TODO after
-static const struct sensor_ops_s g_sensor_ops =
-{
-  .activate = nau7802_activate,
-//   .set_interval = nau7802_set_interval,
-//   .selftest = nau7802_selftest,
-  .get_info = nau7802_get_info,
-//   .control = nau7802_control,
-//   .set_calibvalue = nau7802_set_calibvalue, // not happening 
-};
-
-static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, bool enable)
-{
+static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, bool enable) {
     FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
     bool start_thread = false;
     int err = 0;
@@ -270,11 +350,44 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
     if (enable && !dev->enabled) {
         start_thread = true;
 
-        err = nau7802_on(dev);
-        if(err){
-            snerr("Could not turn on the sensor\n");
+        err = nau7802_reset(dev);
+        if(err < 0){
+            return err;
+        }  
+
+        err = nau7802_enable(dev, true);
+        if(err < 0){
             return err;
         }
+        
+        /* Check for NAU7802 revision register (0x1F), low nibble should be 0xF. */
+        uint8_t reg_val;
+        err = nau7802_read_reg(dev, 0x1F, &reg_val, sizeof(reg_val));
+        if(err < 0 || (reg_val & 0xF) != 0xF){
+            snerr("Could not read the revision register\n");
+            return err;
+        }
+
+
+        err = nau7802_set_ldo(dev, LDO_V_3V3);
+        if(err < 0){
+            return err;
+        }
+
+        err = nau7802_set_gain(dev, GAIN_128);
+        if(err < 0){
+            return err;
+        }
+
+        err = nau7802_set_sample_rate(dev, SPS_10);
+        if(err < 0){
+            return err;
+        }
+
+
+        err = nau7802_set_bit(dev, REG_PGA, 6, 0);
+
+
     }
 
     dev->enabled = enable; 
@@ -295,8 +408,8 @@ static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
   memcpy(info->name, "NAU7802", sizeof("NAU7802")); // why not strlen?
   memcpy(info->vendor, "Nuvoton", sizeof("Nuvoton"));
 
-  info->min_delay = ODR_TO_INTERVAL[ODR_10HZ];
-  info->max_delay = ODR_TO_INTERVAL[ODR_10HZ];
+  info->min_delay = SPS_TO_INTERVAL[SPS_10];
+  info->max_delay = SPS_TO_INTERVAL[SPS_10];
   info->fifo_reserved_event_count = 0;
   info->fifo_max_event_count = 0;
   info->max_range = 0; // It's not fixed so idk
@@ -326,9 +439,14 @@ static int nau7802_thread(int argc, FAR char *argv[]){
     }
 }
 
+static const struct sensor_ops_s g_sensor_ops =
+{
+  .activate = nau7802_activate,
+  .get_info = nau7802_get_info,
+  .control = nau7802_control,
+};
 
-int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
-                     nau7802_attach attach){
+int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,  nau7802_attach attach){
     int err;
     FAR nau7802_dev_s* priv = kmm_zalloc(sizeof(nau7802_dev_s));
 
@@ -356,7 +474,7 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
     priv->lower.type = SENSOR_TYPE_FORCE; // TODO: Ask which sensor type is right for whatever this is
     priv->enabled = false;
     priv->interrupts = false;
-    priv->odr = ODR_TO_INTERVAL[ODR_10HZ]; // time to sleep in ms TODO CHANGE THIS
+    priv->odr = SPS_TO_INTERVAL[SPS_10]; 
 
     err = sensor_register(&priv->lower, devno);
     if(err < 0){
