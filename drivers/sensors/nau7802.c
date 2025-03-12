@@ -246,30 +246,30 @@ static int nau7802_set_sample_rate(FAR nau7802_dev_s *dev, nau7802_sample_rate_e
 
 static int nau7802_calibrate(FAR nau7802_dev_s *dev, nau7802_calibration_mode_e mode){
     int err = 0;
+    bool reg_val;
+    
     err = nau7802_mask_bits(dev, REG_CTRL_2, 0x3, mode);
     if(err < 0){
         return err;
     }
     
-    err = nau7802_set_bit(dev, REG_CTRL_2, CAL_START, 1); // setting calibration start bit
+    err = nau7802_set_bit(dev, REG_CTRL_2, CAL_START, 1);
     if(err < 0){
         return err;
     }
 
-    bool reg_val;
-    while(1){
-        err = nau7802_read_bit(dev, REG_CTRL_2, CAL_START, &reg_val); 
+    // Wait for calibration to complete
+    do {
+        err = nau7802_read_bit(dev, REG_CTRL_2, CAL_START, &reg_val);
         if(err < 0){
             return err;
         }
         usleep(10000);
-    }
+    } while(reg_val);
 
+    // Check calibration error bit
     err = nau7802_read_bit(dev, REG_CTRL_2, CAL_ERR, &reg_val);
-    if(err < 0 || !reg_val){
-        return err;
-    }
-    return err;
+    return (err < 0 || reg_val) ? -1 : 0;
 }
 
 static int nau7802_push_data(FAR nau7802_dev_s *dev){
@@ -402,6 +402,11 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
             return err;
         }
 
+        // perform internal calibration
+        err = nau7802_calibrate(dev, CALMOD_INTERNAL);
+        if(err < 0){
+            return err;
+        }
     }
 
     dev->enabled = enable; 
