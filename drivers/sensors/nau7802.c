@@ -313,6 +313,14 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file
             err = nau7802_set_gain(dev, arg);
             break;
 
+        case SNIOC_SET_SAMPLE_RATE:
+            err = nau7802_set_gain(dev, arg);
+            break;
+        
+        case SNIOC_SET_LDO:
+            err = nau7802_set_ldo(dev, arg);
+            break;
+
         default:
             err = -EINVAL;
             snerr("Unknown command for LIS2MDL: lu\n", cmd);
