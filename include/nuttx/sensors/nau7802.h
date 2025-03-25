@@ -72,12 +72,19 @@
 #define REG_PU_CTRL 0x00 // power up control
 #define REG_CTRL_1 0x01  // control/config reg 1
 #define REG_CTRL_2 0x02  // control/config reg 2
+
+#define REG_GCAL1_B3 0x6 // gain calibration registers
+#define REG_GCAL1_B2 0x7
+#define REG_GCAL1_B1 0x8
+#define REG_GCAL1_B0 0x9
+
 #define REG_ADCO_B2 0x12 // data bit 23 to 16
 #define REG_ADCO_B1 0x13 // data bit 15 to 8
 #define REG_ADCO_B0 0x14 // data bit 7 to 0
 #define REG_ADC 0x15 // ADC / chopper control
 #define REG_PGA 0x1B   // PGA control
 #define REG_POWER 0x1C  // power control
+
 
 // Bits for the PU_CTRL register 
 #define BIT_RR 0x0      // register reset

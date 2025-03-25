@@ -485,6 +485,7 @@
 #define SNIOC_SET_GAIN             _SNIOC(0x00A1) 
 #define SNIOC_SET_SAMPLE_RATE      _SNIOC(0x00A2) 
 #define SNIOC_SET_LDO              _SNIOC(0x00A3) 
+#define SNIOC_GET_GAIN_CALIBVALUE  _SNIOC(0x00A4) 
 
 
 /****************************************************************************
