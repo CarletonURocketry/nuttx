@@ -73,7 +73,7 @@ static int nau7802_write_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf, ui
   return I2C_TRANSFER(dev->i2c, writecmd, 2);
 }
 
-static int nau7802_set_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, uint8_t bit_value) {
+static int nau7802_set_bits(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t n_bits, uint8_t n_bit_shifts, uint8_t value) {
     int err = 0;
     uint8_t reg_val;
 
@@ -82,9 +82,11 @@ static int nau7802_set_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, ui
         return err;
     }
 
-    // Clear the bit first, then set it to the desired value
-    reg_val &= ~(1 << bit);
-    reg_val |= ((bit_value & 1) << bit);
+    uint8_t mask = ((1 << n_bits) - 1);
+    
+    reg_val &= ~(mask << n_bit_shifts);
+    
+    reg_val |= ((value & mask) << n_bit_shifts);
 
     return nau7802_write_reg(dev, addr, &reg_val, sizeof(reg_val));
 }
@@ -102,66 +104,20 @@ static int nau7802_read_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit, b
     return err;
 }
 
-
-static int nau7802_set_multiple_bits(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bits, uint8_t value){
-    int err = 0;
-    uint8_t reg_val;
-
-    err = nau7802_read_reg(dev, addr, &reg_val, sizeof(reg_val));
-    if(err < 0){
-        return err;
-    }
-
-    reg_val &= ~bits;
-    reg_val |= (value & bits);
-
-    return nau7802_write_reg(dev, addr, &reg_val, sizeof(reg_val));
-
-}
-
-static int nau7802_mask_bits(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t mask, uint8_t value) {
-    int err = 0;
-    uint8_t reg_val;
-
-    err = nau7802_read_reg(dev, addr, &reg_val, sizeof(reg_val));
-    if(err < 0) {
-        return err;
-    }
-    snerr("Register %d before has value %d\n", addr, reg_val);
-    reg_val = (reg_val & ~mask) | (value & mask);
-    err = nau7802_write_reg(dev, addr, &reg_val, sizeof(reg_val));
-    if(err < 0) {
-        return err;
-    }
-
-    err = nau7802_read_reg(dev, addr, &reg_val, sizeof(reg_val));
-    if(err < 0) {
-        return err;
-    }
-    snerr("Register %d after has value %d\n", addr, reg_val);
-    return err;
-
-}
-
 static int nau7802_reset(FAR nau7802_dev_s *dev){
     int err = 0;
-    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_RR, 1);
+    err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_RR, 1);
     if(err < 0){
-        snerr("Could not set reset bit to 1 during reset\n");
         return err;
     }
 
-    // usleep(10000);
-
-    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_RR, 0);
+    err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_RR, 0);
     if(err < 0){
-        snerr("Could not set reset bit to 0 during reset\n");
         return err;
     }
 
-    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUD, 1);
+    err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_PUD, 1);
     if(err < 0){
-        snerr("Could not set set the PUD bit to 1 during reset\n");
         return err;
     }
 
@@ -170,11 +126,11 @@ static int nau7802_reset(FAR nau7802_dev_s *dev){
     uint8_t reg_val;
     err = nau7802_read_reg(dev, REG_PU_CTRL, &reg_val, sizeof(reg_val));
     if(err < 0){
-        snerr("Could not read the power up control register during reset\n");
         return err;
     }
 
-    if(((reg_val >> 3) & 1) == 1){
+    // check if power up is successful
+    if(((reg_val >> BIT_PUR) & 1) == 1){
         snerr("Power up succesfull\n");
         return 0;
     }
@@ -187,32 +143,34 @@ static int nau7802_reset(FAR nau7802_dev_s *dev){
 static int nau7802_enable(FAR nau7802_dev_s *dev, bool enable){
     int err = 0;
     if(!enable){
-        err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUA, 0);
+        err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_PUA, 0);
         if(err < 0){
             return err;
         }
-        err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUD, 0);
+        err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_PUD, 0);
         if(err < 0){
             return err;
         }
         return err;
     }
 
-    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUA, 1);
+    err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_PUD, 1);
     if(err < 0){
         return err;
     }
-    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_PUD, 1);
+
+    err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_PUA, 1);
     if(err < 0){
         return err;
     }
 
     usleep(600000); 
 
-    // err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_CS, 1);
-    // if(err < 0){
-    //     return err;
-    // }
+    // start cycle
+    err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_CS, 1);
+    if(err < 0){
+        return err;
+    }
 
     bool reg_val;
     err = nau7802_read_bit(dev, REG_PU_CTRL, BIT_PUR, &reg_val);
@@ -251,42 +209,43 @@ static int nau7802_read_data(FAR nau7802_dev_s *dev, FAR struct sensor_force *da
 
 static int nau7802_set_ldo(FAR nau7802_dev_s *dev, nau7802_ldo_voltage_enum voltage){
     if(voltage == LDO_V_EXTERNAL){
-        return nau7802_set_bit(dev, REG_PU_CTRL, BIT_AVVDS, 0);
+        return nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_AVVDS, 0);
     }
     
     int err = 0;
-    err = nau7802_set_bit(dev, REG_PU_CTRL, BIT_AVVDS, 1);
+    err = nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_AVVDS, 1);
     if(err < 0){
         return err;
     }
 
-    return nau7802_mask_bits(dev, REG_CTRL_1, 0x38, voltage);
+    return nau7802_set_bits(dev, REG_CTRL_1, 3, 3, voltage);
 }
 
 static int nau7802_set_gain(FAR nau7802_dev_s *dev, nau7802_gain_e gain){
-    return nau7802_mask_bits(dev, REG_CTRL_1, 0x7, gain);
+    return nau7802_set_bits(dev, REG_CTRL_1, 3, 0, gain);
 }
 
 static int nau7802_set_sample_rate(FAR nau7802_dev_s *dev, nau7802_sample_rate_e rate){
-    return nau7802_mask_bits(dev, REG_CTRL_2, 0x70, rate);
-    // return nau7802_mask_bits(dev, REG_CTRL_2, 0x60, rate);
+    return nau7802_set_bits(dev, REG_CTRL_2, 3, 4, rate);
 }
 
 static int nau7802_calibrate(FAR nau7802_dev_s *dev, nau7802_calibration_mode_e mode){
     int err = 0;
-    bool reg_val;
     
-    err = nau7802_mask_bits(dev, REG_CTRL_2, 0x3, mode);
+    // choosing calibration mode
+    err = nau7802_set_bits(dev, REG_CTRL_2, 2, 0, mode);
     if(err < 0){
         return err;
     }
     
-    err = nau7802_set_bit(dev, REG_CTRL_2, CAL_START, 1);
+    // start calibration
+    err = nau7802_set_bits(dev, REG_CTRL_2, 1, CAL_START, 1);
     if(err < 0){
         return err;
     }
 
     // Wait for calibration to complete
+    bool reg_val;
     do {
         err = nau7802_read_bit(dev, REG_CTRL_2, CAL_START, &reg_val);
         if(err < 0){
@@ -314,12 +273,12 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev){
         goto unlock_ret;
     }
 
-    // bool data_ready;
-    // err = nau7802_data_available(dev, &data_ready);
-    // if(err < 0 || !data_ready){
-    //     snerr("Data not ready\n");
-    //     goto unlock_ret;
-    // }
+    bool data_ready;
+    err = nau7802_data_available(dev, &data_ready);
+    if(err < 0 || !data_ready){
+        snerr("Data not ready\n");
+        goto unlock_ret;
+    }
 
     err = nau7802_read_data(dev, &data);
     if(err < 0){
@@ -345,19 +304,14 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file
     }
 
     switch (cmd) {
-        // /* Set low power mode if `arg` is truthy */
-        // case SNIOC_SET_POWER_MODE:
-        //     err = nau7802_standby(dev, arg);
-        //     break;
+        // /* Soft reset */
+        case SNIOC_RESET:
+            err = nau7802_reset(dev);
+            break;
 
-        // // /* Soft reset */
-        // case SNIOC_RESET:
-        //     err = nau7802_reset(dev);
-        //     break;
-
-        // case SNIOC_SET_GAIN:
-        //     err = nau7802_set_gain(dev, arg);
-        //     break;
+        case SNIOC_SET_GAIN:
+            err = nau7802_set_gain(dev, arg);
+            break;
 
         default:
             err = -EINVAL;
@@ -389,12 +343,12 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
         }
         
         /* Check for NAU7802 revision register (0x1F), low nibble should be 0xF. */
-        // uint8_t reg_val;
-        // err = nau7802_read_reg(dev, 0x1F, &reg_val, sizeof(reg_val));
-        // if(err < 0 || (reg_val & 0xF) != 0xF){
-        //     snerr("Could not read the revision register\n");
-        //     return err;
-        // }
+        uint8_t reg_val;
+        err = nau7802_read_reg(dev, 0x1F, &reg_val, sizeof(reg_val));
+        if(err < 0 || (reg_val & 0xF) != 0xF){
+            snerr("Could not read the revision register\n");
+            return err;
+        }
 
 
         err = nau7802_set_ldo(dev, LDO_V_3V0);
@@ -412,30 +366,29 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
             return err;
         }
 
-        // disabling ADC chopper??? 
-        err = nau7802_set_multiple_bits(dev, REG_ADC, 0x30, 0x30);
-        // err = nau7802_mask_bits(dev, REG_ADC, 0x30, 0x3);
+        // disable ADC chopper 
+        err = nau7802_set_bits(dev, REG_ADC, 2, 4, 0x3);
         if(err < 0){
             return err;
         }
 
         // use low ESR caps
-        // err = nau7802_set_bit(dev, REG_PGA, 6, 0);
-        // if(err < 0){
-        //     return err;
-        // }
+        err = nau7802_set_bits(dev, REG_PGA, 1, 6, 0);
+        if(err < 0){
+            return err;
+        }
 
         // PGA stabilizer cap on output
-        // err = nau7802_set_bit(dev, REG_POWER, 7, 1);
-        // if(err < 0){
-        //     return err;
-        // }
+        err = nau7802_set_bits(dev, REG_POWER, 1, 7, 1);
+        if(err < 0){
+            return err;
+        }
 
-        // // perform internal calibration
-        // err = nau7802_calibrate(dev, CALMOD_INTERNAL);
-        // if(err < 0){
-        //     return err;
-        // }
+        // perform internal calibration
+        err = nau7802_calibrate(dev, CALMOD_INTERNAL);
+        if(err < 0){
+            return err;
+        }
     }
 
     dev->enabled = enable; 
