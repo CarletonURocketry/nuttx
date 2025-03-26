@@ -264,7 +264,7 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev){
     return err;
 }
 
-static int nau7802_get_gain_offset_calibvalue(FAR nau7802_dev_s *dev, unsigned long arg){
+static int nau7802_get_calibvalue(FAR nau7802_dev_s *dev, unsigned long arg){
     uint32_t *calibvalue = (uint32_t *)arg;
     uint8_t reg_b3;
     uint8_t reg_b2;
@@ -277,6 +277,22 @@ static int nau7802_get_gain_offset_calibvalue(FAR nau7802_dev_s *dev, unsigned l
     nau7802_read_reg(dev, REG_GCAL1_B0, &reg_b0, sizeof(reg_b0));
 
     *calibvalue = (reg_b3 << 24) | (reg_b2 << 16) | (reg_b1 << 8) | reg_b0;
+    return 0;
+}
+
+static int nau7802_set_calibvalue(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, unsigned long arg){
+    FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
+    uint32_t calibvalue = (uint32_t)arg;
+    uint8_t reg_b3 = (calibvalue >> 24) & 0xFF;
+    uint8_t reg_b2 = (calibvalue >> 16) & 0xFF;
+    uint8_t reg_b1 = (calibvalue >> 8) & 0xFF;
+    uint8_t reg_b0 = calibvalue & 0xFF;
+
+    nau7802_write_reg(dev, REG_GCAL1_B3, &reg_b3, sizeof(reg_b3));
+    nau7802_write_reg(dev, REG_GCAL1_B2, &reg_b2, sizeof(reg_b2));
+    nau7802_write_reg(dev, REG_GCAL1_B1, &reg_b1, sizeof(reg_b1));
+    nau7802_write_reg(dev, REG_GCAL1_B0, &reg_b0, sizeof(reg_b0));
+
     return 0;
 }
 
@@ -348,7 +364,7 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower, FAR struct file
             break;
         
         case SNIOC_GET_GAIN_CALIBVALUE:
-            err = nau7802_get_gain_offset_calibvalue(dev, arg);
+            err = nau7802_get_calibvalue(dev, arg);
             break;
 
         default:
@@ -388,7 +404,6 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
             return err;
         }
 
-
         err = nau7802_set_ldo(dev, LDO_V_3V0);
         if(err < 0){
             return err;
@@ -421,12 +436,6 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
         if(err < 0){
             return err;
         }
-
-        // perform internal calibration
-        // err = nau7802_calibrate(dev, CALMOD_INTERNAL);
-        // if(err < 0){
-        //     return err;
-        // }
     }
 
     dev->enabled = enable; 
@@ -439,7 +448,6 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower, FAR struct fil
     return 0;
 }
 
-// TODO FIX THIS
 static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower, FAR struct file *filep, FAR struct sensor_device_info_s *info){
   FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower); // I don't know what this is honestly
 
@@ -484,7 +492,8 @@ static const struct sensor_ops_s g_sensor_ops =
   .activate = nau7802_activate,
   .get_info = nau7802_get_info,
   .control = nau7802_control,
-  .calibrate = nau7802_calibrate
+  .calibrate = nau7802_calibrate,
+  .set_calibvalue = nau7802_set_calibvalue
 };
 
 int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,  nau7802_attach attach){
