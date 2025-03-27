@@ -683,17 +683,17 @@ static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower,
                             FAR struct file *filep,
                             FAR struct sensor_device_info_s *info)
 {
-  FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
 
   info->version = 0;
-  info->power = 0;
+  info->power = 2.1f;
   memcpy(info->name, "NAU7802", sizeof("NAU7802"));
   memcpy(info->vendor, "Nuvoton", sizeof("Nuvoton"));
 
-  info->min_delay = 0;
-  info->max_delay = info->fifo_reserved_event_count = 0;
+  info->min_delay = 3125;   // For 320 SPS (fastest rate)
+  info->max_delay = 100000; // For 10 SPS (slowest rate)
+  info->fifo_reserved_event_count = 0;
   info->fifo_max_event_count = 0;
-  info->max_range = 0;
+  info->max_range = 1.0f;
   info->resolution = 0;
 
   return 0;
