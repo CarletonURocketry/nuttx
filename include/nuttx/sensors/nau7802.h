@@ -73,22 +73,20 @@ typedef enum
 /* Valid sample rates */
 typedef enum
 {
-  NAU7802_SPS_10 = 0,
-  NAU7802_SPS_20 = 1,
-  NAU7802_SPS_40 = 2,
-  NAU7802_SPS_80 = 3,
-  NAU7802_SPS_320 = 7
+  NAU7802_SPS_10HZ = 0,
+  NAU7802_SPS_20HZ = 1,
+  NAU7802_SPS_40HZ = 2,
+  NAU7802_SPS_80HZ = 3,
+  NAU7802_SPS_320HZ = 7
 } nau7802_sps_e;
 
-/* Valid ODR settings*/
-typedef enum nau7802_ord_e
-{
-  ORD_10HZ,
-  ORD_20HZ,
-  ORD_40HZ,
-  ORD_80HZ,
-  ORD_320HZ,
-};
+/* SPS to Interval */
+static const uint32_t SPS_TO_INTERVAL[] = {[NAU7802_SPS_10HZ] = 100000,
+                                           [NAU7802_SPS_20HZ] = 50000,
+                                           [NAU7802_SPS_40HZ] = 25000,
+                                           [NAU7802_SPS_80HZ] = 12500,
+                                           [NAU7802_SPS_320HZ] = 3125};
+
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/

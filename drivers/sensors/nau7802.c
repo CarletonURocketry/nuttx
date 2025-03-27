@@ -83,13 +83,6 @@
 #define CAL_START 0x2
 #define CAL_ERR 0x3
 
-/* ODR to interval mapping */
-static const uint32_t ODR_TO_INTERVAL[] = {[ORD_10HZ] = 100000,
-                                           [ORD_20HZ] = 50000,
-                                           [ORD_40HZ] = 25000,
-                                           [ORD_80HZ] = 12500,
-                                           [ORD_320HZ] = 3125};
-
 typedef struct
 {
   struct sensor_lowerhalf_s lower;
@@ -98,7 +91,7 @@ typedef struct
   sem_t run;
   mutex_t devlock;
   bool enabled;
-  uint32_t odr;
+  uint32_t sps;
 } nau7802_dev_s;
 
 /****************************************************************************
@@ -638,7 +631,7 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower,
           return err;
         }
 
-      err = nau7802_set_sample_rate(dev, NAU7802_SPS_10);
+      err = nau7802_set_sample_rate(dev, NAU7802_SPS_10HZ);
       if (err < 0)
         {
           return err;
@@ -735,7 +728,7 @@ static int nau7802_thread(int argc, FAR char *argv[])
 
       /* Wait for next measurement cycle */
 
-      nxsig_usleep(ODR_TO_INTERVAL[dev->odr]);
+      nxsig_usleep(SPS_TO_INTERVAL[dev->sps]);
     }
 
   return err;
@@ -799,7 +792,7 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr)
   priv->lower.ops = &g_sensor_ops;
   priv->lower.type = SENSOR_TYPE_FORCE;
   priv->enabled = false;
-  priv->odr = ORD_10HZ; /* 10Hz (0.1s) default ODR */
+  priv->sps = NAU7802_SPS_10HZ; /* 10Hz (0.1s) default SPS */
 
   err = sensor_register(&priv->lower, devno);
   if (err < 0)
