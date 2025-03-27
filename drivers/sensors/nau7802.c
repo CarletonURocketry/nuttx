@@ -569,7 +569,7 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower,
       break;
 
     case SNIOC_SET_SAMPLE_RATE:
-      err = nau7802_set_gain(dev, arg);
+      err = nau7802_set_sample_rate(dev, arg);
       break;
 
     // Low Dropout Voltage Regulator
