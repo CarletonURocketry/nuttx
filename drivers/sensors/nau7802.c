@@ -1,3 +1,29 @@
+/****************************************************************************
+ * drivers/sensors/nau7802.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ ****************************************************************************/
+
+/****************************************************************************
+ * Included Files
+ ****************************************************************************/
+
 #include <nuttx/config.h>
 #include <nuttx/nuttx.h>
 
@@ -19,6 +45,51 @@
 #include <nuttx/signal.h>
 #include <nuttx/wqueue.h>
 
+#ifndef CONFIG_SENSORS_NAU7802_I2C_FREQUENCY
+#define CONFIG_SENSORS_NAU7802_I2C_FREQUENCY 100000
+#endif
+
+#ifndef CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE
+#define CONFIG_SENSORS_NAU7802_THREAD_STACKSIZE 10000
+#endif
+
+/* Registers */
+#define REG_PU_CTRL 0x00 // power up control
+#define REG_CTRL_1 0x01  // control/config reg 1
+#define REG_CTRL_2 0x02  // control/config reg 2
+
+#define REG_GCAL1_B3 0x6 // gain calibration registers
+#define REG_GCAL1_B2 0x7
+#define REG_GCAL1_B1 0x8
+#define REG_GCAL1_B0 0x9
+
+#define REG_ADCO_B2 0x12 // data bit 23 to 16
+#define REG_ADCO_B1 0x13 // data bit 15 to 8
+#define REG_ADCO_B0 0x14 // data bit 7 to 0
+#define REG_ADC 0x15     // ADC / chopper control
+#define REG_PGA 0x1B     // PGA control
+#define REG_POWER 0x1C   // power control
+
+// Bits for the PU_CTRL register
+#define BIT_RR 0x0    // register reset
+#define BIT_PUD 0x1   // power up digital
+#define BIT_PUA 0x2   // power up analog
+#define BIT_PUR 0x3   // power up ready
+#define BIT_CS 0x4    // cycle start
+#define BIT_CR 0x5    // cycle ready
+#define BIT_AVVDS 0x7 // AVDDS source select
+
+// Bits for the CTRL_2 register
+#define CAL_START 0x2
+#define CAL_ERR 0x3
+
+/* ODR to interval mapping */
+static const uint32_t ODR_TO_INTERVAL[] = {[ORD_10HZ] = 100000,
+                                           [ORD_20HZ] = 50000,
+                                           [ORD_40HZ] = 25000,
+                                           [ORD_80HZ] = 12500,
+                                           [ORD_320HZ] = 3125};
+
 typedef struct
 {
   struct sensor_lowerhalf_s lower;
@@ -30,6 +101,16 @@ typedef struct
   uint32_t odr;
 } nau7802_dev_s;
 
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Name: nau7802_read_reg
+ *
+ * Description:
+ *   Read `nbytes` from the register at `addr` into `buf`.
+ ****************************************************************************/
 static int nau7802_read_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf,
                             uint8_t nbytes)
 {
@@ -54,6 +135,12 @@ static int nau7802_read_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf,
   return I2C_TRANSFER(dev->i2c, readcmd, 2);
 }
 
+/****************************************************************************
+ * Name: nau7802_write_reg
+ *
+ * Description:
+ *   Write `nbytes` from `buf` to the registers starting at `addr`.
+ ****************************************************************************/
 static int nau7802_write_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf,
                              uint8_t nbytes)
 {
@@ -77,6 +164,16 @@ static int nau7802_write_reg(FAR nau7802_dev_s *dev, uint8_t addr, void *buf,
   return I2C_TRANSFER(dev->i2c, writecmd, 2);
 }
 
+/****************************************************************************
+ * Name: nau7802_set_bits
+ * Description:
+ *   Helper function to set bits in a register.
+ * Arguments:
+ *   addr - The address of the register to modify
+ *   n_bits - The number of bits to set
+ *   n_bit_shifts - The number of bits to shift
+ *   value - The value to set
+ ****************************************************************************/
 static int nau7802_set_bits(FAR nau7802_dev_s *dev, uint8_t addr,
                             uint8_t n_bits, uint8_t n_bit_shifts,
                             uint8_t value)
@@ -99,6 +196,9 @@ static int nau7802_set_bits(FAR nau7802_dev_s *dev, uint8_t addr,
   return nau7802_write_reg(dev, addr, &reg_val, sizeof(reg_val));
 }
 
+/****************************************************************************
+ * Name: nau7802_read_bit
+ ****************************************************************************/
 static int nau7802_read_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit,
                             bool *val)
 {
@@ -115,6 +215,9 @@ static int nau7802_read_bit(FAR nau7802_dev_s *dev, uint8_t addr, uint8_t bit,
   return err;
 }
 
+/****************************************************************************
+ * Name: nau7802_reset
+ ****************************************************************************/
 static int nau7802_reset(FAR nau7802_dev_s *dev)
 {
   int err = 0;
@@ -158,6 +261,11 @@ static int nau7802_reset(FAR nau7802_dev_s *dev)
     }
 }
 
+/****************************************************************************
+ * Name: nau7802_enable
+ * Description:
+ *  Enable or disable the NAU7802.
+ ****************************************************************************/
 static int nau7802_enable(FAR nau7802_dev_s *dev, bool enable)
 {
   int err = 0;
@@ -206,11 +314,22 @@ static int nau7802_enable(FAR nau7802_dev_s *dev, bool enable)
   return err;
 }
 
+/****************************************************************************
+ * Name: nau7802_data_available
+ * Description:
+ *  Check if data is available over I2C.
+ ****************************************************************************/
 static int nau7802_data_available(FAR nau7802_dev_s *dev, bool *val)
 {
   return nau7802_read_bit(dev, REG_PU_CTRL, BIT_CR, val);
 }
 
+/****************************************************************************
+ * Name: nau7802_read_data
+ *
+ * Description:
+ *  Read the ADC data from the NAU7802 into the sensor_force structure.
+ ****************************************************************************/
 static int nau7802_read_data(FAR nau7802_dev_s *dev,
                              FAR struct sensor_force *data)
 {
@@ -236,6 +355,11 @@ static int nau7802_read_data(FAR nau7802_dev_s *dev,
   return 0;
 }
 
+/****************************************************************************
+ * Name: nau7802_set_ldo
+ * Description:
+ *  Set the LDO voltage.
+ ****************************************************************************/
 static int nau7802_set_ldo(FAR nau7802_dev_s *dev,
                            nau7802_ldo_voltage_enum voltage)
 {
@@ -254,17 +378,30 @@ static int nau7802_set_ldo(FAR nau7802_dev_s *dev,
   return nau7802_set_bits(dev, REG_CTRL_1, 3, 3, voltage);
 }
 
+/****************************************************************************
+ * Name: nau7802_set_gain
+ ****************************************************************************/
 static int nau7802_set_gain(FAR nau7802_dev_s *dev, nau7802_gain_e gain)
 {
   return nau7802_set_bits(dev, REG_CTRL_1, 3, 0, gain);
 }
 
+/****************************************************************************
+ * Name: nau7802_set_sample_rate
+ ****************************************************************************/
 static int nau7802_set_sample_rate(FAR nau7802_dev_s *dev,
                                    nau7802_sample_rate_e rate)
 {
   return nau7802_set_bits(dev, REG_CTRL_2, 3, 4, rate);
 }
 
+/****************************************************************************
+ * Name: nau7802_push_data
+ *
+ * Description:
+ *    Reads some data with exclusive device access and pushed it to the UORB
+ *    upper half.
+ ****************************************************************************/
 static int nau7802_push_data(FAR nau7802_dev_s *dev)
 {
   int err = 0;
@@ -278,7 +415,7 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev)
 
   if (!dev->enabled)
     {
-      err = -EAGAIN; // why is it EAGAIN and not like failure?
+      err = -EAGAIN;
       goto unlock_ret;
     }
 
@@ -286,7 +423,6 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev)
   err = nau7802_data_available(dev, &data_ready);
   if (err < 0 || !data_ready)
     {
-      snerr("Data not ready\n");
       goto unlock_ret;
     }
 
@@ -298,13 +434,17 @@ static int nau7802_push_data(FAR nau7802_dev_s *dev)
 
   dev->lower.push_event(dev->lower.priv, &data, sizeof(data));
 
-// I LOVE GOTO TRAPS GLORY TO GOTO
 unlock_ret:
   nxmutex_unlock(&dev->devlock);
 
   return err;
 }
 
+/****************************************************************************
+ * Name: nau7802_get_calibvalue
+ * Description:
+ *  Get the gain calibration value.
+ ****************************************************************************/
 static int nau7802_get_calibvalue(FAR nau7802_dev_s *dev, unsigned long arg)
 {
   uint32_t *calibvalue = (uint32_t *)arg;
@@ -322,6 +462,11 @@ static int nau7802_get_calibvalue(FAR nau7802_dev_s *dev, unsigned long arg)
   return 0;
 }
 
+/****************************************************************************
+ * Name: nau7802_set_calibvalue
+ * Description:
+ *  Set the gain calibration value.
+ ****************************************************************************/
 static int nau7802_set_calibvalue(FAR struct sensor_lowerhalf_s *lower,
                                   FAR struct file *filep, unsigned long arg)
 {
@@ -340,6 +485,13 @@ static int nau7802_set_calibvalue(FAR struct sensor_lowerhalf_s *lower,
   return 0;
 }
 
+/****************************************************************************
+ * Name: nau7802_calibrate
+ * Description:
+ *   Perform either an INTERNAL, OFFSET or GAIN calibration.
+ *   The gain calibration value is saved and can be retrieved via the
+ *   SNIOC_GET_GAIN_CALIBVALUE command
+ ****************************************************************************/
 static int nau7802_calibrate(FAR struct sensor_lowerhalf_s *lower,
                              FAR struct file *filep, unsigned long int arg)
 {
@@ -389,6 +541,9 @@ static int nau7802_calibrate(FAR struct sensor_lowerhalf_s *lower,
   return 0;
 }
 
+/****************************************************************************
+ * Name: nau7802_control
+ ****************************************************************************/
 static int nau7802_control(FAR struct sensor_lowerhalf_s *lower,
                            FAR struct file *filep, int cmd, unsigned long arg)
 {
@@ -403,11 +558,12 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower,
 
   switch (cmd)
     {
-    // /* Soft reset */
+    // Reset all registers
     case SNIOC_RESET:
       err = nau7802_reset(dev);
       break;
 
+    // Output gain
     case SNIOC_SET_GAIN:
       err = nau7802_set_gain(dev, arg);
       break;
@@ -416,17 +572,19 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower,
       err = nau7802_set_gain(dev, arg);
       break;
 
+    // Low Dropout Voltage Regulator
     case SNIOC_SET_LDO:
       err = nau7802_set_ldo(dev, arg);
       break;
 
+    // Get the gain offset calibration value post calibration
     case SNIOC_GET_GAIN_CALIBVALUE:
       err = nau7802_get_calibvalue(dev, arg);
       break;
 
     default:
       err = -EINVAL;
-      snerr("Unknown command for LIS2MDL: lu\n", cmd);
+      snerr("Unknown command for NAU7802: lu\n", cmd);
       break;
     }
 
@@ -434,6 +592,9 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower,
   return err;
 }
 
+/****************************************************************************
+ * Name: nau7802_activate
+ ****************************************************************************/
 static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower,
                             FAR struct file *filep, bool enable)
 {
@@ -458,8 +619,8 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower,
           return err;
         }
 
-      /* Check for NAU7802 revision register (0x1F), low nibble should be 0xF.
-       */
+      /* Check for NAU7802 revision register (0x1F), low nibble should be
+       * 0xF.*/
       uint8_t reg_val;
       err = nau7802_read_reg(dev, 0x1F, &reg_val, sizeof(reg_val));
       if (err < 0 || (reg_val & 0xF) != 0xF)
@@ -518,24 +679,25 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower,
   return 0;
 }
 
+/****************************************************************************
+ * Name: nau7802_get_info
+ ****************************************************************************/
 static int nau7802_get_info(FAR struct sensor_lowerhalf_s *lower,
                             FAR struct file *filep,
                             FAR struct sensor_device_info_s *info)
 {
-  FAR nau7802_dev_s *dev = container_of(
-      lower, FAR nau7802_dev_s, lower); // I don't know what this is honestly
+  FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
 
   info->version = 0;
   info->power = 0;
-  memcpy(info->name, "NAU7802", sizeof("NAU7802")); // why not strlen?
+  memcpy(info->name, "NAU7802", sizeof("NAU7802"));
   memcpy(info->vendor, "Nuvoton", sizeof("Nuvoton"));
 
   info->min_delay = 0;
-  info->max_delay = 0;
-  info->fifo_reserved_event_count = 0;
+  info->max_delay = info->fifo_reserved_event_count = 0;
   info->fifo_max_event_count = 0;
-  info->max_range = 0;   // It's not fixed so idk
-  info->resolution = 24; // I guess 24 bit resolution???
+  info->max_range = 0;
+  info->resolution = 0;
 
   return 0;
 }
