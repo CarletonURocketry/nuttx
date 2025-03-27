@@ -103,6 +103,7 @@ A workaround would be to do a manual calibration by placing a smaller known weig
 
   int get_data(const struct orb_metadata *imu_meta, int imu, struct sensor_force *data) {
     int err = 0;
+    bool update = false;
     err = orb_check(imu, &update);
     if (err < 0) {
         return err;
@@ -140,7 +141,7 @@ A workaround would be to do a manual calibration by placing a smaller known weig
         if (err < 0) {
             printf("Error reading data\n");
         }
-        usleep(50000); 
+        usleep(100000); 
     }
 
     long zero_point = 0;
@@ -151,7 +152,7 @@ A workaround would be to do a manual calibration by placing a smaller known weig
         } else {
             zero_point += data.force / 10;
         }
-        usleep(50000); 
+        usleep(100000); 
     }
     printf("Zero point: %ld\n", zero_point);
 
@@ -167,7 +168,7 @@ A workaround would be to do a manual calibration by placing a smaller known weig
         } else {
             weight_point += data.force / 10;
         }
-        usleep(50000);
+        usleep(100000);
     }
     printf("Weight value: %ld\n", weight_point);
     float known_weight_val = 15000; // 1.5kg
