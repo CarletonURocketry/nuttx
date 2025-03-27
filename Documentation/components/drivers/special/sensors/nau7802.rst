@@ -58,7 +58,7 @@ This commands sets the sample rate of the NAU7802. The possible values are dicta
 
 .. code-block:: c
 
-   orb_ioctl(sensor, SNIOC_SET_SPS, NAU7802_SPS_10);
+   orb_ioctl(sensor, SNIOC_SET_SPS, NAU7802_SPS_10HZ);
 
 ``SNIOC_SET_LDO``
 ------------------------

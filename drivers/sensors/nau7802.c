@@ -83,6 +83,13 @@
 #define CAL_START 0x2
 #define CAL_ERR 0x3
 
+/* SPS to Interval */
+static const uint32_t SPS_TO_INTERVAL[] = {[NAU7802_SPS_10HZ] = 100000,
+                                           [NAU7802_SPS_20HZ] = 50000,
+                                           [NAU7802_SPS_40HZ] = 25000,
+                                           [NAU7802_SPS_80HZ] = 12500,
+                                           [NAU7802_SPS_320HZ] = 3125};
+
 typedef struct
 {
   struct sensor_lowerhalf_s lower;
@@ -91,7 +98,7 @@ typedef struct
   sem_t run;
   mutex_t devlock;
   bool enabled;
-  uint32_t sps;
+  nau7802_sps_e sps;
 } nau7802_dev_s;
 
 /****************************************************************************
