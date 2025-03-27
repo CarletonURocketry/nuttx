@@ -489,5 +489,6 @@ Implemented Drivers
 - ltr308
 - mpu9250
 - ms56xx
+- :doc:`nau7802`
 - :doc:`sht4x`
 - wtgahrs2
