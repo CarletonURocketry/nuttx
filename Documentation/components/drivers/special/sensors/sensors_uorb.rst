@@ -491,4 +491,5 @@ Implemented Drivers
 - ms56xx
 - :doc:`nau7802`
 - :doc:`sht4x`
+- :doc:`lsm6dso32`
 - wtgahrs2

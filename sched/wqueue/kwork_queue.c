@@ -69,6 +69,7 @@ static void work_timer_expiry(wdparm_t arg)
   FAR struct work_s *work = (FAR struct work_s *)arg;
 
   irqstate_t flags = spin_lock_irqsave(&work->wq->lock);
+  sched_lock();
 
   /* We have being canceled */
 
@@ -78,6 +79,7 @@ static void work_timer_expiry(wdparm_t arg)
     }
 
   spin_unlock_irqrestore(&work->wq->lock, flags);
+  sched_unlock();
 }
 
 static bool work_is_canceling(FAR struct kworker_s *kworkers, int nthreads,
@@ -102,6 +104,113 @@ static bool work_is_canceling(FAR struct kworker_s *kworkers, int nthreads,
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
+
+/****************************************************************************
+ * Name: work_queue_period/work_queue_period_wq
+ *
+ * Description:
+ *   Queue work to be performed periodically.  All queued work will be
+ *   performed on the worker thread of execution (not the caller's).
+ *
+ *   The work structure is allocated and must be initialized to all zero by
+ *   the caller.  Otherwise, the work structure is completely managed by the
+ *   work queue logic.  The caller should never modify the contents of the
+ *   work queue structure directly.  If work_queue() is called before the
+ *   previous work has been performed and removed from the queue, then any
+ *   pending work will be canceled and lost.
+ *
+ * Input Parameters:
+ *   qid    - The work queue ID (must be HPWORK or LPWORK)
+ *   wqueue - The work queue handle
+ *   work   - The work structure to queue
+ *   worker - The worker callback to be invoked.  The callback will be
+ *            invoked on the worker thread of execution.
+ *   arg    - The argument that will be passed to the worker callback when
+ *            it is invoked.
+ *   delay  - Delay (in clock ticks) from the time queue until the worker
+ *            is invoked. Zero means to perform the work immediately.
+ *   period - Period (in clock ticks).
+ *
+ * Returned Value:
+ *   Zero on success, a negated errno on failure
+ *
+ ****************************************************************************/
+
+int work_queue_period_wq(FAR struct kwork_wqueue_s *wqueue,
+                         FAR struct work_s *work, worker_t worker,
+                         FAR void *arg, clock_t delay, clock_t period)
+{
+  irqstate_t flags;
+  int ret = OK;
+
+  if (wqueue == NULL || work == NULL || worker == NULL)
+    {
+      return -EINVAL;
+    }
+
+  /* Interrupts are disabled so that this logic can be called from with
+   * task logic or from interrupt handling logic.
+   */
+
+  flags = spin_lock_irqsave(&wqueue->lock);
+  sched_lock();
+
+  /* Remove the entry from the timer and work queue. */
+
+  if (work->worker != NULL)
+    {
+      /* Remove the entry from the work queue and make sure that it is
+       * marked as available (i.e., the worker field is nullified).
+       */
+
+      work->worker = NULL;
+      wd_cancel(&work->u.timer);
+      if (dq_inqueue((FAR dq_entry_t *)work, &wqueue->q))
+        {
+          dq_rem((FAR dq_entry_t *)work, &wqueue->q);
+        }
+    }
+
+  if (work_is_canceling(wqueue->worker, wqueue->nthreads, work))
+    {
+      goto out;
+    }
+
+  /* Initialize the work structure. */
+
+  work->worker = worker;           /* Work callback. non-NULL means queued */
+  work->arg    = arg;              /* Callback argument */
+  work->wq     = wqueue;           /* Work queue */
+
+  /* Queue the new work */
+
+  if (!delay)
+    {
+      queue_work(wqueue, work);
+    }
+  else if (period == 0)
+    {
+      ret = wd_start(&work->u.timer, delay,
+                     work_timer_expiry, (wdparm_t)work);
+    }
+  else
+    {
+      ret = wd_start_period(&work->u.ptimer, delay, period,
+                            work_timer_expiry, (wdparm_t)work);
+    }
+
+out:
+  spin_unlock_irqrestore(&wqueue->lock, flags);
+  sched_unlock();
+  return ret;
+}
+
+int work_queue_period(int qid, FAR struct work_s *work, worker_t worker,
+                      FAR void *arg, clock_t delay, clock_t period)
+{
+  return work_queue_period_wq(work_qid2wq(qid), work, worker,
+                              arg, delay, period);
+}
 
 /****************************************************************************
  * Name: work_queue/work_queue_wq
@@ -137,61 +246,7 @@ int work_queue_wq(FAR struct kwork_wqueue_s *wqueue,
                   FAR struct work_s *work, worker_t worker,
                   FAR void *arg, clock_t delay)
 {
-  irqstate_t flags;
-
-  if (wqueue == NULL || work == NULL || worker == NULL)
-    {
-      return -EINVAL;
-    }
-
-  /* Interrupts are disabled so that this logic can be called from with
-   * task logic or from interrupt handling logic.
-   */
-
-  flags = spin_lock_irqsave(&wqueue->lock);
-
-  /* Remove the entry from the timer and work queue. */
-
-  if (work->worker != NULL)
-    {
-      /* Remove the entry from the work queue and make sure that it is
-       * marked as available (i.e., the worker field is nullified).
-       */
-
-      work->worker = NULL;
-      wd_cancel(&work->u.timer);
-      if (dq_inqueue((FAR dq_entry_t *)work, &wqueue->q))
-        {
-          dq_rem((FAR dq_entry_t *)work, &wqueue->q);
-        }
-    }
-
-  if (work_is_canceling(wqueue->worker, wqueue->nthreads, work))
-    {
-      spin_unlock_irqrestore(&wqueue->lock, flags);
-      return 0;
-    }
-
-  /* Initialize the work structure. */
-
-  work->worker = worker;           /* Work callback. non-NULL means queued */
-  work->arg    = arg;              /* Callback argument */
-  work->wq     = wqueue;           /* Work queue */
-
-  /* Queue the new work */
-
-  if (!delay)
-    {
-      queue_work(wqueue, work);
-      spin_unlock_irqrestore(&wqueue->lock, flags);
-    }
-  else
-    {
-      wd_start(&work->u.timer, delay, work_timer_expiry, (wdparm_t)work);
-      spin_unlock_irqrestore(&wqueue->lock, flags);
-    }
-
-  return 0;
+  return work_queue_period_wq(wqueue, work, worker, arg, delay, 0);
 }
 
 int work_queue(int qid, FAR struct work_s *work, worker_t worker,

@@ -218,6 +218,8 @@ static void esp_shutdown(struct uart_dev_s *dev)
 
 static void esp_txint(struct uart_dev_s *dev, bool enable)
 {
+  usb_serial_jtag_ll_txfifo_flush();
+
   if (enable)
     {
       usb_serial_jtag_ll_ena_intr_mask(

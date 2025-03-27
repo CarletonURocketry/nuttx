@@ -157,10 +157,10 @@ the following output is expected::
     nsh> cap
     cap_main: Hardware initialized. Opening the capture device: /dev/capture0
     cap_main: Number of samples: 0
-    pwm duty cycle: 50 % 
-    pwm frequence: 50 Hz 
-    pwm duty cycle: 50 % 
-    pwm frequence: 50 Hz 
+    pwm duty cycle: 50 %
+    pwm frequence: 50 Hz
+    pwm duty cycle: 50 %
+    pwm frequence: 50 Hz
 
 coremark
 --------
@@ -241,6 +241,24 @@ This configuration can be used to scan and manipulate I2C devices.
 You can scan for all I2C devices using the following command::
 
     nsh> i2c dev 0x00 0x7f
+
+To use slave mode, you can enable `ESP32S3_I2S0_ROLE_SLAVE` or
+`ESP32S3_I2S1_ROLE_SLAVE` option.
+To use slave mode driver following snippet demonstrates how write to i2c bus
+using slave driver:
+
+.. code-block:: C
+
+   #define ESP_I2C_SLAVE_PATH  "/dev/i2cslv0"
+   int main(int argc, char *argv[])
+     {
+       int i2c_slave_fd;
+       int ret;
+       uint8_t buffer[5] = {0xAA};
+       i2c_slave_fd = open(ESP_I2C_SLAVE_PATH, O_RDWR);
+       ret = write(i2c_slave_fd, buffer, 5);
+       close(i2c_slave_fd);
+    }
 
 knsh
 ----
@@ -453,6 +471,40 @@ psram_octal
 Similar to the ```psram_quad``` configuration but using the SPIRAM
 interface in octal mode.
 
+psram_usrheap
+-------------
+
+This configuration enables allocating the userspace heap into SPI RAM and reserves the
+internal RAM for kernel heap.
+
+Important: this config defaults to flash QUAD mode, and should be changed if the board
+runs on OCTAL mode by setting ``CONFIG_ESP32S3_SPIRAM_MODE_OCT``. If wrong, a SPIRAM error
+will appear during boot.
+
+To check the flash type, run the following command::
+
+    $ esptool.py flash_id
+    esptool.py v4.8.1
+    Found 33 serial ports
+    Serial port /dev/ttyUSB0
+    Connecting....
+    Detecting chip type... ESP32-S3
+    Chip is ESP32-S3 (QFN56) (revision v0.1)
+    Features: WiFi, BLE, Embedded PSRAM 2MB (AP_3v3)
+    Crystal is 40MHz
+    MAC: 7c:df:a1:e5:d8:5c
+    Uploading stub...
+    Running stub...
+    Stub running...
+    Manufacturer: 20
+    Device: 4017
+    Detected flash size: 8MB
+    Flash type set in eFuse: quad (4 data lines)
+    Flash voltage set by eFuse to 3.3V
+    Hard resetting via RTS pin...
+
+The flash type can be seen on the "Flash type set in eFuse: quad" line.
+
 pwm
 ---
 
@@ -463,12 +515,28 @@ To test it, just execute the ``pwm`` application::
     pwm_main: starting output with frequency: 10000 duty: 00008000
     pwm_main: stopping output
 
+python
+------
+
+This configuration enables the Python for ESP32-S3.
+Please refer to the :doc:`Python Interpreter </applications/interpreters/python/index>` page.
+
+.. warning:: Note that this defconfig uses a board with the ESP32-S3-WROOM-2 module with 32MiB
+  of flash and 8MiB of PSRAM. Running Python on ESP32-S3 requires at least 16MiB of flash and
+  8MiB of PSRAM.
+
 qemu_debug
 ----------
 
 A configuration tailored for the `Espressif fork of QEMU`_.
 
 .. _Espressif fork of QEMU: https://github.com/espressif/qemu
+
+qemu_toywasm
+------------
+
+Based on ``qemu_debug`` defconfig, with the addition of WebAssembly support.
+See :ref:`toywasm` for more further details.
 
 random
 ------
@@ -649,6 +717,8 @@ To test it, just run the following::
   nsh> timer -d /dev/timerx
 
 Where x in the timer instance.
+
+.. _toywasm:
 
 toywasm
 -------
@@ -857,3 +927,86 @@ To test it, just run the following::
   # Host
   $ sudo mkfs.ext4 /dev/sdx
   $ sudo mount /dev/sdx ./mnt/
+
+fastboot
+--------
+
+The basic Fastboot configuration is based on esp32s3-devkit:usb_device.
+More details about usage of fastboot, please refer to `fastbootd — NuttX latest documentation <https://nuttx.apache.org/docs/latest/applications/system/fastboot/index.html>`_.
+
+You can run the configuration and compilation procedure::
+
+  $ ./tools/configure.sh -l esp32s3-devkit:fastboot
+  $ make flash ESPTOOL_PORT=/dev/ttyACMx -j
+
+To test it, just run the following (**Default is host side**):
+
+1. Install fastboot tool::
+
+    sudo apt install fastboot
+
+2. List devices running fastboot::
+
+    fastboot devices
+
+  Example::
+
+    $ fastboot devices
+    1234    fastboot
+
+3. Display given variable::
+
+    fastboot getvar <NAME>
+
+  Example::
+
+    # Display the "kernel" variable::
+    $ fastboot -s 1234 getvar kernel
+    Kernel: NuttX
+    Finished. Total time: 0.000s
+
+4. Flash given partition::
+
+    fastboot flash PARTITION FILENAME
+
+  Example (Flash test.img to partition ram10)::
+
+    # 1. Generate a test image
+    $ dd if=/dev/random of=test.img bs=1 count=128
+
+    # 2. Create a RAM disk (Device side)
+    nsh> mkrd -m 10 -s 512 640
+    nsh> ls -l /dev/ram10
+     brw-rw-rw-      327680 /dev/ram10
+
+    # 3. Flash test.img to partition ram10
+    $ fastboot flash ram10 ./test.img
+    Sending 'ram10' (0 KB)                             OKAY [  0.001s]
+    Writing 'ram10'                                    OKAY [  0.001s]
+    Finished. Total time: 0.003s
+
+    # 4. Hexdump the test.img and partition ram10, and compare
+
+    ## Host side
+    $ hexdump test.img
+    0000000 b1e8 b297 4ac5 9dfa d170 244e 4f83 0f93
+    0000010 1bf7 0b19 7bde 5543 0520 9719 746d 54fc
+    0000020 369d 72b3 f2e6 f463 c8e9 24c8 c876 e820
+    0000030 384d 07ab 52ca 2b24 dee7 0404 2663 91e4
+    0000040 6752 3611 aece b543 5194 2224 d1d5 8144
+    0000050 ff44 3bc9 5155 b393 1efb 9e88 2de9 3669
+    0000060 d010 2770 9192 2532 ccf5 591f 39ea 2431
+    0000070 2e3f feb0 87ef 9bdf 7dd4 2e79 64de edf6
+    0000080
+
+    ## Device side
+    nsh> hexdump /dev/ram10 count=128
+    /dev/ram10 at 00000000:
+    0000: e8 b1 97 b2 c5 4a fa 9d 70 d1 4e 24 83 4f 93 0f .....J..p.N$.O..
+    0010: f7 1b 19 0b de 7b 43 55 20 05 19 97 6d 74 fc 54 .....{CU ...mt.T
+    0020: 9d 36 b3 72 e6 f2 63 f4 e9 c8 c8 24 76 c8 20 e8 .6.r..c....$v. .
+    0030: 4d 38 ab 07 ca 52 24 2b e7 de 04 04 63 26 e4 91 M8...R$+....c&..
+    0040: 52 67 11 36 ce ae 43 b5 94 51 24 22 d5 d1 44 81 Rg.6..C..Q$"..D.
+    0050: 44 ff c9 3b 55 51 93 b3 fb 1e 88 9e e9 2d 69 36 D..;UQ.......-i6
+    0060: 10 d0 70 27 92 91 32 25 f5 cc 1f 59 ea 39 31 24 ..p'..2%...Y.91$
+    0070: 3f 2e b0 fe ef 87 df 9b d4 7d 79 2e de 64 f6 ed ?........}y..d..
