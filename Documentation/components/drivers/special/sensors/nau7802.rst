@@ -1,0 +1,90 @@
+=======
+NAU7802
+=======
+
+Contributed by Daniel Byshkin.
+
+If you are feeling the stress and strain of modern life a Wheatstone bridge and you want to quantify it, this handy breakout will do the job, no sweat! The Adafruit NAU7802 contains a super-high-resolution 24-Bit differential ADC with extra gain and calibration circuitry that makes it perfect for measuring strain gauges / load cells or other sensors that have four wires that are connected in a Wheatstone bridge arrangement.
+
+The driver uses the :doc:`uorb
+</components/drivers/special/sensors/sensors_uorb>` interface.
+
+Application Programming Interface
+=================================
+
+.. code-block:: c
+
+   #include <nuttx/sensors/nau7802.h>
+
+The NAU7802 registration function allows the driver to be registered as a UORB
+driver. Registering this driver will cause the ``/dev/uorb/sensor_force<n>`` topic
+to appear, where ``n`` is the value of ``devno``.
+
+
+Registering the device in polling mode will create a kernel thread to poll the sensor
+.. code-block:: c
+
+   int err;
+
+   err = lis2mdl_register(i2c_master, 0, 0x1e, NULL);
+   if (err < 0)
+   {
+     syslog(LOG_ERR, "Could not register LIS2MDL driver at 0x1E: %d\n", err);
+   }
+
+
+``SNIOC_RESET``
+----------------
+
+Performs a soft reset of the NAU7802, which resets the user registers. This command takes no arguments. 
+.. code-block:: c
+
+   /* Puts LIS2MDL into low power mode */
+   err = orb_ioctl(sensor, SNIOC_RESET);
+
+``SNIOC_SET_GAIN``
+------------------------
+
+This command sets the gain of the NAU7802. The possible values are dictated by the
+``nau7802_gain_e`` enum. The default value is 128.
+
+.. code-block:: c
+   err = orb_ioctl(sensor, SNIOC_SET_GAIN, NAU7802_GAIN_128);
+
+``SNIOC_SET_SPS``
+------------------------
+
+This commands sets the sample rate of the NAU7802. The possible values are dictated by the
+``nau7802_sps_e`` enum. The default value is 10.
+
+.. code-block:: c
+   err = orb_ioctl(sensor, SNIOC_SET_SPS, NAU7802_SPS_10);
+
+``SNIOC_SET_LDO``
+------------------------
+
+This command sets the LDO voltage of the NAU7802. The possible values are dictated by the
+``nau7802_ldo_e`` enum. The default value is 3.0V.
+
+.. code-block:: c
+    err = orb_ioctl(sensor, SNIOC_SET_LDO, NAU7802_LDO_3V0);
+
+``SNIOC_CALIBRATE``
+------------------------
+
+This commands performs one of the calibration procedures of the NAU7802. The possible values are dictated by the 
+``nau7802_calmod_e`` enum. 
+
+The possible calibration modes are:
+ - NAU7802_CALMOD_INTERNAL: Removes internal PGA gain and offset errors.
+ - NAU7802_CALMOD_OFFSET: Calibrates the zero point of the sensor. 
+ - NAU7802_CALMOD_GAIN: Calibrates the max value of the sensor. 
+
+.. code-block:: c
+   err = orb_ioctl(sensor, SNIOC_CALIBRATE, NAU7802_CALMOD_INTERNAL);
+
+For the gain calibration mode the user must place a known weight on the sensor. Unforrunately the NAU7802 records is as the maximum value, thus if your loadcell supports
+up to 100kg you shall put a 100kg weight on it to calibrate. 
+A workaround would be to use do a manual calibration by placing an known weight and polling the sensor to get an average weight.
+
+
