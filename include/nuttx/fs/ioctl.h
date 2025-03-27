@@ -765,6 +765,12 @@
 #define _PINCTRLIOCVALID(c) (_IOC_TYPE(c)==_PINCTRLBASE)
 #define _PINCTRLIOC(nr)     _IOC(_PINCTRLBASE,nr)
 
+/* Control commands for the NAU7802*/
+#define SNIOC_SET_GAIN        _SNIOC(0x00A1)
+#define SNIOC_SET_SPS         _SNIOC(0x00A2)
+#define SNIOC_SET_LDO         _SNIOC(0x00A3)
+#define SNIOC_GET_CALIBVALUE  _SNIOC(0x00A4)
+
 /****************************************************************************
  * Public Type Definitions
  ****************************************************************************/
