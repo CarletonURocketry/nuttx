@@ -360,10 +360,9 @@ static int nau7802_read_data(FAR nau7802_dev_s *dev,
  * Description:
  *  Set the LDO voltage.
  ****************************************************************************/
-static int nau7802_set_ldo(FAR nau7802_dev_s *dev,
-                           nau7802_ldo_voltage_enum voltage)
+static int nau7802_set_ldo(FAR nau7802_dev_s *dev, nau7802_ldo_e voltage)
 {
-  if (voltage == LDO_V_EXTERNAL)
+  if (voltage == NAU7802_LDO_V_EXTERNAL)
     {
       return nau7802_set_bits(dev, REG_PU_CTRL, 1, BIT_AVVDS, 0);
     }
@@ -389,8 +388,7 @@ static int nau7802_set_gain(FAR nau7802_dev_s *dev, nau7802_gain_e gain)
 /****************************************************************************
  * Name: nau7802_set_sample_rate
  ****************************************************************************/
-static int nau7802_set_sample_rate(FAR nau7802_dev_s *dev,
-                                   nau7802_sample_rate_e rate)
+static int nau7802_set_sample_rate(FAR nau7802_dev_s *dev, nau7802_sps_e rate)
 {
   return nau7802_set_bits(dev, REG_CTRL_2, 3, 4, rate);
 }
@@ -496,7 +494,7 @@ static int nau7802_calibrate(FAR struct sensor_lowerhalf_s *lower,
                              FAR struct file *filep, unsigned long int arg)
 {
   FAR nau7802_dev_s *dev = container_of(lower, FAR nau7802_dev_s, lower);
-  nau7802_calibration_mode_e mode = (nau7802_calibration_mode_e)arg;
+  nau7802_calibmode_e mode = (nau7802_calibmode_e)arg;
   int err = 0;
 
   // choosing calibration mode
@@ -568,7 +566,7 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower,
       err = nau7802_set_gain(dev, arg);
       break;
 
-    case SNIOC_SET_SAMPLE_RATE:
+    case SNIOC_SET_SPS:
       err = nau7802_set_sample_rate(dev, arg);
       break;
 
@@ -578,7 +576,7 @@ static int nau7802_control(FAR struct sensor_lowerhalf_s *lower,
       break;
 
     // Get the gain offset calibration value post calibration
-    case SNIOC_GET_GAIN_CALIBVALUE:
+    case SNIOC_GET_CALIBVALUE:
       err = nau7802_get_calibvalue(dev, arg);
       break;
 
@@ -629,19 +627,19 @@ static int nau7802_activate(FAR struct sensor_lowerhalf_s *lower,
           return err;
         }
 
-      err = nau7802_set_ldo(dev, LDO_V_3V0);
+      err = nau7802_set_ldo(dev, NAU7802_LDO_V_3V0);
       if (err < 0)
         {
           return err;
         }
 
-      err = nau7802_set_gain(dev, GAIN_128);
+      err = nau7802_set_gain(dev, NAU7802_GAIN_128);
       if (err < 0)
         {
           return err;
         }
 
-      err = nau7802_set_sample_rate(dev, SPS_10);
+      err = nau7802_set_sample_rate(dev, NAU7802_SPS_10);
       if (err < 0)
         {
           return err;

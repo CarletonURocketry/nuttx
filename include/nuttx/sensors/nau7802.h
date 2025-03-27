@@ -38,47 +38,47 @@ typedef int (*nau7802_attach)(xcpt_t, FAR void *arg);
 /* Valid calibration modes */
 typedef enum
 {
-  CALMOD_INTERNAL = 0,
-  CALMOD_OFFSET = 2,
-  CALMOD_GAIN = 3
-} nau7802_calibration_mode_e;
+  NAU7802_CALMOD_INTERNAL = 0,
+  NAU7802_CALMOD_OFFSET = 2,
+  NAU7802_CALMOD_GAIN = 3
+} nau7802_calibmode_e;
 
 /* Valid LDO voltage settings */
 typedef enum
 {
-  LDO_V_4V5,
-  LDO_V_4V2,
-  LDO_V_3V9,
-  LDO_V_3V6,
-  LDO_V_3V3,
-  LDO_V_3V0,
-  LDO_V_2V7,
-  LDO_V_2V4,
-  LDO_V_EXTERNAL
-} nau7802_ldo_voltage_enum;
+  NAU7802_LDO_V_4V5,
+  NAU7802_LDO_V_4V2,
+  NAU7802_LDO_V_3V9,
+  NAU7802_LDO_V_3V6,
+  NAU7802_LDO_V_3V3,
+  NAU7802_LDO_V_3V0,
+  NAU7802_LDO_V_2V7,
+  NAU7802_LDO_V_2V4,
+  NAU7802_LDO_V_EXTERNAL
+} nau7802_ldo_e;
 
 /* Valid gain settings */
 typedef enum
 {
-  GAIN_1,
-  GAIN_2,
-  GAIN_4,
-  GAIN_8,
-  GAIN_16,
-  GAIN_32,
-  GAIN_64,
-  GAIN_128
+  NAU7802_GAIN_1,
+  NAU7802_GAIN_2,
+  NAU7802_GAIN_4,
+  NAU7802_GAIN_8,
+  NAU7802_GAIN_16,
+  NAU7802_GAIN_32,
+  NAU7802_GAIN_64,
+  NAU7802_GAIN_128
 } nau7802_gain_e;
 
 /* Valid sample rates */
 typedef enum
 {
-  SPS_10 = 0,
-  SPS_20 = 1,
-  SPS_40 = 2,
-  SPS_80 = 3,
-  SPS_320 = 7
-} nau7802_sample_rate_e;
+  NAU7802_SPS_10 = 0,
+  NAU7802_SPS_20 = 1,
+  NAU7802_SPS_40 = 2,
+  NAU7802_SPS_80 = 3,
+  NAU7802_SPS_320 = 7
+} nau7802_sps_e;
 
 /* Valid ODR settings*/
 typedef enum nau7802_ord_e
