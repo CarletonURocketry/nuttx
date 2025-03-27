@@ -195,7 +195,7 @@ This commands gets the gain calibration value when set by the ``SNIOC_CALIBRATE`
 
 .. code-block:: c
 
-    unsigned long cal_value;
+    uint32_t cal_value;
     orb_ioctl(sensor, SNIOC_GET_CALIBVALUE, (unsigned long)&cal_value);
 
 
@@ -206,5 +206,5 @@ This commands sets the gain calibration value, useful when you calibrated the se
 
 .. code-block:: c
 
-    unsigned long cal_value;
+    uint32_t cal_value;
     orb_ioctl(sensor, SNIOC_SET_CALIBVALUE, cal_value);

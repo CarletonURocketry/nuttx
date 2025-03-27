@@ -251,7 +251,6 @@ static int nau7802_reset(FAR nau7802_dev_s *dev)
   // check if power up is successful
   if (((reg_val >> BIT_PUR) & 1) == 1)
     {
-      snerr("Power up succesfull\n");
       return 0;
     }
   else
@@ -808,10 +807,9 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr)
       snerr("Failed to register nau7802 driver: %d\n", err);
       goto del_sem;
     }
-
   FAR char *argv[2];
   char arg1[32];
-
+  snprintf(arg1, 16, "%p", priv);
   argv[0] = arg1;
   argv[1] = NULL;
 
