@@ -218,6 +218,17 @@ config SENSORS_NAU7802_THREAD_STACKSIZE
 	---help---
 		The stack size for the worker threads that perform measurements.
 
+config SENSORS_NAU7802_ODR 
+	int "NAU7802 ODR"
+	default 0
+	---help---
+		The following are the possible values as per datasheet
+			0 -> 10HZ
+			1 -> 20HZ
+			2 -> 40HZ
+			3 -> 80HZ 
+			7 -> 320HZ 
+
 endif # SENSORS_NAU7802
 
 config BH1750FVI_I2C_FREQUENCY

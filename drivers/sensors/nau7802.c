@@ -914,7 +914,7 @@ int nau7802_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr)
   priv->lower.ops = &g_sensor_ops;
   priv->lower.type = SENSOR_TYPE_FORCE;
   priv->enabled = false;
-  priv->odr = NAU7802_ODR_10HZ; /* 10Hz (0.1s) default ODR */
+  priv->odr = CONFIG_SENSORS_NAU7802_ODR;
 
   err = sensor_register(&priv->lower, devno);
   if (err < 0)
