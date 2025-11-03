@@ -1475,11 +1475,14 @@ parse_packet:
 
   while (received < buflen)
     {
-      ret = file_read(&priv->uart, &hex_byte, 2);
-      if (ret < 2)
-        {
-          goto early_ret;
-        }
+      ret = file_read(&priv->uart, &hex_byte, 1);
+      if(ret < 1){
+        goto early_ret;
+      }
+      ret = file_read(&priv->uart, &hex_byte[1], 1);
+      if(ret < 1){
+        goto early_ret;
+      }
 
       if (hex_byte[0] == '\r' && hex_byte[1] == '\n')
         {
