@@ -25,4 +25,8 @@
  ****************************************************************************/
 
 
- #define UBM10_BAUD_RATE 19200
+ #define UBM10_BAUD_RATE 38400
+
+ /* Depending on the start byte we decide which protocol we should be parsing. */
+ #define UBLOX_PROTOCOL_START_BYTE 0xB5
+ #define NMEA_PROTOCOL_START_BYTE 0x24 /* '$' in Hex */
