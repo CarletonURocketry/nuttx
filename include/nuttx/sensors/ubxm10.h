@@ -1,5 +1,5 @@
 /****************************************************************************
- * drivers/sensors/ubm10.h
+ * drivers/sensors/ubxm10.h
  *
  * NOTE: EXPERIMENTAL DRIVER for the U-Blox M10 GNSS Chip
  *
@@ -30,8 +30,8 @@
 #include <nuttx/config.h>
 #include <nuttx/sensors/gnss.h>
 
-#define UBM10_BAUD_RATE 38400
-#define UBM10_THREAD_STACK_SIZE 10000
+#define UBXM10_BAUD_RATE 38400
+#define UBXM10_THREAD_STACK_SIZE 10000
 
 /* Depending on the start byte we decide which protocol we should be parsing. */
 #define UBX_PROTOCOL_SYNC_BYTE_1 0xB5
@@ -39,19 +39,58 @@
 #define NMEA_PROTOCOL_START_BYTE 0x24 /* '$' in Hex */
 
 #define UBX_PROTOCOL_ACK_RETRY_COUNT 5
-#define MINMEA_MAX_LENGTH 256
+#define UBX_PROTOCOL_BUFFER_MAX_LENGTH 256
 
+static int ubxm10_control(FAR struct gnss_lowerhalf_s *lower,
+                          FAR struct file *filep, int cmd,
+                          unsigned long arg);
+static int ubxm10_activate(FAR struct gnss_lowerhalf_s *lower,
+                           FAR struct file *filep, bool enable);
+static int ubxm10_set_interval(FAR struct gnss_lowerhalf_s *lower,
+                               FAR struct file *filep,
+                               FAR uint32_t *period_us);
+
+
+
+
+typedef struct
+{
+    FAR struct file uart;          /* UART interface to get data */
+    struct gnss_lowerhalf_s lower; /* GNSS lower-half */
+    bool enabled;                  /* Enabled state */
+    char buffer[UBX_PROTOCOL_BUFFER_MAX_LENGTH]; /* UART read buffer */
+    mutex_t lock;                  /* Device lock */
+    sem_t run;                     /* Start/stop kthread */
+} ubxm10_dev_s;
 
 typedef struct {
     uint8_t cls;
     uint8_t id;
-} ubx_msg_id;
+} ubx_cmd_id_t;
+
+static const struct gnss_ops_s g_gnss_ops =
+{
+  .control = ubxm10_control,
+  .activate = ubxm10_activate,
+  .set_interval = ubxm10_set_interval,
+};
+
+
+
+
+// static int send_command(ubxm10_dev_s *dev,
+//                           ubx_cmd_id_t cmd, unsigned long arg);
+// static int read_line(ubxm10_dev_s *dev);
+
+
+
 
 /* UBX Acknowledge Messages, outputs */
-static const ubx_msg_id UBX_ACK_ACK = { 0x5, 0x01 };
-static const ubx_msg_id UBX_ACK_NAK = { 0x5, 0x00 };
+static const ubx_cmd_id_t UBX_ACK_ACK = { 0x5, 0x01 };
+static const ubx_cmd_id_t UBX_ACK_NAK = { 0x5, 0x00 };
 
 /* UBX Configuration Messages*/
+static const ubx_cmd_id_t UBX_CFG_RST = { 0x06, 0x04 }; /* Reset and power config */
 
 
 /* Need to figure out how to send to uorb */
