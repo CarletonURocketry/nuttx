@@ -24,9 +24,44 @@
  *
  ****************************************************************************/
 
+#ifndef __DRIVERS_GPS_UBX_M10_H
+#define __DRIVERS_GPS_UBX_M10_H
 
- #define UBM10_BAUD_RATE 38400
+#include <nuttx/config.h>
+#include <nuttx/sensors/gnss.h>
 
- /* Depending on the start byte we decide which protocol we should be parsing. */
- #define UBLOX_PROTOCOL_START_BYTE 0xB5
- #define NMEA_PROTOCOL_START_BYTE 0x24 /* '$' in Hex */
+#define UBM10_BAUD_RATE 38400
+#define UBM10_THREAD_STACK_SIZE 10000
+
+/* Depending on the start byte we decide which protocol we should be parsing. */
+#define UBX_PROTOCOL_SYNC_BYTE_1 0xB5
+#define UBX_PROTOCOL_SYNC_BYTE_2 0x62
+#define NMEA_PROTOCOL_START_BYTE 0x24 /* '$' in Hex */
+
+#define UBX_PROTOCOL_ACK_RETRY_COUNT 5
+#define MINMEA_MAX_LENGTH 256
+
+
+typedef struct {
+    uint8_t cls;
+    uint8_t id;
+} ubx_msg_id;
+
+/* UBX Acknowledge Messages, outputs */
+static const ubx_msg_id UBX_ACK_ACK = { 0x5, 0x01 };
+static const ubx_msg_id UBX_ACK_NAK = { 0x5, 0x00 };
+
+/* UBX Configuration Messages*/
+
+
+/* Need to figure out how to send to uorb */
+
+/* Private functions or something like that */
+/* Init module */
+/* Send command */
+/* Parse response */
+
+/* Public functions */
+/* Register module */
+
+#endif
