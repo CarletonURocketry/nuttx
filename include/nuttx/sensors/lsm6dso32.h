@@ -27,13 +27,30 @@
  * Included Files
  ****************************************************************************/
 
+#include <nuttx/config.h>
 #include <nuttx/irq.h>
-#include <nuttx/i2c/i2c_master.h>
 #include <nuttx/sensors/ioctl.h>
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
+
+#ifdef CONFIG_SENSORS_LSM6DSO32_SPI
+struct spi_dev_s;
+#else
+struct i2c_master_s;
+#endif
+
+struct lsm6dso32_bus_config_s
+{
+#ifdef CONFIG_SENSORS_LSM6DSO32_SPI
+  FAR struct spi_dev_s *spi;
+  int spi_devid;
+#else
+  FAR struct i2c_master_s *i2c;
+  uint8_t addr;
+#endif
+};
 
 /* LSM6DSO32 interrupt pins */
 
@@ -82,7 +99,7 @@ struct lsm6dso32_config_s
  *
  ****************************************************************************/
 
-int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
+int lsm6dso32_register(FAR struct lsm6dso32_bus_config_s *bus,
                        uint8_t devno, struct lsm6dso32_config_s *config);
 
 #endif // __INCLUDE_NUTTX_SENSORS_LSM6DSO32_H
