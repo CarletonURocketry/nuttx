@@ -24,6 +24,7 @@
  * Included Files
  ****************************************************************************/
 
+#include <nuttx/config.h>
 #include <nuttx/sensors/ioctl.h>
 #include <nuttx/irq.h>
 
@@ -31,9 +32,24 @@
  * Public Types
  ****************************************************************************/
 
+#ifdef CONFIG_SENSORS_LIS2MDL_SPI
+struct spi_dev_s; /* Forward reference */
+#else
 struct i2c_master_s; /* Forward reference */
+#endif
 
 typedef int (*lis2mdl_attach)(xcpt_t, FAR void *arg);
+
+struct lis2mdl_config_s
+{
+#ifdef CONFIG_SENSORS_LIS2MDL_SPI
+  FAR struct spi_dev_s *spi;
+  int spi_devid;
+#else
+  FAR struct i2c_master_s *i2c;
+  uint8_t addr;
+#endif
+};
 
 /****************************************************************************
  * Public Function Prototypes
@@ -46,9 +62,7 @@ typedef int (*lis2mdl_attach)(xcpt_t, FAR void *arg);
  *   Register the LIS2MDL device as a UORB sensor.
  *
  * Input Parameters:
- *   i2c     - An instance of the I2C interface to use to communicate with
- *             the LIS2MDL.
- *   addr    - The I2C address of the LIS2MDL. Should always be 0x1e.
+ *   config  - SPI or I2C interface configuration.
  *   devno   - The device number to use for the topic (i.e. /dev/mag0)
  *   attach  - A function which is called by this driver to attach the
  *             LIS2MDL interrupt handler to an IRQ. Pass NULL to operate
@@ -60,5 +74,5 @@ typedef int (*lis2mdl_attach)(xcpt_t, FAR void *arg);
  *
  ****************************************************************************/
 
-int lis2mdl_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
+int lis2mdl_register(FAR struct lis2mdl_config_s *config, int devno,
                      lis2mdl_attach attach);
