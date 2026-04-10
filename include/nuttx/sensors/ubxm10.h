@@ -50,7 +50,7 @@ static int ubxm10_set_interval(FAR struct gnss_lowerhalf_s *lower,
                                FAR struct file *filep,
                                FAR uint32_t *period_us);
 
-
+int ubxm10_create_frame(const ubx_cmd_id_t *ubx_cmd_id, const uint8_t *payload, uint16_t payload_len, uint8_t *out_frame);
 
 
 typedef struct
