@@ -91,6 +91,7 @@ static const ubx_cmd_id_t UBX_ACK_NAK = { 0x5, 0x00 };
 
 /* UBX Configuration Messages*/
 static const ubx_cmd_id_t UBX_CFG_RST = { 0x06, 0x04 }; /* Reset and power config */
+static const ubx_cmd_id_t UBX_CFG_VALSET = { 0x06, 0x8a }; /* Set config value */
 
 
 /* Need to figure out how to send to uorb */
