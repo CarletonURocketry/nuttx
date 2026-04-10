@@ -221,14 +221,14 @@ static int ubxm10_control(FAR struct gnss_lowerhalf_s *lower, FAR struct file *f
 
             /* UBX-CFG-VALSET Set Interval Payload */
 
-            uint8_t payload[9] = { 
-                0x00, 0x01, 0x00, /* Message version, ram only, reserved. */
+            uint8_t payload[10] = { 
+                0x00, 0x01, 0x00, 0x00, /* Message version, ram only, reserved, reserved. */
                 0x01, 0x00, 0x21, 0x30, /* Key ID for CFG-RATE-MEAS in little endian. */
                 (uint8_t)(arg & 0xFF), /* Value in ms low byte */
                 (uint8_t)((arg >> 8) & 0xFF), /* Value in ms high byte */
             };
 
-            frame_len = ubxm10_create_frame(&UBX_CFG_VALSET, payload, 9, frame);
+            frame_len = ubxm10_create_frame(&UBX_CFG_VALSET, payload, 10, frame);
 
             nxmutex_lock(&dev->lock);
 
