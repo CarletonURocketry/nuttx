@@ -953,6 +953,35 @@ static inline uint32_t spi_readword(struct stm32_spidev_s *priv)
       return 0;
     }
 
+  /* Switch half duplex to rx */
+
+  if (priv->config == HALF_DUPLEX)
+    {
+      /* Enable AFCNTR to preserve alternate functions */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+
+      /* Need to disable SPI to switch */
+
+      spi_enable(priv, 0);
+
+      /* Switch SPI_CR1_HDDIR to 0 for rx */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, SPI_CR1_HDDIR, 0);
+
+      /* Renable the SPI bus */
+
+      spi_enable(priv, true);
+
+      /* Disable AFCNTR */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+      /* Send the CSTART to signal master mode */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
+    }
+
   /* Wait until the receive buffer is not empty */
 
   while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_RXP) == 0);
@@ -987,6 +1016,35 @@ static inline void spi_writeword(struct stm32_spidev_s *priv,
       return;
     }
 
+  /* Switch half duplex to tx */
+  
+  if (priv->config == HALF_DUPLEX)
+  {
+    /* Enable AFCNTR to preserve alternate functions */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+
+    /* Need to disable SPI to switch */
+
+    spi_enable(priv, 0);
+
+    /* Switch SPI_CR1_HDDIR to 1 for tx */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_HDDIR);
+
+    /* Renable the SPI bus */
+
+    spi_enable(priv, true);
+
+    /* Disable AFCNTR */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+    /* Send the CSTART to signal master mode */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
+  }
+
   /* Wait until the transmit buffer is empty */
 
   while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXP) == 0);
@@ -1017,6 +1075,35 @@ static inline uint8_t spi_readbyte(struct stm32_spidev_s *priv)
   if (priv->config == SIMPLEX_TX)
     {
       return 0;
+    }
+  
+  /* Switch half duplex to rx */
+
+  if (priv->config == HALF_DUPLEX)
+    {
+      /* Enable AFCNTR to preserve alternate functions */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+
+      /* Need to disable SPI to switch */
+
+      spi_enable(priv, 0);
+
+      /* Switch SPI_CR1_HDDIR to 0 for rx */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, SPI_CR1_HDDIR, 0);
+
+      /* Renable the SPI bus */
+
+      spi_enable(priv, true);
+
+      /* Disable AFCNTR */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+      /* Send the CSTART to signal master mode */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
     }
 
   /* Wait until the receive buffer is not empty */
@@ -1053,6 +1140,34 @@ static inline void spi_writebyte(struct stm32_spidev_s *priv,
       return;
     }
 
+  /* Switch half duplex to tx */
+  
+  if (priv->config == HALF_DUPLEX)
+  {
+    /* Enable AFCNTR to preserve alternate functions */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+
+    /* Need to disable SPI to switch */
+
+    spi_enable(priv, 0);
+
+    /* Switch SPI_CR1_HDDIR to 1 for tx */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_HDDIR);
+
+    /* Renable the SPI bus */
+
+    spi_enable(priv, true);
+
+    /* Disable AFCNTR */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+    /* Send the CSTART to signal master mode */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
+  }
   /* Wait until the transmit buffer is empty */
 
   while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXP) == 0);
@@ -1858,8 +1973,9 @@ static uint32_t spi_send(struct spi_dev_s *dev, uint32_t wd)
   spi_modifyreg(priv, STM32_SPI_IFCR_OFFSET, 0, SPI_IFCR_SUSPC);
 
   /* Master transfer start */
+  /* SIMPLE_RX can't send, HALF_DUPLEX sends CSTART at the end of switching mode */
 
-  if (priv->config != SIMPLEX_RX)
+  if (priv->config != SIMPLEX_RX && priv->config != HALF_DUPLEX)
     {
       spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
     }
