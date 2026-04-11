@@ -1044,7 +1044,6 @@ config SENSORS_LSM6DSO32
 	---help---
 		Enable driver support for the STMicro LSM6DSO32 IMU.
 
-if SENSORS_LSM6DSO32
 config SENSORS_LSM6DSO32_SPI
 	bool "Connect LSM6DSO32 via SPI"
 	default n
