@@ -267,6 +267,7 @@ struct stm32_spidev_s
   struct pm_callback_s pm_cb;    /* PM callbacks */
 #endif
   enum spi_config_e config;      /* full/half duplex, simplex transmit/read only */
+  bool              rx_now;      /* Half duplex internal */
 };
 
 /****************************************************************************
@@ -285,6 +286,8 @@ static inline void spi_writeword(struct stm32_spidev_s *priv,
 #ifdef CONFIG_DEBUG_SPI_INFO
 static inline void spi_dumpregs(struct stm32_spidev_s *priv);
 #endif
+
+static inline int spi_enable(struct stm32_spidev_s *priv, bool state);
 
 /* DMA support */
 
@@ -957,9 +960,13 @@ static inline uint32_t spi_readword(struct stm32_spidev_s *priv)
 
   if (priv->config == HALF_DUPLEX)
     {
+      /* Wait for TX to complete before switching direction */
+
+      while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXC) == 0);
+
       /* Enable AFCNTR to preserve alternate functions */
 
-      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
 
       /* Need to disable SPI to switch */
 
@@ -1022,7 +1029,7 @@ static inline void spi_writeword(struct stm32_spidev_s *priv,
   {
     /* Enable AFCNTR to preserve alternate functions */
 
-    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
 
     /* Need to disable SPI to switch */
 
@@ -1081,9 +1088,13 @@ static inline uint8_t spi_readbyte(struct stm32_spidev_s *priv)
 
   if (priv->config == HALF_DUPLEX)
     {
+      /* Wait for TX to complete before switching direction */
+
+      while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXC) == 0);
+
       /* Enable AFCNTR to preserve alternate functions */
 
-      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
 
       /* Need to disable SPI to switch */
 
@@ -1146,7 +1157,7 @@ static inline void spi_writebyte(struct stm32_spidev_s *priv,
   {
     /* Enable AFCNTR to preserve alternate functions */
 
-    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR)
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
 
     /* Need to disable SPI to switch */
 
@@ -1985,15 +1996,47 @@ static uint32_t spi_send(struct spi_dev_s *dev, uint32_t wd)
    * frames, two bytes are received by a 16-bit read of the data register!
    */
 
-  if (priv->nbits > 8)
+  if (priv->config != HALF_DUPLEX)
     {
-      spi_writeword(priv, (uint16_t)(wd & 0xffff));
-      ret = spi_readword(priv);
+      if (priv->nbits > 8)
+        {
+          spi_writeword(priv, (uint16_t)(wd & 0xffff));
+          ret = spi_readword(priv);
+        }
+      else
+        {
+          spi_writebyte(priv, (uint8_t)(wd & 0xff));
+          ret = (uint32_t)spi_readbyte(priv);
+        }
     }
   else
     {
-      spi_writebyte(priv, (uint8_t)(wd & 0xff));
-      ret = (uint32_t)spi_readbyte(priv);
+      /* In half duplex we must send and receive in separate spi_send() calls */
+
+      if (!priv->rx_now)
+        {
+          if (priv->nbits > 8)
+            {
+              spi_writeword(priv, (uint16_t)(wd & 0xffff));
+            }
+          else
+            {
+              spi_writebyte(priv, (uint8_t)(wd & 0xff));
+            }
+        }
+      else
+        {
+          if (priv->nbits > 8)
+            {
+              ret = spi_readword(priv);
+            }
+          else
+            {
+              ret = (uint32_t)spi_readbyte(priv);
+            }
+
+          priv->rx_now = false;
+        }
     }
 
   /* Check and clear any error flags (Reading from the SR clears the error
@@ -2083,10 +2126,12 @@ static void spi_exchange_nodma(struct spi_dev_s *dev,
           if (src)
             {
               word = *src++;
+              priv->rx_now = false;
             }
           else
             {
               word = 0xffff;
+              priv->rx_now = true;
             }
 
           /* Exchange one word */
@@ -2116,10 +2161,12 @@ static void spi_exchange_nodma(struct spi_dev_s *dev,
           if (src)
             {
               word = *src++;
+              priv->rx_now = false;
             }
           else
             {
               word = 0xff;
+              priv->rx_now = true;
             }
 
           /* Exchange one word */
