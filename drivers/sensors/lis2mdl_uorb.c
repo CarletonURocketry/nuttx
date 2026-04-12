@@ -259,11 +259,7 @@ static int lis2mdl_read_reg(FAR struct lis2mdl_dev_s *dev, uint8_t addr,
   SPI_SETFREQUENCY(spi, CONFIG_SENSORS_LIS2MDL_SPI_FREQUENCY);
   SPI_SELECT(spi, id, true);
   SPI_SEND(spi, addr | 0x80); /* bit 7 = read */
-  for (uint8_t i = 0; i < nbytes; i++)
-    {
-      ((uint8_t *)buf)[i] = (uint8_t)SPI_SEND(spi, 0xff);
-    }
-
+  SPI_EXCHANGE(spi, NULL, buf, nbytes);
   SPI_SELECT(spi, id, false);
   SPI_LOCK(spi, false);
   return nbytes;
