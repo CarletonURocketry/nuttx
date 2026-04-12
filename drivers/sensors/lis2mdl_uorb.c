@@ -34,7 +34,11 @@
 
 #include <nuttx/clock.h>
 #include <nuttx/fs/fs.h>
-#include <nuttx/i2c/i2c_master.h>
+#ifdef CONFIG_SENSORS_LIS2MDL_SPI
+#  include <nuttx/spi/spi.h>
+#else
+#  include <nuttx/i2c/i2c_master.h>
+#endif
 #include <nuttx/kmalloc.h>
 #include <nuttx/kthread.h>
 #include <nuttx/mutex.h>
@@ -131,8 +135,7 @@ enum lis2mdl_mode_e
 struct lis2mdl_dev_s
 {
   struct sensor_lowerhalf_s lower; /* UORB lower-half */
-  FAR struct i2c_master_s *i2c;    /* I2C interface */
-  uint8_t addr;                    /* I2C address */
+  struct lis2mdl_config_s config;  /* SPI/I2C interface config */
   sem_t run;                       /* Polling cycle lock */
   mutex_t devlock;                 /* Exclusive access to device */
   enum lis2mdl_odr_e odr;          /* Configured ODR */
@@ -236,11 +239,59 @@ static const struct sensor_ops_s g_sensor_ops =
  ****************************************************************************/
 
 /****************************************************************************
- * Name: lis2mdl_read_reg
+ * Name: lis2mdl_read_reg / lis2mdl_write_reg
  *
  * Description:
- *   Read `nbytes` from the register at `addr` into `buf`.
+ *   Read/write registers over SPI or I2C depending on build configuration.
  ****************************************************************************/
+
+#ifdef CONFIG_SENSORS_LIS2MDL_SPI
+
+static int lis2mdl_read_reg(FAR struct lis2mdl_dev_s *dev, uint8_t addr,
+                            void *buf, uint8_t nbytes)
+{
+  FAR struct spi_dev_s *spi = dev->config.spi;
+  int id = dev->config.spi_devid;
+
+  SPI_LOCK(spi, true);
+  SPI_SETMODE(spi, SPIDEV_MODE0);
+  SPI_SETBITS(spi, 8);
+  SPI_SETFREQUENCY(spi, CONFIG_SENSORS_LIS2MDL_SPI_FREQUENCY);
+  SPI_SELECT(spi, id, true);
+  SPI_SEND(spi, addr | 0x80); /* bit 7 = read */
+  for (uint8_t i = 0; i < nbytes; i++)
+    {
+      ((uint8_t *)buf)[i] = (uint8_t)SPI_SEND(spi, 0xff);
+    }
+
+  SPI_SELECT(spi, id, false);
+  SPI_LOCK(spi, false);
+  return nbytes;
+}
+
+static int lis2mdl_write_reg(FAR struct lis2mdl_dev_s *dev, uint8_t addr,
+                             void *buf, uint8_t nbytes)
+{
+  FAR struct spi_dev_s *spi = dev->config.spi;
+  int id = dev->config.spi_devid;
+
+  SPI_LOCK(spi, true);
+  SPI_SETMODE(spi, SPIDEV_MODE0);
+  SPI_SETBITS(spi, 8);
+  SPI_SETFREQUENCY(spi, CONFIG_SENSORS_LIS2MDL_SPI_FREQUENCY);
+  SPI_SELECT(spi, id, true);
+  SPI_SEND(spi, addr); /* bit 7 = 0, write */
+  for (uint8_t i = 0; i < nbytes; i++)
+    {
+      SPI_SEND(spi, ((uint8_t *)buf)[i]);
+    }
+
+  SPI_SELECT(spi, id, false);
+  SPI_LOCK(spi, false);
+  return nbytes;
+}
+
+#else
 
 static int lis2mdl_read_reg(FAR struct lis2mdl_dev_s *dev, uint8_t addr,
                             void *buf, uint8_t nbytes)
@@ -248,29 +299,22 @@ static int lis2mdl_read_reg(FAR struct lis2mdl_dev_s *dev, uint8_t addr,
   struct i2c_msg_s readcmd[2] = {
       {
           .frequency = CONFIG_SENSORS_LIS2MDL_I2C_FREQUENCY,
-          .addr = dev->addr,
+          .addr = dev->config.addr,
           .flags = I2C_M_NOSTOP,
           .buffer = &addr,
           .length = sizeof(addr),
       },
       {
           .frequency = CONFIG_SENSORS_LIS2MDL_I2C_FREQUENCY,
-          .addr = dev->addr,
+          .addr = dev->config.addr,
           .flags = I2C_M_READ,
           .buffer = buf,
           .length = nbytes,
       },
   };
 
-  return I2C_TRANSFER(dev->i2c, readcmd, 2);
+  return I2C_TRANSFER(dev->config.i2c, readcmd, 2);
 }
-
-/****************************************************************************
- * Name: lis2mdl_write_reg
- *
- * Description:
- *   Write `nbytes` from `buf` to the registers starting at `addr`.
- ****************************************************************************/
 
 static int lis2mdl_write_reg(FAR struct lis2mdl_dev_s *dev, uint8_t addr,
                              void *buf, uint8_t nbytes)
@@ -278,22 +322,24 @@ static int lis2mdl_write_reg(FAR struct lis2mdl_dev_s *dev, uint8_t addr,
   struct i2c_msg_s writecmd[2] = {
       {
           .frequency = CONFIG_SENSORS_LIS2MDL_I2C_FREQUENCY,
-          .addr = dev->addr,
+          .addr = dev->config.addr,
           .flags = I2C_M_NOSTOP,
           .buffer = &addr,
           .length = sizeof(addr),
       },
       {
           .frequency = CONFIG_SENSORS_LIS2MDL_I2C_FREQUENCY,
-          .addr = dev->addr,
+          .addr = dev->config.addr,
           .flags = I2C_M_NOSTART,
           .buffer = buf,
           .length = nbytes,
       },
   };
 
-  return I2C_TRANSFER(dev->i2c, writecmd, 2);
+  return I2C_TRANSFER(dev->config.i2c, writecmd, 2);
 }
+
+#endif /* CONFIG_SENSORS_LIS2MDL_SPI */
 
 /****************************************************************************
  * Name: lis2mdl_read_data
@@ -1253,7 +1299,7 @@ static int lis2mdl_thread(int argc, char **argv)
  *
  ****************************************************************************/
 
-int lis2mdl_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
+int lis2mdl_register(FAR struct lis2mdl_config_s *config, int devno,
                      lis2mdl_attach attach)
 {
   FAR struct lis2mdl_dev_s *priv;
@@ -1261,8 +1307,13 @@ int lis2mdl_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
   FAR char *argv[2];
   char arg1[32];
 
-  DEBUGASSERT(i2c != NULL);
-  DEBUGASSERT(addr == 0x1e);
+  DEBUGASSERT(config != NULL);
+#ifdef CONFIG_SENSORS_LIS2MDL_SPI
+  DEBUGASSERT(config->spi != NULL);
+#else
+  DEBUGASSERT(config->i2c != NULL);
+  DEBUGASSERT(config->addr == 0x1e);
+#endif
 
   /* High priority work queue is required for interrupt driven mode */
 
@@ -1286,8 +1337,7 @@ int lis2mdl_register(FAR struct i2c_master_s *i2c, int devno, uint8_t addr,
 
   memset(priv, 0, sizeof(struct lis2mdl_dev_s));
 
-  priv->i2c = i2c;
-  priv->addr = addr;
+  priv->config = *config;
 
   err = nxmutex_init(&priv->devlock);
   if (err < 0)
