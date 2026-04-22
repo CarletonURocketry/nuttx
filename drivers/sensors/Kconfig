@@ -956,17 +956,29 @@ config LSM6DSL_I2C_FREQUENCY
 config SENSORS_LSM6DSO32
 	bool "LSM6DSO32 support"
 	default n
-	select I2C
+	select SPI if SENSORS_LSM6DSO32_SPI
+	select I2C if !SENSORS_LSM6DSO32_SPI
 	---help---
 		Enable driver support for the STMicro LSM6DSO32 IMU.
 
+config SENSORS_LSM6DSO32_SPI
+	bool "Connect LSM6DSO32 via SPI"
+	default n
+	depends on SENSORS_LSM6DSO32
+
 config SENSORS_LSM6DSO32_I2C_FREQUENCY
-	int "LSM6DSO32 frequency"
+	int "LSM6DSO32 I2C frequency"
 	default 400000
 	range 1 400000
-	depends on SENSORS_LSM6DSO32
+	depends on SENSORS_LSM6DSO32 && !SENSORS_LSM6DSO32_SPI
 	---help---
 		The I2C frequency used to communicate with the LSM6DSO32.
+
+config SENSORS_LSM6DSO32_SPI_FREQUENCY
+	int "LSM6DSO32 SPI frequency"
+	default 10000000
+	range 1 10000000
+	depends on SENSORS_LSM6DSO32_SPI
 
 config SENSORS_LSM6DSO32_THREAD_STACKSIZE
 	int "LSM6DSO32 worker thread stack size"
@@ -1642,16 +1654,33 @@ config SENSORS_MAX6675
 config SENSORS_LIS2MDL
 	bool "STMicro LIS2MDL 3-Axis magnetometer support"
 	default n
-	select I2C
+	select SPI if SENSORS_LIS2MDL_SPI
+	select I2C if !SENSORS_LIS2MDL_SPI
 	---help---
 		Enable UORB driver support for the STMicro LIS2MDL 3-axis magnetometer.
 
 if SENSORS_LIS2MDL
 
+config SENSORS_LIS2MDL_SPI
+	bool "Connect LIS2MDL via SPI"
+	default n
+	---help---
+		Use SPI instead of I2C to communicate with the LIS2MDL.
+
 config SENSORS_LIS2MDL_I2C_FREQUENCY
 	int "LIS2MDL I2C frequency"
+	depends on !SENSORS_LIS2MDL_SPI
 	default 1000000
 	range 1 3400000
+
+if SENSORS_LIS2MDL_SPI
+
+config SENSORS_LIS2MDL_SPI_FREQUENCY
+	int "LIS2MDL SPI frequency"
+	default 10000000
+	range 1 10000000
+
+endif # SENSORS_LIS2MDL_SPI
 
 config SENSORS_LIS2MDL_THREAD_STACKSIZE
 	int "LIS2MDL worker thread stack size"

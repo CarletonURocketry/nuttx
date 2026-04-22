@@ -267,6 +267,7 @@ struct stm32_spidev_s
   struct pm_callback_s pm_cb;    /* PM callbacks */
 #endif
   enum spi_config_e config;      /* full/half duplex, simplex transmit/read only */
+  bool              rx_now;      /* Half duplex internal */
 };
 
 /****************************************************************************
@@ -285,6 +286,8 @@ static inline void spi_writeword(struct stm32_spidev_s *priv,
 #ifdef CONFIG_DEBUG_SPI_INFO
 static inline void spi_dumpregs(struct stm32_spidev_s *priv);
 #endif
+
+static inline int spi_enable(struct stm32_spidev_s *priv, bool state);
 
 /* DMA support */
 
@@ -953,6 +956,39 @@ static inline uint32_t spi_readword(struct stm32_spidev_s *priv)
       return 0;
     }
 
+  /* Switch half duplex to rx */
+
+  if (priv->config == HALF_DUPLEX)
+    {
+      /* Wait for TX to complete before switching direction */
+
+      while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXC) == 0);
+
+      /* Enable AFCNTR to preserve alternate functions */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
+
+      /* Need to disable SPI to switch */
+
+      spi_enable(priv, 0);
+
+      /* Switch SPI_CR1_HDDIR to 0 for rx */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, SPI_CR1_HDDIR, 0);
+
+      /* Renable the SPI bus */
+
+      spi_enable(priv, true);
+
+      /* Disable AFCNTR */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+      /* Send the CSTART to signal master mode */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
+    }
+
   /* Wait until the receive buffer is not empty */
 
   while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_RXP) == 0);
@@ -987,6 +1023,35 @@ static inline void spi_writeword(struct stm32_spidev_s *priv,
       return;
     }
 
+  /* Switch half duplex to tx */
+  
+  if (priv->config == HALF_DUPLEX)
+  {
+    /* Enable AFCNTR to preserve alternate functions */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
+
+    /* Need to disable SPI to switch */
+
+    spi_enable(priv, 0);
+
+    /* Switch SPI_CR1_HDDIR to 1 for tx */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_HDDIR);
+
+    /* Renable the SPI bus */
+
+    spi_enable(priv, true);
+
+    /* Disable AFCNTR */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+    /* Send the CSTART to signal master mode */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
+  }
+
   /* Wait until the transmit buffer is empty */
 
   while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXP) == 0);
@@ -1017,6 +1082,39 @@ static inline uint8_t spi_readbyte(struct stm32_spidev_s *priv)
   if (priv->config == SIMPLEX_TX)
     {
       return 0;
+    }
+  
+  /* Switch half duplex to rx */
+
+  if (priv->config == HALF_DUPLEX)
+    {
+      /* Wait for TX to complete before switching direction */
+
+      while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXC) == 0);
+
+      /* Enable AFCNTR to preserve alternate functions */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
+
+      /* Need to disable SPI to switch */
+
+      spi_enable(priv, 0);
+
+      /* Switch SPI_CR1_HDDIR to 0 for rx */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, SPI_CR1_HDDIR, 0);
+
+      /* Renable the SPI bus */
+
+      spi_enable(priv, true);
+
+      /* Disable AFCNTR */
+
+      spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+      /* Send the CSTART to signal master mode */
+
+      spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
     }
 
   /* Wait until the receive buffer is not empty */
@@ -1053,6 +1151,34 @@ static inline void spi_writebyte(struct stm32_spidev_s *priv,
       return;
     }
 
+  /* Switch half duplex to tx */
+  
+  if (priv->config == HALF_DUPLEX)
+  {
+    /* Enable AFCNTR to preserve alternate functions */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, 0, SPI_CFG2_AFCNTR);
+
+    /* Need to disable SPI to switch */
+
+    spi_enable(priv, 0);
+
+    /* Switch SPI_CR1_HDDIR to 1 for tx */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_HDDIR);
+
+    /* Renable the SPI bus */
+
+    spi_enable(priv, true);
+
+    /* Disable AFCNTR */
+
+    spi_modifyreg(priv, STM32_SPI_CFG2_OFFSET, SPI_CFG2_AFCNTR, 0);
+
+    /* Send the CSTART to signal master mode */
+
+    spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
+  }
   /* Wait until the transmit buffer is empty */
 
   while ((spi_getreg(priv, STM32_SPI_SR_OFFSET) & SPI_SR_TXP) == 0);
@@ -1858,8 +1984,9 @@ static uint32_t spi_send(struct spi_dev_s *dev, uint32_t wd)
   spi_modifyreg(priv, STM32_SPI_IFCR_OFFSET, 0, SPI_IFCR_SUSPC);
 
   /* Master transfer start */
+  /* SIMPLE_RX can't send, HALF_DUPLEX sends CSTART at the end of switching mode */
 
-  if (priv->config != SIMPLEX_RX)
+  if (priv->config != SIMPLEX_RX && priv->config != HALF_DUPLEX)
     {
       spi_modifyreg(priv, STM32_SPI_CR1_OFFSET, 0, SPI_CR1_CSTART);
     }
@@ -1869,15 +1996,47 @@ static uint32_t spi_send(struct spi_dev_s *dev, uint32_t wd)
    * frames, two bytes are received by a 16-bit read of the data register!
    */
 
-  if (priv->nbits > 8)
+  if (priv->config != HALF_DUPLEX)
     {
-      spi_writeword(priv, (uint16_t)(wd & 0xffff));
-      ret = spi_readword(priv);
+      if (priv->nbits > 8)
+        {
+          spi_writeword(priv, (uint16_t)(wd & 0xffff));
+          ret = spi_readword(priv);
+        }
+      else
+        {
+          spi_writebyte(priv, (uint8_t)(wd & 0xff));
+          ret = (uint32_t)spi_readbyte(priv);
+        }
     }
   else
     {
-      spi_writebyte(priv, (uint8_t)(wd & 0xff));
-      ret = (uint32_t)spi_readbyte(priv);
+      /* In half duplex we must send and receive in separate spi_send() calls */
+
+      if (!priv->rx_now)
+        {
+          if (priv->nbits > 8)
+            {
+              spi_writeword(priv, (uint16_t)(wd & 0xffff));
+            }
+          else
+            {
+              spi_writebyte(priv, (uint8_t)(wd & 0xff));
+            }
+        }
+      else
+        {
+          if (priv->nbits > 8)
+            {
+              ret = spi_readword(priv);
+            }
+          else
+            {
+              ret = (uint32_t)spi_readbyte(priv);
+            }
+
+          priv->rx_now = false;
+        }
     }
 
   /* Check and clear any error flags (Reading from the SR clears the error
@@ -1967,10 +2126,12 @@ static void spi_exchange_nodma(struct spi_dev_s *dev,
           if (src)
             {
               word = *src++;
+              priv->rx_now = false;
             }
           else
             {
               word = 0xffff;
+              priv->rx_now = true;
             }
 
           /* Exchange one word */
@@ -2000,10 +2161,12 @@ static void spi_exchange_nodma(struct spi_dev_s *dev,
           if (src)
             {
               word = *src++;
+              priv->rx_now = false;
             }
           else
             {
               word = 0xff;
+              priv->rx_now = true;
             }
 
           /* Exchange one word */

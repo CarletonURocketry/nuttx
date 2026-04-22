@@ -30,7 +30,11 @@
 #include <debug.h>
 
 #include <nuttx/fs/fs.h>
-#include <nuttx/i2c/i2c_master.h>
+#ifdef CONFIG_SENSORS_LSM6DSO32_SPI
+#  include <nuttx/spi/spi.h>
+#else
+#  include <nuttx/i2c/i2c_master.h>
+#endif
 #include <nuttx/kmalloc.h>
 #include <nuttx/kthread.h>
 #include <nuttx/mutex.h>
@@ -205,8 +209,7 @@ struct lsm6dso32_dev_s
 {
   struct lsm6dso32_sens_s gyro;  /* Gyroscope */
   struct lsm6dso32_sens_s accel; /* Accelerometer lower half */
-  FAR struct i2c_master_s *i2c;  /* I2C interface. */
-  uint8_t addr;                  /* I2C address. */
+  struct lsm6dso32_bus_config_s bus; /* SPI/I2C interface config. */
   float gy_off[3];               /* Offsets for gyroscope measurements */
   mutex_t devlock;
 };
@@ -321,75 +324,95 @@ static const struct sensor_ops_s g_sensor_ops =
  *
  ****************************************************************************/
 
+#ifdef CONFIG_SENSORS_LSM6DSO32_SPI
+
+static int lsm6dso32_write_bytes(FAR struct lsm6dso32_dev_s *priv,
+                                 uint8_t addr, void *buf, size_t nbytes)
+{
+  FAR struct spi_dev_s *spi = priv->bus.spi;
+  int id = priv->bus.spi_devid;
+
+  SPI_LOCK(spi, true);
+  SPI_SETMODE(spi, SPIDEV_MODE0);
+  SPI_SETBITS(spi, 8);
+  SPI_SETFREQUENCY(spi, CONFIG_SENSORS_LSM6DSO32_SPI_FREQUENCY);
+  SPI_SELECT(spi, id, true);
+  SPI_SEND(spi, addr);
+  for (size_t i = 0; i < nbytes; i++)
+    {
+      SPI_SEND(spi, ((uint8_t *)buf)[i]);
+    }
+
+  SPI_SELECT(spi, id, false);
+  SPI_LOCK(spi, false);
+  return nbytes;
+}
+
+static int lsm6dso32_read_bytes(FAR struct lsm6dso32_dev_s *priv,
+                                uint8_t addr, void *buf, size_t nbytes)
+{
+  FAR struct spi_dev_s *spi = priv->bus.spi;
+  int id = priv->bus.spi_devid;
+
+  SPI_LOCK(spi, true);
+  SPI_SETMODE(spi, SPIDEV_MODE0);
+  SPI_SETBITS(spi, 8);
+  SPI_SETFREQUENCY(spi, CONFIG_SENSORS_LSM6DSO32_SPI_FREQUENCY);
+  SPI_SELECT(spi, id, true);
+  SPI_SEND(spi, addr | 0x80);
+  for (size_t i = 0; i < nbytes; i++)
+    {
+      ((uint8_t *)buf)[i] = (uint8_t)SPI_SEND(spi, 0xff);
+    }
+
+  SPI_SELECT(spi, id, false);
+  SPI_LOCK(spi, false);
+  return nbytes;
+}
+
+#else
+
 static int lsm6dso32_write_bytes(FAR struct lsm6dso32_dev_s *priv,
                                  uint8_t addr, void *buf, size_t nbytes)
 {
   struct i2c_msg_s cmd[2];
 
-  /* Register addressing part of command. */
-
   cmd[0].frequency = CONFIG_SENSORS_LSM6DSO32_I2C_FREQUENCY;
-  cmd[0].addr = priv->addr;
+  cmd[0].addr = priv->bus.addr;
   cmd[0].flags = I2C_M_NOSTOP;
   cmd[0].buffer = &addr;
   cmd[0].length = sizeof(addr);
 
-  /* Data to write. */
-
   cmd[1].frequency = CONFIG_SENSORS_LSM6DSO32_I2C_FREQUENCY;
-  cmd[1].addr = priv->addr;
+  cmd[1].addr = priv->bus.addr;
   cmd[1].flags = I2C_M_NOSTART;
   cmd[1].buffer = buf;
   cmd[1].length = nbytes;
 
-  /* Send command over the wire */
-
-  return I2C_TRANSFER(priv->i2c, cmd, 2);
+  return I2C_TRANSFER(priv->bus.i2c, cmd, 2);
 }
-
-/****************************************************************************
- * Name: lsm6dso32_read_bytes
- *
- * Description:
- *   Read bytes from the LSM6DSO32 sensor. Reading more than one byte will
- *   read from sequential registers starting at the provided address.
- *
- * Input Parameters:
- *   priv    - The instance of the LSM6DSO32 sensor.
- *   addr    - The register address to read from.
- *   buf     - The buffer of data to read into.
- *   nbytes  - The number of bytes to read into the buffer.
- *
- * Returned Value:
- *   Zero (OK) on success; a negated errno value on failure.
- *
- ****************************************************************************/
 
 static int lsm6dso32_read_bytes(FAR struct lsm6dso32_dev_s *priv,
                                 uint8_t addr, void *buf, size_t nbytes)
 {
   struct i2c_msg_s cmd[2];
 
-  /* Register addressing part of command. */
-
   cmd[0].frequency = CONFIG_SENSORS_LSM6DSO32_I2C_FREQUENCY;
-  cmd[0].addr = priv->addr;
+  cmd[0].addr = priv->bus.addr;
   cmd[0].flags = I2C_M_NOSTOP;
   cmd[0].buffer = &addr;
   cmd[0].length = sizeof(addr);
 
-  /* Read data into buffer. */
-
   cmd[1].frequency = CONFIG_SENSORS_LSM6DSO32_I2C_FREQUENCY;
-  cmd[1].addr = priv->addr;
+  cmd[1].addr = priv->bus.addr;
   cmd[1].flags = I2C_M_READ;
   cmd[1].buffer = buf;
   cmd[1].length = nbytes;
 
-  /* Send command over the wire */
-
-  return I2C_TRANSFER(priv->i2c, cmd, 2);
+  return I2C_TRANSFER(priv->bus.i2c, cmd, 2);
 }
+
+#endif /* CONFIG_SENSORS_LSM6DSO32_SPI */
 
 /****************************************************************************
  * Name: lsm6dso32_set_bits
@@ -1819,7 +1842,7 @@ early_ret:
  *
  ****************************************************************************/
 
-int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
+int lsm6dso32_register(FAR struct lsm6dso32_bus_config_s *bus,
                        uint8_t devno, struct lsm6dso32_config_s *config)
 {
   FAR struct lsm6dso32_dev_s *priv;
@@ -1828,8 +1851,13 @@ int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
   char arg1[32];
   int gyro_pid;
 
-  DEBUGASSERT(i2c != NULL);
-  DEBUGASSERT(addr == 0x6b || addr == 0x6a);
+  DEBUGASSERT(bus != NULL);
+#ifdef CONFIG_SENSORS_LSM6DSO32_SPI
+  DEBUGASSERT(bus->spi != NULL);
+#else
+  DEBUGASSERT(bus->i2c != NULL);
+  DEBUGASSERT(bus->addr == 0x6b || bus->addr == 0x6a);
+#endif
 
   /* If HPWORK is not enabled and the attach functions are not NULL, let the
    * user know that HPWORK is required for interrupts.
@@ -1871,8 +1899,7 @@ int lsm6dso32_register(FAR struct i2c_master_s *i2c, uint8_t addr,
       return -ENOMEM;
     }
 
-  priv->i2c = i2c;
-  priv->addr = addr;
+  priv->bus = *bus;
 
   /* Create mutex */
 
