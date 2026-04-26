@@ -55,6 +55,30 @@
 #endif
 
 /****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
+
+static int ubxm10_control(FAR struct gnss_lowerhalf_s *lower,
+                          FAR struct file *filep, int cmd,
+                          unsigned long arg);
+static int ubxm10_activate(FAR struct gnss_lowerhalf_s *lower,
+                           FAR struct file *filep, bool enable);
+static int ubxm10_set_interval(FAR struct gnss_lowerhalf_s *lower,
+                               FAR struct file *filep,
+                               FAR uint32_t *period_us);
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+static const struct gnss_ops_s g_gnss_ops =
+{
+  .control      = ubxm10_control,
+  .activate     = ubxm10_activate,
+  .set_interval = ubxm10_set_interval,
+};
+
+/****************************************************************************
  * Name: ubxm10_wait_ack
  *
  * Description:
