@@ -858,6 +858,19 @@ config L86_XXX_BAUD
 	---help---
 		Supported values are: 4800, 9600, 14400, 19200, 38400, 57600 and 115200
 
+config SENSORS_UBXM10
+	bool "u-blox M10 GNSS support"
+	default n
+	depends on SERIAL && STANDARD_SERIAL && UORB && SENSORS_GNSS
+	---help---
+		Enable driver support for the u-blox M10 series of GNSS modules
+		using the UBX binary protocol over UART.
+
+config SENSORS_UBXM10_THREAD_STACKSIZE
+	int "Stack size for UBX M10 module collection thread"
+	default 10000
+	depends on SENSORS_UBXM10
+
 config SENSORS_LIS2DH
 	bool "STMicro LIS2DH device support"
 	default n
