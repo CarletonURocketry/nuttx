@@ -37,7 +37,7 @@
 #include <nuttx/semaphore.h>
 #include <nuttx/sensors/gnss.h>
 
-#define UBXM10_BAUD_RATE 38400
+#define UBXM10_BAUD_RATE 9600
 #define UBXM10_THREAD_STACK_SIZE 10000
 
 /* Depending on the start byte we decide which protocol we should be parsing. */
