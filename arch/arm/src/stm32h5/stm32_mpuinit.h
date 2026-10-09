@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/stm32l5/stm32l5_lowputc.h
+ * arch/arm/src/stm32h5/stm32_mpuinit.h
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -20,8 +20,8 @@
  *
  ****************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_STM32L5_STM32L5_LOWPUTC_H
-#define __ARCH_ARM_SRC_STM32L5_STM32L5_LOWPUTC_H
+#ifndef __ARCH_ARM_SRC_STM32H5_STM32_MPUINIT_H
+#define __ARCH_ARM_SRC_STM32H5_STM32_MPUINIT_H
 
 /****************************************************************************
  * Included Files
@@ -29,38 +29,25 @@
 
 #include <nuttx/config.h>
 
-#include "chip.h"
-
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
 
-#ifndef __ASSEMBLY__
-
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
-#endif
-
 /****************************************************************************
- * Name: stm32_lowsetup
+ * Name: stm32_mpuinitialize
  *
  * Description:
- *   Called at the very beginning of _start.  Performs low level
- *   initialization of serial console.
+ *   Configure the MPU.
+ *
+ *   For FLAT build:
+ *     - just reset and enable the MPU with the default background region.
  *
  ****************************************************************************/
 
-void stm32_lowsetup(void);
-
-#undef EXTERN
-#if defined(__cplusplus)
-}
+#ifdef CONFIG_ARM_MPU
+void stm32_mpuinitialize(void);
+#else
+#  define stm32_mpuinitialize()
 #endif
 
-#endif /* __ASSEMBLY__ */
-#endif /* __ARCH_ARM_SRC_STM32L5_STM32L5_LOWPUTC_H */
+#endif /* __ARCH_ARM_SRC_STM32H5_STM32_MPUINIT_H */

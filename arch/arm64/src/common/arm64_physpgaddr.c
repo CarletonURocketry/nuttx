@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/stm32l5/stm32l5_idle.c
+ * arch/arm64/src/common/arm64_physpgaddr.c
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -24,79 +24,78 @@
  * Included Files
  ****************************************************************************/
 
-#include <arch/board/board.h>
 #include <nuttx/config.h>
-#include <nuttx/debug.h>
+
+#include <stdint.h>
 
 #include <nuttx/arch.h>
 #include <nuttx/irq.h>
-#include <nuttx/board.h>
-#include <nuttx/power/pm.h>
 
-#include "chip.h"
-#include "stm32l5_rcc.h"
-#include "arm_internal.h"
+#include "arm64_arch.h"
+#include "arm64_internal.h"
+
+#ifndef CONFIG_DEV_SIMPLE_ADDRENV
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-/* Does the board support an IDLE LED to indicate that the board is in the
- * IDLE state?
+/* PAR_EL1, Physical Address Register. Bit 0 reports a failed translation;
+ * on success bits [51:12] carry the physical frame.
  */
 
-#if defined(CONFIG_ARCH_LEDS) && defined(LED_IDLE)
-#  define BEGIN_IDLE() board_autoled_on(LED_IDLE)
-#  define END_IDLE()   board_autoled_off(LED_IDLE)
-#else
-#  define BEGIN_IDLE()
-#  define END_IDLE()
-#endif
-
-/****************************************************************************
- * Private Functions
- ****************************************************************************/
-
-#define up_idlepm()
+#define PAR_F                (1ull << 0)
+#define PAR_PA_MASK          (0x000ffffffffff000ull)
+#define VA_PAGE_OFFSET_MASK  (0xfffull)
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: up_idle
+ * Name: up_addrenv_va_to_pa
  *
  * Description:
- *   up_idle() is the logic that will be executed when their is no other
- *   ready-to-run task.  This is processor idle time and will continue until
- *   some interrupt occurs to cause a context switch from the idle task.
+ *   Map a virtual address to its physical address.
  *
- *   Processing in this state may be processor-specific. e.g., this is where
- *   power management operations might be performed.
+ *   The translation is asked of the MMU rather than walked in software, so
+ *   it answers for whatever is actually mapped: any granule size, block or
+ *   page, at any level, and it cannot drift from the tables in use.
+ *
+ * Input Parameters:
+ *   va - The virtual address to be mapped.
+ *
+ * Returned Value:
+ *   Physical address on success; zero if the address is not mapped for a
+ *   privileged read.
  *
  ****************************************************************************/
 
-void up_idle(void)
+uintptr_t up_addrenv_va_to_pa(void *va)
 {
-#if defined(CONFIG_SUPPRESS_INTERRUPTS) || defined(CONFIG_SUPPRESS_TIMER_INTS)
-  /* If the system is idle and there are no timer interrupts, then process
-   * "fake" timer interrupts. Hopefully, something will wake up.
+  irqstate_t flags;
+  uint64_t par;
+
+  /* PAR_EL1 is a single register per CPU, so nothing may run between the
+   * translation and reading the result or it reads someone else's answer.
+   * Interrupts are banked with it, so masking them locally is enough.
    */
 
-  nxsched_process_timer();
-#else
+  flags = up_irq_save();
 
-  /* Perform IDLE mode power management */
+  __asm__ volatile ("at s1e1r, %0" : : "r" (va) : "memory");
+  UP_ISB();
+  par = read_sysreg(par_el1);
 
-  up_idlepm();
+  up_irq_restore(flags);
 
-  /* Sleep until an interrupt occurs to save power. */
+  if ((par & PAR_F) != 0)
+    {
+      return 0;
+    }
 
-#if !(defined(CONFIG_DEBUG_SYMBOLS) && defined(CONFIG_STM32_DISABLE_IDLE_SLEEP_DURING_DEBUG))
-  BEGIN_IDLE();
-  asm("WFI");
-  END_IDLE();
-#endif
-
-#endif
+  return (uintptr_t)((par & PAR_PA_MASK) |
+                     ((uintptr_t)va & VA_PAGE_OFFSET_MASK));
 }
+
+#endif /* CONFIG_DEV_SIMPLE_ADDRENV */
